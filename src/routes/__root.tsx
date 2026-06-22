@@ -78,8 +78,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "한다련 캠프 접수 관리" },
-      { name: "description", content: "수련회/캠프 접수 관리 시스템" },
+      { title: "한다련 캠프 접수" },
+      { name: "description", content: "한다련 캠프 접수/관리 페이지" },
+      { property: "og:title", content: "한다련 캠프 접수" },
+      { name: "twitter:title", content: "한다련 캠프 접수" },
+      { property: "og:description", content: "한다련 캠프 접수/관리 페이지" },
+      { name: "twitter:description", content: "한다련 캠프 접수/관리 페이지" },
+      { name: "twitter:card", content: "summary" },
+      { property: "og:type", content: "website" },
     ],
     links: [
       {
