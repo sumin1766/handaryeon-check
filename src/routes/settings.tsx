@@ -10,13 +10,13 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DEFAULT_LODGINGS } from "@/lib/default-lodgings";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Plus, Download, Star } from "lucide-react";
+import { Plus, Star, Calendar, Building2, Bath, Maximize2 } from "lucide-react";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { krw } from "@/lib/format";
-import { downloadRowsAsXlsx } from "@/lib/export-xlsx";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "설정 — 한다련 캠프" }] }),
@@ -29,16 +29,120 @@ function SettingsPage() {
       <div className="space-y-6">
         <header>
           <h1 className="text-2xl font-bold">설정</h1>
-          <p className="text-sm text-muted-foreground">시즌·숙소·목욕쿠폰 단가·이름표 출력</p>
+          <p className="text-sm text-muted-foreground">카드를 클릭하면 전체 내용을 팝업으로 열어볼 수 있습니다.</p>
         </header>
-        <SeasonsSection />
-        <LodgingsSection />
-        <BathPriceSection />
-        <NametagExportSection />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <SettingsCard
+            icon={<Calendar className="h-5 w-5" />}
+            title="시즌 관리"
+            summary={<SeasonsSummary />}
+          >
+            <SeasonsSection />
+          </SettingsCard>
+          <SettingsCard
+            icon={<Building2 className="h-5 w-5" />}
+            title="숙소 설정"
+            summary={<LodgingsSummary />}
+          >
+            <LodgingsSection />
+          </SettingsCard>
+          <SettingsCard
+            icon={<Bath className="h-5 w-5" />}
+            title="목욕쿠폰 단가"
+            summary={<BathPriceSummary />}
+          >
+            <BathPriceSection />
+          </SettingsCard>
+        </div>
       </div>
     </AppShell>
   );
 }
+
+function SettingsCard({
+  icon, title, summary, children,
+}: { icon: ReactNode; title: string; summary: ReactNode; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-left w-full"
+      >
+        <Card className="p-4 transition hover:shadow-md hover:border-primary/50 cursor-pointer h-full">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">{icon}</div>
+              <h2 className="text-base font-semibold">{title}</h2>
+            </div>
+            <Maximize2 className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div className="mt-3 text-sm text-muted-foreground">{summary}</div>
+          <div className="mt-3 text-xs text-primary font-medium">클릭하여 열기 →</div>
+        </Card>
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              {icon} {title}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto px-6 py-4">{children}</div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+// ----- Summaries -----
+
+function SeasonsSummary() {
+  const { data: seasons = [] } = useSeasons();
+  const active = seasons.find((s) => s.is_active);
+  return (
+    <div className="tabular-nums">
+      <div>총 <b className="text-foreground">{seasons.length}</b>개 시즌</div>
+      <div className="truncate">활성: <b className="text-foreground">{active?.name ?? "—"}</b></div>
+    </div>
+  );
+}
+
+function LodgingsSummary() {
+  const { season } = useActiveSeason();
+  const { data: lodgings = [] } = useQuery({
+    queryKey: ["lodgings-settings", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data } = await supabase.from("lodgings").select("id, active, capacity").eq("season_id", season!.id);
+      return data ?? [];
+    },
+  });
+  const active = lodgings.filter((l: any) => l.active).length;
+  const cap = lodgings.filter((l: any) => l.active).reduce((s: number, l: any) => s + l.capacity, 0);
+  return (
+    <div className="tabular-nums">
+      <div>활성 숙소 <b className="text-foreground">{active}</b> / {lodgings.length}</div>
+      <div>총 정원 <b className="text-foreground">{cap}</b>명</div>
+    </div>
+  );
+}
+
+function BathPriceSummary() {
+  const { season } = useActiveSeason();
+  const { data: settings } = useQuery({
+    queryKey: ["app_settings", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data } = await supabase.from("app_settings").select("*").eq("season_id", season!.id).maybeSingle();
+      return data;
+    },
+  });
+  return <div>1매 단가 <b className="text-foreground">{krw(settings?.bath_unit_price ?? 5000)}</b></div>;
+}
+
+// ----- Full sections -----
 
 function SeasonsSection() {
   const { data: seasons = [] } = useSeasons();
@@ -59,7 +163,6 @@ function SeasonsSection() {
         .select("id")
         .single();
       if (error) throw error;
-      // seed lodgings
       const rows = DEFAULT_LODGINGS.map((l) => ({
         season_id: data.id,
         name: l.name,
@@ -105,8 +208,7 @@ function SeasonsSection() {
   });
 
   return (
-    <Card className="p-5">
-      <h2 className="text-lg font-semibold mb-4">시즌 관리</h2>
+    <div>
       <div className="grid grid-cols-1 md:grid-cols-[1fr_180px_180px_auto] gap-2 mb-4">
         <div>
           <Label className="text-xs">시즌 이름</Label>
@@ -163,7 +265,7 @@ function SeasonsSection() {
           ))}
         </TableBody>
       </Table>
-    </Card>
+    </div>
   );
 }
 
@@ -172,7 +274,7 @@ function LodgingsSection() {
   const qc = useQueryClient();
   useRealtimeInvalidate(["lodgings"], [["lodgings-settings"]]);
   const { data: lodgings = [] } = useQuery({
-    queryKey: ["lodgings-settings", season?.id],
+    queryKey: ["lodgings-settings-full", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
       const { data } = await supabase.from("lodgings").select("*").eq("season_id", season!.id).order("sort_order");
@@ -187,12 +289,11 @@ function LodgingsSection() {
       }).eq("id", row.id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["lodgings-settings"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["lodgings-settings-full"] }),
   });
-  if (!season) return null;
+  if (!season) return <div className="text-sm text-muted-foreground">시즌이 없습니다.</div>;
   return (
-    <Card className="p-5">
-      <h2 className="text-lg font-semibold mb-3">숙소 설정</h2>
+    <div>
       <p className="text-xs text-muted-foreground mb-3">성별(남=하늘색, 여=분홍색, 미지정=회색)은 숙소배치·접수시트에 동일하게 표시됩니다.</p>
       <div className="overflow-x-auto">
         <Table>
@@ -244,7 +345,7 @@ function LodgingsSection() {
           </TableBody>
         </Table>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -260,112 +361,19 @@ function BathPriceSection() {
     },
   });
   const [price, setPrice] = useState<number>(settings?.bath_unit_price ?? 5000);
-  if (!season) return null;
+  if (!season) return <div className="text-sm text-muted-foreground">시즌이 없습니다.</div>;
   return (
-    <Card className="p-5">
-      <h2 className="text-lg font-semibold mb-3">목욕쿠폰 단가</h2>
-      <div className="flex items-end gap-3">
-        <div className="w-48">
-          <Label className="text-xs">단가 (원/매)</Label>
-          <Input type="number" value={price} onChange={(e) => setPrice(parseInt(e.target.value) || 0)} className="tabular-nums" />
-        </div>
-        <Button onClick={async () => {
-          await supabase.from("app_settings").upsert({ season_id: season.id, bath_unit_price: price });
-          qc.invalidateQueries({ queryKey: ["app_settings"] });
-          toast.success("저장됨");
-        }}>저장</Button>
-        <span className="text-sm text-muted-foreground">현재: {krw(settings?.bath_unit_price ?? 5000)}</span>
+    <div className="flex items-end gap-3">
+      <div className="w-48">
+        <Label className="text-xs">단가 (원/매)</Label>
+        <Input type="number" value={price} onChange={(e) => setPrice(parseInt(e.target.value) || 0)} className="tabular-nums" />
       </div>
-    </Card>
-  );
-}
-
-function NametagExportSection() {
-  const { season } = useActiveSeason();
-  useRealtimeInvalidate(["churches", "people"], [["nametag", season?.id]]);
-  const { data } = useQuery({
-    queryKey: ["nametag", season?.id],
-    enabled: !!season?.id,
-    queryFn: async () => {
-      const { data: churches } = await supabase
-        .from("churches").select("id, name, denomination").eq("season_id", season!.id).order("name");
-      const ids = (churches ?? []).map((c: any) => c.id);
-      const { data: people } = ids.length
-        ? await supabase.from("people").select("church_id, name").in("church_id", ids)
-        : { data: [] };
-      return { churches: churches ?? [], people: people ?? [] };
-    },
-  });
-
-  if (!season) return null;
-  const churches = data?.churches ?? [];
-  const people = data?.people ?? [];
-
-  const peopleByChurch = new Map<string, any[]>();
-  for (const p of people) {
-    const arr = peopleByChurch.get(p.church_id) ?? [];
-    arr.push(p);
-    peopleByChurch.set(p.church_id, arr);
-  }
-
-  const flatRows: { no: number; church: string; name: string; churchId: string }[] = [];
-  let no = 0;
-  for (const c of churches) {
-    const label = c.denomination ? `${c.name}(${c.denomination})` : c.name;
-    const ppl = peopleByChurch.get(c.id) ?? [];
-    for (const p of ppl) {
-      no += 1;
-      flatRows.push({ no, church: label, name: p.name, churchId: c.id });
-    }
-  }
-
-  const download = () => {
-    const rows = flatRows.map((r) => ({ No: r.no, 교회: r.church, 명단: r.name }));
-    downloadRowsAsXlsx(rows, "전체 등록자 명단", `${season.name}_이름표.xlsx`);
-  };
-
-  return (
-    <Card className="p-5">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h2 className="text-lg font-semibold">이름표 출력</h2>
-          <p className="text-xs text-muted-foreground">사전접수·현장접수 등록자 전체 명단 (총 {flatRows.length}명)</p>
-        </div>
-        <Button onClick={download} variant="default"><Download className="h-4 w-4 mr-1" />엑셀 다운로드(.xlsx)</Button>
-      </div>
-
-      <div className="rounded-md border overflow-hidden">
-        <div className="bg-primary text-primary-foreground px-3 py-2 text-sm font-bold tracking-wide">전체 등록자 명단</div>
-        <div className="max-h-[600px] overflow-y-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/60 text-xs uppercase sticky top-0">
-              <tr>
-                <th className="text-right px-3 py-2 w-16">No</th>
-                <th className="text-left px-3 py-2">교회</th>
-                <th className="text-left px-3 py-2">명단</th>
-              </tr>
-            </thead>
-            <tbody>
-              {flatRows.map((r, i) => {
-                const prev = flatRows[i - 1];
-                const groupStart = !prev || prev.churchId !== r.churchId;
-                return (
-                  <tr key={i} className={`${groupStart ? "border-t-2 border-foreground/20" : "border-t"} hover:bg-muted/30`}>
-                    <td className="text-right px-3 py-1.5 tabular-nums text-muted-foreground">{r.no}</td>
-                    <td className={`px-3 py-1.5 ${groupStart ? "font-semibold" : "text-muted-foreground/60"}`}>
-                      {groupStart ? r.church : ""}
-                    </td>
-                    <td className="px-3 py-1.5">{r.name}</td>
-                  </tr>
-                );
-              })}
-              {flatRows.length === 0 && (
-                <tr><td colSpan={3} className="text-center py-8 text-sm text-muted-foreground">등록자가 없습니다.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </Card>
+      <Button onClick={async () => {
+        await supabase.from("app_settings").upsert({ season_id: season.id, bath_unit_price: price });
+        qc.invalidateQueries({ queryKey: ["app_settings"] });
+        toast.success("저장됨");
+      }}>저장</Button>
+      <span className="text-sm text-muted-foreground">현재: {krw(settings?.bath_unit_price ?? 5000)}</span>
+    </div>
   );
 }

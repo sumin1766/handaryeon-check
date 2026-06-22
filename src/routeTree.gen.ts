@@ -13,6 +13,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReceiptRouteImport } from './routes/receipt'
 import { Route as PreRegistrationRouteImport } from './routes/pre-registration'
 import { Route as OnsiteRouteImport } from './routes/onsite'
+import { Route as NametagsRouteImport } from './routes/nametags'
 import { Route as LodgingsRouteImport } from './routes/lodgings'
 import { Route as IntakeSheetRouteImport } from './routes/intake-sheet'
 import { Route as BathCouponsRouteImport } from './routes/bath-coupons'
@@ -36,6 +37,11 @@ const PreRegistrationRoute = PreRegistrationRouteImport.update({
 const OnsiteRoute = OnsiteRouteImport.update({
   id: '/onsite',
   path: '/onsite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NametagsRoute = NametagsRouteImport.update({
+  id: '/nametags',
+  path: '/nametags',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LodgingsRoute = LodgingsRouteImport.update({
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/bath-coupons': typeof BathCouponsRoute
   '/intake-sheet': typeof IntakeSheetRoute
   '/lodgings': typeof LodgingsRoute
+  '/nametags': typeof NametagsRoute
   '/onsite': typeof OnsiteRoute
   '/pre-registration': typeof PreRegistrationRoute
   '/receipt': typeof ReceiptRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/bath-coupons': typeof BathCouponsRoute
   '/intake-sheet': typeof IntakeSheetRoute
   '/lodgings': typeof LodgingsRoute
+  '/nametags': typeof NametagsRoute
   '/onsite': typeof OnsiteRoute
   '/pre-registration': typeof PreRegistrationRoute
   '/receipt': typeof ReceiptRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/bath-coupons': typeof BathCouponsRoute
   '/intake-sheet': typeof IntakeSheetRoute
   '/lodgings': typeof LodgingsRoute
+  '/nametags': typeof NametagsRoute
   '/onsite': typeof OnsiteRoute
   '/pre-registration': typeof PreRegistrationRoute
   '/receipt': typeof ReceiptRoute
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/bath-coupons'
     | '/intake-sheet'
     | '/lodgings'
+    | '/nametags'
     | '/onsite'
     | '/pre-registration'
     | '/receipt'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/bath-coupons'
     | '/intake-sheet'
     | '/lodgings'
+    | '/nametags'
     | '/onsite'
     | '/pre-registration'
     | '/receipt'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/bath-coupons'
     | '/intake-sheet'
     | '/lodgings'
+    | '/nametags'
     | '/onsite'
     | '/pre-registration'
     | '/receipt'
@@ -128,6 +140,7 @@ export interface RootRouteChildren {
   BathCouponsRoute: typeof BathCouponsRoute
   IntakeSheetRoute: typeof IntakeSheetRoute
   LodgingsRoute: typeof LodgingsRoute
+  NametagsRoute: typeof NametagsRoute
   OnsiteRoute: typeof OnsiteRoute
   PreRegistrationRoute: typeof PreRegistrationRoute
   ReceiptRoute: typeof ReceiptRoute
@@ -162,6 +175,13 @@ declare module '@tanstack/react-router' {
       path: '/onsite'
       fullPath: '/onsite'
       preLoaderRoute: typeof OnsiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nametags': {
+      id: '/nametags'
+      path: '/nametags'
+      fullPath: '/nametags'
+      preLoaderRoute: typeof NametagsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lodgings': {
@@ -200,6 +220,7 @@ const rootRouteChildren: RootRouteChildren = {
   BathCouponsRoute: BathCouponsRoute,
   IntakeSheetRoute: IntakeSheetRoute,
   LodgingsRoute: LodgingsRoute,
+  NametagsRoute: NametagsRoute,
   OnsiteRoute: OnsiteRoute,
   PreRegistrationRoute: PreRegistrationRoute,
   ReceiptRoute: ReceiptRoute,
