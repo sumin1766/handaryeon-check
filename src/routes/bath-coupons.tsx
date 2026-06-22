@@ -65,6 +65,7 @@ function BathPage() {
         name: row.name, qty: row.qty, amount,
         paid_transfer: row.paid_transfer, transfer_at: row.transfer_at,
         paid_cash: row.paid_cash, cash_at: row.cash_at,
+        weekday: row.weekday,
       }).eq("id", row.id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["bath"] }),
