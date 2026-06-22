@@ -1,0 +1,54 @@
+export const krw = (n: number) =>
+  new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 }).format(n || 0);
+
+export const num = (n: number) => new Intl.NumberFormat("ko-KR").format(n || 0);
+
+const DIGITS = ["", "일", "이", "삼", "사", "오", "육", "칠", "팔", "구"];
+const SMALL = ["", "십", "백", "천"];
+const BIG = ["", "만", "억", "조"];
+
+export function amountToKorean(amount: number): string {
+  if (!amount || amount < 0) return "일금 영원정";
+  const s = String(Math.floor(amount));
+  let out = "";
+  const groups: string[] = [];
+  let rest = s;
+  while (rest.length > 0) {
+    groups.unshift(rest.slice(-4));
+    rest = rest.slice(0, -4);
+  }
+  const total = groups.length;
+  groups.forEach((g, gi) => {
+    const big = BIG[total - 1 - gi];
+    let chunk = "";
+    const padded = g.padStart(4, "0");
+    for (let i = 0; i < 4; i++) {
+      const d = parseInt(padded[i]);
+      if (d === 0) continue;
+      const unit = SMALL[3 - i];
+      const dg = d === 1 && unit ? "" : DIGITS[d];
+      chunk += dg + unit;
+    }
+    if (chunk) out += chunk + big;
+  });
+  return `일금 ${out || "영"}원정`;
+}
+
+export const formatDate = (iso?: string | null) => {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+};
+
+export const formatTime = (iso?: string | null) => {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+
+export const formatDateTime = (iso?: string | null) =>
+  iso ? `${formatDate(iso)} ${formatTime(iso)}` : "-";
+
+export const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
+export const weekdayOf = (iso?: string | null) =>
+  iso ? WEEKDAYS[new Date(iso).getDay()] : "";
