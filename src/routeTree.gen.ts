@@ -9,8 +9,50 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ReceiptRouteImport } from './routes/receipt'
+import { Route as PreRegistrationRouteImport } from './routes/pre-registration'
+import { Route as OnsiteRouteImport } from './routes/onsite'
+import { Route as LodgingsRouteImport } from './routes/lodgings'
+import { Route as IntakeSheetRouteImport } from './routes/intake-sheet'
+import { Route as BathCouponsRouteImport } from './routes/bath-coupons'
 import { Route as IndexRouteImport } from './routes/index'
 
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReceiptRoute = ReceiptRouteImport.update({
+  id: '/receipt',
+  path: '/receipt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreRegistrationRoute = PreRegistrationRouteImport.update({
+  id: '/pre-registration',
+  path: '/pre-registration',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnsiteRoute = OnsiteRouteImport.update({
+  id: '/onsite',
+  path: '/onsite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LodgingsRoute = LodgingsRouteImport.update({
+  id: '/lodgings',
+  path: '/lodgings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IntakeSheetRoute = IntakeSheetRouteImport.update({
+  id: '/intake-sheet',
+  path: '/intake-sheet',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BathCouponsRoute = BathCouponsRouteImport.update({
+  id: '/bath-coupons',
+  path: '/bath-coupons',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +61,130 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/bath-coupons': typeof BathCouponsRoute
+  '/intake-sheet': typeof IntakeSheetRoute
+  '/lodgings': typeof LodgingsRoute
+  '/onsite': typeof OnsiteRoute
+  '/pre-registration': typeof PreRegistrationRoute
+  '/receipt': typeof ReceiptRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/bath-coupons': typeof BathCouponsRoute
+  '/intake-sheet': typeof IntakeSheetRoute
+  '/lodgings': typeof LodgingsRoute
+  '/onsite': typeof OnsiteRoute
+  '/pre-registration': typeof PreRegistrationRoute
+  '/receipt': typeof ReceiptRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/bath-coupons': typeof BathCouponsRoute
+  '/intake-sheet': typeof IntakeSheetRoute
+  '/lodgings': typeof LodgingsRoute
+  '/onsite': typeof OnsiteRoute
+  '/pre-registration': typeof PreRegistrationRoute
+  '/receipt': typeof ReceiptRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/bath-coupons'
+    | '/intake-sheet'
+    | '/lodgings'
+    | '/onsite'
+    | '/pre-registration'
+    | '/receipt'
+    | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/bath-coupons'
+    | '/intake-sheet'
+    | '/lodgings'
+    | '/onsite'
+    | '/pre-registration'
+    | '/receipt'
+    | '/settings'
+  id:
+    | '__root__'
+    | '/'
+    | '/bath-coupons'
+    | '/intake-sheet'
+    | '/lodgings'
+    | '/onsite'
+    | '/pre-registration'
+    | '/receipt'
+    | '/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BathCouponsRoute: typeof BathCouponsRoute
+  IntakeSheetRoute: typeof IntakeSheetRoute
+  LodgingsRoute: typeof LodgingsRoute
+  OnsiteRoute: typeof OnsiteRoute
+  PreRegistrationRoute: typeof PreRegistrationRoute
+  ReceiptRoute: typeof ReceiptRoute
+  SettingsRoute: typeof SettingsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/receipt': {
+      id: '/receipt'
+      path: '/receipt'
+      fullPath: '/receipt'
+      preLoaderRoute: typeof ReceiptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pre-registration': {
+      id: '/pre-registration'
+      path: '/pre-registration'
+      fullPath: '/pre-registration'
+      preLoaderRoute: typeof PreRegistrationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onsite': {
+      id: '/onsite'
+      path: '/onsite'
+      fullPath: '/onsite'
+      preLoaderRoute: typeof OnsiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lodgings': {
+      id: '/lodgings'
+      path: '/lodgings'
+      fullPath: '/lodgings'
+      preLoaderRoute: typeof LodgingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/intake-sheet': {
+      id: '/intake-sheet'
+      path: '/intake-sheet'
+      fullPath: '/intake-sheet'
+      preLoaderRoute: typeof IntakeSheetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bath-coupons': {
+      id: '/bath-coupons'
+      path: '/bath-coupons'
+      fullPath: '/bath-coupons'
+      preLoaderRoute: typeof BathCouponsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,17 +197,14 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BathCouponsRoute: BathCouponsRoute,
+  IntakeSheetRoute: IntakeSheetRoute,
+  LodgingsRoute: LodgingsRoute,
+  OnsiteRoute: OnsiteRoute,
+  PreRegistrationRoute: PreRegistrationRoute,
+  ReceiptRoute: ReceiptRoute,
+  SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
