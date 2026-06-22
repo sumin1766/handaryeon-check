@@ -102,6 +102,19 @@ function LodgingsPage() {
             <span>배정 <b className="text-lg">{num(totalAssigned)}</b>명</span>
             <span>남은 자리 <b className="text-lg text-emerald-600">{num(totalCap - totalAssigned)}</b>명</span>
           </div>
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {Object.keys(groups).map((building) => {
+              const items = lodgings.filter((l: any) => (l.building ?? "기타") === building);
+              const cap = items.filter((l: any) => l.active).reduce((s: number, l: any) => s + l.capacity, 0);
+              const asg = items.reduce((s: number, l: any) => s + (peopleByLodging.get(l.id)?.length ?? 0), 0);
+              return (
+                <div key={building} className="rounded border bg-muted/30 px-3 py-2 text-sm tabular-nums">
+                  <div className="font-semibold mb-0.5">{building}</div>
+                  <div className="text-xs">정원 <b>{num(cap)}</b>명 / 배정 <b>{num(asg)}</b>명 / 남은 자리 <b className="text-emerald-600">{num(cap - asg)}</b>명</div>
+                </div>
+              );
+            })}
+          </div>
         </Card>
 
         {searchHits && (

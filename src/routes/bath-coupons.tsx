@@ -65,6 +65,7 @@ function BathPage() {
         name: row.name, qty: row.qty, amount,
         paid_transfer: row.paid_transfer, transfer_at: row.transfer_at,
         paid_cash: row.paid_cash, cash_at: row.cash_at,
+        weekday: row.weekday,
       }).eq("id", row.id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["bath"] }),
@@ -179,7 +180,15 @@ function BathPage() {
                       <Checkbox checked={r.paid_cash} onCheckedChange={(v) => update.mutate({ ...r, paid_cash: !!v, cash_at: v ? new Date().toISOString() : null })} />
                     </td>
                     <td className="px-2 py-1 text-xs tabular-nums">{formatTime(r.cash_at)}</td>
-                    <td className="px-2 py-1 text-xs">{r.weekday ?? weekdayOf(r.created_at)}</td>
+                    <td className="px-2 py-1">
+                      <select
+                        defaultValue={r.weekday ?? weekdayOf(r.created_at)}
+                        onChange={(e) => update.mutate({ ...r, weekday: e.target.value })}
+                        className="h-8 rounded border bg-background px-1 text-xs"
+                      >
+                        {WEEKDAYS.map((w) => <option key={w} value={w}>{w}</option>)}
+                      </select>
+                    </td>
                     <td className="px-2 py-1 text-right font-semibold tabular-nums">{krw(r.amount)}</td>
                     <td><Button size="icon" variant="ghost" onClick={() => remove.mutate(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></td>
                   </tr>
