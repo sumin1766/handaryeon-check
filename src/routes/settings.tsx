@@ -14,7 +14,6 @@ import { DEFAULT_LODGINGS } from "@/lib/default-lodgings";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Plus, Download, Star } from "lucide-react";
-import * as XLSX from "xlsx";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { krw } from "@/lib/format";
 
@@ -284,6 +283,7 @@ function NametagExportSection() {
   const { season } = useActiveSeason();
   if (!season) return null;
   const download = async () => {
+    const XLSX = await import("xlsx");
     const { data: churches } = await supabase
       .from("churches").select("id, name").eq("season_id", season.id);
     const churchMap = new Map((churches ?? []).map((c: any) => [c.id, c.name]));
