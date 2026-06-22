@@ -25,7 +25,7 @@ export function useSeasons() {
 
   useEffect(() => {
     const ch = supabase
-      .channel("seasons-rt")
+      .channel(`seasons-rt-${Math.random()}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "seasons" },
