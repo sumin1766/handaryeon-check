@@ -14,9 +14,9 @@ import { DEFAULT_LODGINGS } from "@/lib/default-lodgings";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Plus, Download, Star } from "lucide-react";
-import * as XLSX from "xlsx";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { krw } from "@/lib/format";
+import { downloadRowsAsXlsx } from "@/lib/export-xlsx";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "설정 — 한다련 캠프" }] }),
@@ -295,10 +295,7 @@ function NametagExportSection() {
       이름: p.name,
       비고: p.note ?? "",
     }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "이름표");
-    XLSX.writeFile(wb, `${season.name}_이름표.xlsx`);
+    downloadRowsAsXlsx(rows, "이름표", `${season.name}_이름표.xlsx`);
   };
   return (
     <Card className="p-5">
