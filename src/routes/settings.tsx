@@ -282,26 +282,90 @@ function BathPriceSection() {
 
 function NametagExportSection() {
   const { season } = useActiveSeason();
+  useRealtimeInvalidate(["churches", "people"], [["nametag", season?.id]]);
+  const { data } = useQuery({
+    queryKey: ["nametag", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data: churches } = await supabase
+        .from("churches").select("id, name, denomination").eq("season_id", season!.id).order("name");
+      const ids = (churches ?? []).map((c: any) => c.id);
+      const { data: people } = ids.length
+        ? await supabase.from("people").select("church_id, name").in("church_id", ids)
+        : { data: [] };
+      return { churches: churches ?? [], people: people ?? [] };
+    },
+  });
+
   if (!season) return null;
-  const download = async () => {
-    const { data: churches } = await supabase
-      .from("churches").select("id, name").eq("season_id", season.id);
-    const churchMap = new Map((churches ?? []).map((c: any) => [c.id, c.name]));
-    const { data: people } = await supabase
-      .from("people").select("church_id, name, note")
-      .in("church_id", (churches ?? []).map((c: any) => c.id));
-    const rows = (people ?? []).map((p: any) => ({
-      교회명: churchMap.get(p.church_id) ?? "",
-      이름: p.name,
-      비고: p.note ?? "",
-    }));
-    downloadRowsAsXlsx(rows, "이름표", `${season.name}_이름표.xlsx`);
+  const churches = data?.churches ?? [];
+  const people = data?.people ?? [];
+
+  const peopleByChurch = new Map<string, any[]>();
+  for (const p of people) {
+    const arr = peopleByChurch.get(p.church_id) ?? [];
+    arr.push(p);
+    peopleByChurch.set(p.church_id, arr);
+  }
+
+  const flatRows: { no: number; church: string; name: string; churchId: string }[] = [];
+  let no = 0;
+  for (const c of churches) {
+    const label = c.denomination ? `${c.name}(${c.denomination})` : c.name;
+    const ppl = peopleByChurch.get(c.id) ?? [];
+    for (const p of ppl) {
+      no += 1;
+      flatRows.push({ no, church: label, name: p.name, churchId: c.id });
+    }
+  }
+
+  const download = () => {
+    const rows = flatRows.map((r) => ({ No: r.no, 교회: r.church, 명단: r.name }));
+    downloadRowsAsXlsx(rows, "전체 등록자 명단", `${season.name}_이름표.xlsx`);
   };
+
   return (
     <Card className="p-5">
-      <h2 className="text-lg font-semibold mb-3">이름표 출력</h2>
-      <p className="text-xs text-muted-foreground mb-3">사전접수·현장접수 등록자 전체의 교회명+이름 엑셀 다운로드.</p>
-      <Button onClick={download} variant="outline"><Download className="h-4 w-4 mr-1" />엑셀 다운로드</Button>
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h2 className="text-lg font-semibold">이름표 출력</h2>
+          <p className="text-xs text-muted-foreground">사전접수·현장접수 등록자 전체 명단 (총 {flatRows.length}명)</p>
+        </div>
+        <Button onClick={download} variant="default"><Download className="h-4 w-4 mr-1" />엑셀 다운로드(.xlsx)</Button>
+      </div>
+
+      <div className="rounded-md border overflow-hidden">
+        <div className="bg-primary text-primary-foreground px-3 py-2 text-sm font-bold tracking-wide">전체 등록자 명단</div>
+        <div className="max-h-[600px] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/60 text-xs uppercase sticky top-0">
+              <tr>
+                <th className="text-right px-3 py-2 w-16">No</th>
+                <th className="text-left px-3 py-2">교회</th>
+                <th className="text-left px-3 py-2">명단</th>
+              </tr>
+            </thead>
+            <tbody>
+              {flatRows.map((r, i) => {
+                const prev = flatRows[i - 1];
+                const groupStart = !prev || prev.churchId !== r.churchId;
+                return (
+                  <tr key={i} className={`${groupStart ? "border-t-2 border-foreground/20" : "border-t"} hover:bg-muted/30`}>
+                    <td className="text-right px-3 py-1.5 tabular-nums text-muted-foreground">{r.no}</td>
+                    <td className={`px-3 py-1.5 ${groupStart ? "font-semibold" : "text-muted-foreground/60"}`}>
+                      {groupStart ? r.church : ""}
+                    </td>
+                    <td className="px-3 py-1.5">{r.name}</td>
+                  </tr>
+                );
+              })}
+              {flatRows.length === 0 && (
+                <tr><td colSpan={3} className="text-center py-8 text-sm text-muted-foreground">등록자가 없습니다.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </Card>
   );
 }
