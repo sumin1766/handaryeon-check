@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export function useRealtimeInvalidate(tables: string[], invalidateKeys: string[][]) {
+export function useRealtimeInvalidate(tables: string[], invalidateKeys: unknown[][]) {
   const qc = useQueryClient();
   useEffect(() => {
     const ch = supabase.channel(`rt-${tables.join("-")}-${Math.random()}`);
