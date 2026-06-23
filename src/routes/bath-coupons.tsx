@@ -10,6 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
 import { krw, num, weekdayOf, formatTime, WEEKDAYS } from "@/lib/format";
+
+const BATH_WEEKDAYS = ["월", "화", "수", "목"] as const;
+const pickBathWeekday = (d: Date) => {
+  const w = WEEKDAYS[d.getDay()];
+  return (BATH_WEEKDAYS as readonly string[]).includes(w) ? w : "월";
+};
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -47,7 +53,7 @@ function BathPage() {
       const now = new Date();
       await supabase.from("bath_coupons").insert({
         season_id: season!.id, name: form.name.trim(), qty, amount: qty * unit,
-        weekday: WEEKDAYS[now.getDay()],
+        weekday: pickBathWeekday(now),
       });
     },
     onSuccess: () => {
@@ -76,8 +82,8 @@ function BathPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["bath"] }),
   });
 
-  // weekday aggregation
-  const weekdayAgg = WEEKDAYS.map((w) => {
+  // weekday aggregation (월·화·수·목)
+  const weekdayAgg = BATH_WEEKDAYS.map((w) => {
     const r = rows.filter((x: any) => x.weekday === w);
     return {
       w,
@@ -87,7 +93,7 @@ function BathPage() {
       transfer: r.filter((x: any) => x.paid_transfer).reduce((s, x: any) => s + x.amount, 0),
       cash: r.filter((x: any) => x.paid_cash).reduce((s, x: any) => s + x.amount, 0),
     };
-  }).filter((x) => x.people > 0);
+  });
 
   const totals = {
     people: rows.length,
@@ -182,11 +188,11 @@ function BathPage() {
                     <td className="px-2 py-1 text-xs tabular-nums">{formatTime(r.cash_at)}</td>
                     <td className="px-2 py-1">
                       <select
-                        defaultValue={r.weekday ?? weekdayOf(r.created_at)}
+                        defaultValue={(BATH_WEEKDAYS as readonly string[]).includes(r.weekday) ? r.weekday : pickBathWeekday(new Date(r.created_at))}
                         onChange={(e) => update.mutate({ ...r, weekday: e.target.value })}
                         className="h-8 rounded border bg-background px-1 text-xs"
                       >
-                        {WEEKDAYS.map((w) => <option key={w} value={w}>{w}</option>)}
+                        {BATH_WEEKDAYS.map((w) => <option key={w} value={w}>{w}</option>)}
                       </select>
                     </td>
                     <td className="px-2 py-1 text-right font-semibold tabular-nums">{krw(r.amount)}</td>

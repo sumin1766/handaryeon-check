@@ -88,15 +88,15 @@ function DashboardPage() {
         </header>
 
         <section>
-          <h2 className="text-base font-semibold mb-3">사전접수 현황</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-            <Kpi label="접수 교회" value={preChurchCount} unit="곳" />
+          <h2 className="text-lg font-semibold mb-3">사전접수 현황</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <Kpi label="접수 교회" value={preChurchCount} unit="교회" />
             <Kpi label="전체 사전접수" value={preTotal} unit="명" />
             <Kpi label="숙박 인원" value={people.filter((p: any) => p.lodging).length} unit="명" />
             <Kpi label="비숙박 인원" value={people.filter((p: any) => !p.lodging).length} unit="명" />
           </div>
           <Card className="p-0 overflow-hidden">
-            <table className="w-full text-sm">
+            <table className="w-full text-base">
               <thead className="bg-muted/50 text-xs uppercase">
                 <tr>
                   <th className="text-left px-3 py-2 w-20">구분</th>
@@ -126,9 +126,9 @@ function DashboardPage() {
         </section>
 
         <section>
-          <h2 className="text-base font-semibold mb-3">실접수 현황</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <CompareCard label="실접수 교회" actual={actualChurchCount} pre={preChurchCount} diff={diffChurch} pct={pctChurch} unit="곳" />
+          <h2 className="text-lg font-semibold mb-3">실접수 현황</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CompareCard label="실접수 교회" actual={actualChurchCount} pre={preChurchCount} diff={diffChurch} pct={pctChurch} unit="교회" />
             <CompareCard label="실접수 총인원" actual={actualTotal} pre={preTotal} diff={diffTotal} pct={pctTotal} unit="명" />
           </div>
         </section>
@@ -139,11 +139,11 @@ function DashboardPage() {
 
 function Kpi({ label, value, unit }: { label: string; value: number; unit: string }) {
   return (
-    <Card className="p-4">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 flex items-baseline gap-1">
-        <span className="text-2xl font-bold tabular-nums">{num(value)}</span>
-        <span className="text-xs text-muted-foreground">{unit}</span>
+    <Card className="p-6">
+      <div className="text-sm text-muted-foreground">{label}</div>
+      <div className="mt-2 flex items-baseline gap-2">
+        <span className="text-5xl font-bold tabular-nums tracking-tight">{num(value)}</span>
+        <span className="text-base text-muted-foreground">{unit}</span>
       </div>
     </Card>
   );
@@ -153,15 +153,15 @@ function CompareCard({ label, actual, pre, diff, pct, unit }: any) {
   const Icon = diff > 0 ? ArrowUp : diff < 0 ? ArrowDown : Minus;
   const color = diff > 0 ? "text-emerald-600" : diff < 0 ? "text-rose-600" : "text-muted-foreground";
   return (
-    <Card className="p-4">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 flex items-baseline gap-3">
-        <span className="text-3xl font-bold tabular-nums">{num(actual)}</span>
-        <span className="text-xs text-muted-foreground">{unit}</span>
-        <span className="text-xs text-muted-foreground ml-auto">사전 {num(pre)}{unit}</span>
+    <Card className="p-6">
+      <div className="text-sm text-muted-foreground">{label}</div>
+      <div className="mt-2 flex items-baseline gap-3">
+        <span className="text-6xl font-bold tabular-nums tracking-tight">{num(actual)}</span>
+        <span className="text-base text-muted-foreground">{unit}</span>
+        <span className="text-sm text-muted-foreground ml-auto">사전 {num(pre)}{unit}</span>
       </div>
-      <div className={`mt-2 inline-flex items-center gap-1 text-xs font-semibold ${color}`}>
-        <Icon className="h-3 w-3" />
+      <div className={`mt-3 inline-flex items-center gap-1 text-sm font-semibold ${color}`}>
+        <Icon className="h-4 w-4" />
         {diff > 0 ? "+" : ""}{num(diff)} {unit} ({pct >= 0 ? "+" : ""}{pct.toFixed(1)}%)
       </div>
     </Card>

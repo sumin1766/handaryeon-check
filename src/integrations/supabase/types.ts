@@ -244,6 +244,24 @@ export type Database = {
           },
         ]
       }
+      receipt_layout: {
+        Row: {
+          id: number
+          layout: Json
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          layout?: Json
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          layout?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       seasons: {
         Row: {
           created_at: string

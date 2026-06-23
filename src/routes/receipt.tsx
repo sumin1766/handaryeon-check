@@ -6,19 +6,20 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
-import { krw, num, amountToKorean, formatDate } from "@/lib/format";
+import { num, amountToKorean } from "@/lib/format";
 import { Printer } from "lucide-react";
+import { ReceiptDocument, type ReceiptMode } from "@/components/receipt-document";
+import { useReceiptLayout } from "@/lib/receipt-layout";
 
 export const Route = createFileRoute("/receipt")({
   head: () => ({ meta: [{ title: "영수증 — 한다련 캠프" }] }),
   component: ReceiptPage,
 });
 
-type Mode = "transfer" | "card";
-
 function ReceiptPage() {
-  const [mode, setMode] = useState<Mode>("transfer");
+  const [mode, setMode] = useState<ReceiptMode>("transfer");
   const today = new Date().toISOString().slice(0, 10);
+  const { data: layout } = useReceiptLayout();
   const [f, setF] = useState({
     church: "",
     date: today,
@@ -36,19 +37,19 @@ function ReceiptPage() {
         <header className="flex items-end justify-between no-print">
           <div>
             <h1 className="text-2xl font-bold">영수증 / 확인서</h1>
-            <p className="text-sm text-muted-foreground">우측에 입력 → 좌측 문서에 실시간 반영 → 인쇄</p>
+            <p className="text-sm text-muted-foreground">서식 배치는 설정 → 영수증 서식 설정에서 변경</p>
           </div>
           <Button onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />인쇄</Button>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-4 items-start">
           <div className="printable">
-            <DocumentPreview mode={mode} f={f} total={total} />
+            <ReceiptDocument mode={mode} f={f} total={total} layout={layout} />
           </div>
 
           <Card className="p-5 space-y-3 no-print">
             <Tabs value={mode} onValueChange={(v) => {
-              const newMode = v as Mode;
+              const newMode = v as ReceiptMode;
               setMode(newMode);
               setF((p) => ({ ...p, method: newMode === "transfer" ? "계좌이체" : "신용카드(홈페이지)" }));
             }}>
@@ -99,51 +100,5 @@ function ReceiptPage() {
         </div>
       </div>
     </AppShell>
-  );
-}
-
-function DocumentPreview({ mode, f, total }: { mode: Mode; f: any; total: number }) {
-  const title = mode === "transfer" ? "입 금 확 인 서" : "결 제 확 인 서";
-  return (
-    <Card className="p-10 min-h-[850px] bg-white text-black">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold tracking-[0.3em]">{title}</h2>
-      </div>
-
-      <div className="mb-8">
-        <div className="text-sm">수신: <b className="text-base">{f.church || "_______________"}</b> 귀중</div>
-      </div>
-
-      <p className="mb-6 leading-relaxed">
-        아래와 같이 {mode === "transfer" ? "입금" : "결제"}되었음을 확인합니다.
-      </p>
-
-      <table className="w-full border-collapse border border-black text-sm mb-8">
-        <tbody>
-          <Row label={mode === "transfer" ? "입금일" : "결제일"} value={formatDate(f.date)} />
-          <Row label={mode === "transfer" ? "입금금액" : "결제금액"} value={`${krw(f.amount)} (${amountToKorean(f.amount)})`} />
-          <Row label={mode === "transfer" ? "입금방법" : "결제방법"} value={f.method} />
-          <Row label="인원" value={`숙박 ${num(f.lodging_count)}명 / 비숙박 ${num(f.non_lodging_count)}명 / 합계 ${num(total)}명`} />
-          <Row label="내용" value={`${f.content} ${total ? `(${total}명)` : ""}`} />
-        </tbody>
-      </table>
-
-      <div className="text-center text-base mt-12">{formatDate(f.date)}</div>
-
-      <div className="mt-16 text-center space-y-1">
-        <div className="text-lg font-bold">한국다음세대훈련원</div>
-        <div className="text-sm">사업자등록번호 504-82-87922</div>
-        <div className="text-sm">대표 손현보</div>
-      </div>
-    </Card>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <tr>
-      <th className="border border-black bg-gray-100 w-32 px-3 py-2 text-left">{label}</th>
-      <td className="border border-black px-3 py-2">{value}</td>
-    </tr>
   );
 }
