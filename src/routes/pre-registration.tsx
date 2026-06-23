@@ -13,13 +13,15 @@ import {
   CATEGORY_LABELS,
   CATEGORY_META,
   type CategoryKey,
+  type CategoryBucket,
   type ParsedRegistration,
 } from "@/lib/parsers/pre-registration-parser";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useMutation } from "@tanstack/react-query";
-import { AlertTriangle, Save, Trash2, Plus } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, Save, Trash2, Plus, Pencil, X } from "lucide-react";
 import { num } from "@/lib/format";
+import { useRealtimeInvalidate } from "@/lib/use-realtime";
 
 export const Route = createFileRoute("/pre-registration")({
   head: () => ({ meta: [{ title: "사전접수 — 한다련 캠프" }] }),
@@ -53,40 +55,94 @@ const SAMPLE = `1. 교회이름(교단) - 광주새순교회(합동)
 
 const KEYS: CategoryKey[] = ["male_student", "female_student", "male_adult", "female_adult"];
 
+function emptyBucket(): CategoryBucket {
+  return { lodging_count: 0, non_lodging_count: 0, lodging_names: [], non_lodging_names: [] };
+}
+
+function emptyParsed(): ParsedRegistration {
+  return {
+    church_name: "",
+    denomination: "",
+    contact_name: "",
+    phone: "",
+    categories: {
+      male_student: emptyBucket(),
+      female_student: emptyBucket(),
+      male_adult: emptyBucket(),
+      female_adult: emptyBucket(),
+    },
+    warnings: [],
+  };
+}
+
+function metaToKey(gender: string, age: string): CategoryKey | null {
+  for (const k of KEYS) {
+    if (CATEGORY_META[k].gender === gender && CATEGORY_META[k].age_group === age) return k;
+  }
+  return null;
+}
+
 function PreRegistrationPage() {
   const { season } = useActiveSeason();
+  const qc = useQueryClient();
   const [text, setText] = useState("");
   const parsedFromText = useMemo(() => parsePreRegistration(text), [text]);
   const [edited, setEdited] = useState<ParsedRegistration | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  useRealtimeInvalidate(["churches", "people"], [["pre-list"]]);
 
   const current = edited ?? parsedFromText;
   const totals = totalCounts(current);
 
   const onParse = () => setEdited(parsePreRegistration(text));
 
+  const resetForm = () => {
+    setText("");
+    setEdited(null);
+    setEditingId(null);
+  };
+
   const save = useMutation({
     mutationFn: async () => {
       if (!season) throw new Error("활성 시즌이 없습니다");
       if (!current.church_name.trim()) throw new Error("교회 이름이 필요합니다");
-      const { data: church, error: e1 } = await supabase.from("churches").insert({
-        season_id: season.id,
-        name: current.church_name.trim(),
-        denomination: current.denomination || null,
-        contact_name: current.contact_name || null,
-        phone: current.phone || null,
-        source: "pre",
-      }).select("id").single();
-      if (e1) throw e1;
+
+      let churchId = editingId;
+      if (editingId) {
+        const { error: eu } = await supabase.from("churches").update({
+          name: current.church_name.trim(),
+          denomination: current.denomination || null,
+          contact_name: current.contact_name || null,
+          phone: current.phone || null,
+        }).eq("id", editingId);
+        if (eu) throw eu;
+        await supabase.from("people").delete().eq("church_id", editingId);
+      } else {
+        const { data: church, error: e1 } = await supabase.from("churches").insert({
+          season_id: season.id,
+          name: current.church_name.trim(),
+          denomination: current.denomination || null,
+          contact_name: current.contact_name || null,
+          phone: current.phone || null,
+          source: "pre",
+        }).select("id").single();
+        if (e1) throw e1;
+        churchId = church.id;
+      }
+
       const rows: any[] = [];
       for (const k of KEYS) {
         const b = current.categories[k];
         const meta = CATEGORY_META[k];
         for (const p of b.lodging_names) {
-          rows.push({ church_id: church.id, name: p.name, note: p.note ?? null,
+          if (!p.name.trim()) continue;
+          rows.push({ church_id: churchId, name: p.name, note: p.note ?? null,
             gender: meta.gender, age_group: meta.age_group, lodging: true });
         }
         for (const p of b.non_lodging_names) {
-          rows.push({ church_id: church.id, name: p.name, note: p.note ?? null,
+          if (!p.name.trim()) continue;
+          rows.push({ church_id: churchId, name: p.name, note: p.note ?? null,
             gender: meta.gender, age_group: meta.age_group, lodging: false });
         }
       }
@@ -96,12 +152,40 @@ function PreRegistrationPage() {
       }
     },
     onSuccess: () => {
-      toast.success("저장 완료");
-      setText("");
-      setEdited(null);
+      toast.success(editingId ? "수정 완료" : "저장 완료");
+      resetForm();
+      qc.invalidateQueries({ queryKey: ["pre-list"] });
     },
     onError: (e: any) => toast.error(e.message ?? "저장 실패"),
   });
+
+  const loadForEdit = async (churchId: string) => {
+    const { data: church } = await supabase.from("churches").select("*").eq("id", churchId).single();
+    const { data: people } = await supabase.from("people").select("*").eq("church_id", churchId);
+    if (!church) return;
+    const parsed = emptyParsed();
+    parsed.church_name = church.name ?? "";
+    parsed.denomination = church.denomination ?? "";
+    parsed.contact_name = church.contact_name ?? "";
+    parsed.phone = church.phone ?? "";
+    for (const p of people ?? []) {
+      const k = metaToKey(p.gender, p.age_group);
+      if (!k) continue;
+      const b = parsed.categories[k];
+      const entry = { name: p.name, note: p.note ?? undefined };
+      if (p.lodging) b.lodging_names.push(entry);
+      else b.non_lodging_names.push(entry);
+    }
+    for (const k of KEYS) {
+      const b = parsed.categories[k];
+      b.lodging_count = b.lodging_names.length;
+      b.non_lodging_count = b.non_lodging_names.length;
+    }
+    setEditingId(churchId);
+    setEdited(parsed);
+    setText("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   if (!season) return <AppShell><div className="text-sm text-muted-foreground">시즌이 없습니다.</div></AppShell>;
 
@@ -111,8 +195,15 @@ function PreRegistrationPage() {
         <header className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">사전접수 등록</h1>
-            <p className="text-sm text-muted-foreground">좌측에 양식을 붙여넣고 파싱 후 우측에서 검토/수정·저장</p>
+            <p className="text-sm text-muted-foreground">
+              {editingId ? "수정 모드 — 변경 후 저장하세요." : "좌측에 양식을 붙여넣고 파싱 후 우측에서 검토/수정·저장"}
+            </p>
           </div>
+          {editingId && (
+            <Button size="sm" variant="outline" onClick={resetForm}>
+              <X className="h-3 w-3 mr-1" /> 수정 취소
+            </Button>
+          )}
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -120,26 +211,27 @@ function PreRegistrationPage() {
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">입력 텍스트</h2>
               <div className="flex gap-2">
-                <Button size="sm" variant="ghost" onClick={() => setText(SAMPLE)}>샘플</Button>
-                <Button size="sm" variant="outline" onClick={() => { setText(""); setEdited(null); }}>
+                <Button size="sm" variant="ghost" onClick={() => setText(SAMPLE)} disabled={!!editingId}>샘플</Button>
+                <Button size="sm" variant="outline" onClick={() => { setText(""); if (!editingId) setEdited(null); }}>
                   <Trash2 className="h-3 w-3 mr-1" />지우기
                 </Button>
-                <Button size="sm" onClick={onParse}>파싱 →</Button>
+                <Button size="sm" onClick={onParse} disabled={!!editingId}>파싱 →</Button>
               </div>
             </div>
             <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="여기에 사전접수 양식 텍스트를 붙여넣으세요…"
+              placeholder={editingId ? "수정 모드에서는 텍스트 파싱이 비활성화됩니다" : "여기에 사전접수 양식 텍스트를 붙여넣으세요…"}
               className="min-h-[600px] font-mono text-xs"
+              disabled={!!editingId}
             />
           </Card>
 
           <Card className="p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">미리보기 / 수정</h2>
+              <h2 className="text-sm font-semibold">{editingId ? "편집" : "미리보기 / 수정"}</h2>
               <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending || !current.church_name}>
-                <Save className="h-3 w-3 mr-1" />저장
+                <Save className="h-3 w-3 mr-1" />{editingId ? "수정 저장" : "저장"}
               </Button>
             </div>
 
@@ -213,8 +305,131 @@ function PreRegistrationPage() {
             </div>
           </Card>
         </div>
+
+        <PreRegistrationList seasonId={season.id} onEdit={loadForEdit} editingId={editingId} />
       </div>
     </AppShell>
+  );
+}
+
+function PreRegistrationList({
+  seasonId, onEdit, editingId,
+}: { seasonId: string; onEdit: (id: string) => void; editingId: string | null }) {
+  const qc = useQueryClient();
+  const { data } = useQuery({
+    queryKey: ["pre-list", seasonId],
+    queryFn: async () => {
+      const { data: churches } = await supabase
+        .from("churches")
+        .select("*")
+        .eq("season_id", seasonId)
+        .eq("source", "pre")
+        .order("created_at", { ascending: true });
+      const ids = (churches ?? []).map((c: any) => c.id);
+      if (ids.length === 0) return { churches: churches ?? [], people: [] as any[] };
+      const { data: people } = await supabase
+        .from("people")
+        .select("church_id, gender, age_group, lodging")
+        .in("church_id", ids);
+      return { churches: churches ?? [], people: people ?? [] };
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("churches").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("삭제 완료");
+      qc.invalidateQueries({ queryKey: ["pre-list"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "삭제 실패"),
+  });
+
+  const churches = data?.churches ?? [];
+  const people = data?.people ?? [];
+
+  const countFor = (cid: string, g: string, a: string, lodging: boolean) =>
+    people.filter((p: any) => p.church_id === cid && p.gender === g && p.age_group === a && p.lodging === lodging).length;
+
+  return (
+    <Card className="p-0 overflow-hidden">
+      <div className="bg-muted/40 px-4 py-3 border-b">
+        <h2 className="text-sm font-semibold">사전접수 등록 명단 ({churches.length}교회)</h2>
+        <p className="text-xs text-muted-foreground">등록 순서대로 표시 · 수정 시 위 폼에서 편집 후 저장</p>
+      </div>
+      {churches.length === 0 ? (
+        <div className="px-4 py-10 text-center text-sm text-muted-foreground">등록된 사전접수가 없습니다.</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/30 text-xs">
+              <tr>
+                <th className="text-left px-3 py-2 w-10">#</th>
+                <th className="text-left px-3 py-2">교회</th>
+                <th className="text-left px-3 py-2">담당자 / 연락처</th>
+                <th className="text-right px-2 py-2" title="남학생 숙박">남학(숙)</th>
+                <th className="text-right px-2 py-2" title="남학생 비숙박">남학(비)</th>
+                <th className="text-right px-2 py-2" title="여학생 숙박">여학(숙)</th>
+                <th className="text-right px-2 py-2" title="여학생 비숙박">여학(비)</th>
+                <th className="text-right px-2 py-2" title="남자어른 숙박">남어(숙)</th>
+                <th className="text-right px-2 py-2" title="남자어른 비숙박">남어(비)</th>
+                <th className="text-right px-2 py-2" title="여자어른 숙박">여어(숙)</th>
+                <th className="text-right px-2 py-2" title="여자어른 비숙박">여어(비)</th>
+                <th className="text-right px-2 py-2 bg-primary/5">합계</th>
+                <th className="px-2 py-2 w-32"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {churches.map((c: any, i: number) => {
+                const total = people.filter((p: any) => p.church_id === c.id).length;
+                return (
+                  <tr key={c.id} className={`border-t ${editingId === c.id ? "bg-amber-50 dark:bg-amber-900/10" : ""}`}>
+                    <td className="px-3 py-2 text-muted-foreground tabular-nums">{i + 1}</td>
+                    <td className="px-3 py-2 font-medium">
+                      {c.name}
+                      {c.denomination && <span className="text-muted-foreground">({c.denomination})</span>}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                      {c.contact_name || "—"} {c.phone && `· ${c.phone}`}
+                    </td>
+                    <td className="text-right px-2 py-2 tabular-nums">{countFor(c.id, "M", "student", true)}</td>
+                    <td className="text-right px-2 py-2 tabular-nums">{countFor(c.id, "M", "student", false)}</td>
+                    <td className="text-right px-2 py-2 tabular-nums">{countFor(c.id, "F", "student", true)}</td>
+                    <td className="text-right px-2 py-2 tabular-nums">{countFor(c.id, "F", "student", false)}</td>
+                    <td className="text-right px-2 py-2 tabular-nums">{countFor(c.id, "M", "adult", true)}</td>
+                    <td className="text-right px-2 py-2 tabular-nums">{countFor(c.id, "M", "adult", false)}</td>
+                    <td className="text-right px-2 py-2 tabular-nums">{countFor(c.id, "F", "adult", true)}</td>
+                    <td className="text-right px-2 py-2 tabular-nums">{countFor(c.id, "F", "adult", false)}</td>
+                    <td className="text-right px-2 py-2 font-semibold tabular-nums bg-primary/5">{total}</td>
+                    <td className="px-2 py-2">
+                      <div className="flex gap-1 justify-end">
+                        <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => onEdit(c.id)}>
+                          <Pencil className="h-3 w-3 mr-1" />수정
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-destructive hover:text-destructive"
+                          onClick={() => {
+                            if (confirm(`'${c.name}' 사전접수를 삭제하시겠습니까? (연결된 명단 ${total}명도 함께 삭제됩니다)`)) {
+                              remove.mutate(c.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   );
 }
 
