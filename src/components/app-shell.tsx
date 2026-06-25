@@ -10,27 +10,41 @@ import {
   ReceiptText,
   Settings,
   AlertCircle,
+  Lock,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
+import { PasswordGate } from "@/components/password-gate";
+import { useAuthRole, setAuthRole } from "@/lib/use-auth-role";
 
 const TABS = [
-  { to: "/", label: "대시보드", icon: LayoutDashboard, allowEnded: true },
-  { to: "/pre-registration", label: "사전접수", icon: ClipboardList },
-  { to: "/intake-sheet", label: "접수시트", icon: CheckSquare },
-  { to: "/onsite", label: "현장접수", icon: UserPlus },
-  { to: "/lodgings", label: "숙소배치", icon: Building2 },
-  { to: "/nametags", label: "이름표 출력", icon: Tag },
-  { to: "/bath-coupons", label: "목욕쿠폰", icon: Bath },
-  { to: "/receipt", label: "영수증", icon: ReceiptText },
-  { to: "/settings", label: "설정", icon: Settings, allowEnded: true },
+  { to: "/", label: "대시보드", icon: LayoutDashboard, allowEnded: true, adminOnly: false },
+  { to: "/pre-registration", label: "사전접수", icon: ClipboardList, adminOnly: false },
+  { to: "/intake-sheet", label: "접수시트", icon: CheckSquare, adminOnly: false },
+  { to: "/onsite", label: "현장접수", icon: UserPlus, adminOnly: false },
+  { to: "/lodgings", label: "숙소배치", icon: Building2, adminOnly: false },
+  { to: "/nametags", label: "이름표 출력", icon: Tag, adminOnly: false },
+  { to: "/bath-coupons", label: "목욕쿠폰", icon: Bath, adminOnly: false },
+  { to: "/receipt", label: "영수증", icon: ReceiptText, adminOnly: false },
+  { to: "/settings", label: "설정", icon: Settings, allowEnded: true, adminOnly: true },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
+  return (
+    <PasswordGate>
+      <AppShellInner>{children}</AppShellInner>
+    </PasswordGate>
+  );
+}
+
+function AppShellInner({ children }: { children: ReactNode }) {
   const { season, isEnded } = useActiveSeason();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const role = useAuthRole();
+  const isAdmin = role === "admin";
+  const visibleTabs = TABS.filter((t) => !t.adminOnly || isAdmin);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
