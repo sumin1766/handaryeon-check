@@ -99,8 +99,39 @@ function OnsitePage() {
     onSuccess: () => {
       toast.success("등록 완료");
       setForm(emptyForm());
+      qc.invalidateQueries({ queryKey: ["onsite-list"] });
+      qc.invalidateQueries({ queryKey: ["intake"] });
+      qc.invalidateQueries({ queryKey: ["registry"] });
     },
     onError: (e: any) => toast.error(e.message ?? "등록 실패"),
+  });
+
+  const list = useQuery({
+    queryKey: ["onsite-list", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data: churches } = await supabase
+        .from("churches").select("*").eq("season_id", season!.id).eq("source", "onsite").order("created_at", { ascending: false });
+      const ids = (churches ?? []).map((c: any) => c.id);
+      const { data: people } = ids.length
+        ? await supabase.from("people").select("church_id, lodging").in("church_id", ids)
+        : { data: [] };
+      return { churches: churches ?? [], people: people ?? [] };
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("churches").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("삭제 완료");
+      qc.invalidateQueries({ queryKey: ["onsite-list"] });
+      qc.invalidateQueries({ queryKey: ["intake"] });
+      qc.invalidateQueries({ queryKey: ["registry"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "삭제 실패"),
   });
 
   if (!season) return <AppShell><div className="text-sm text-muted-foreground">시즌이 없습니다.</div></AppShell>;
