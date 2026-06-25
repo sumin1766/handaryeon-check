@@ -35,15 +35,25 @@ const TABS = [
   { to: "/settings", label: "설정", icon: Settings, allowEnded: true, adminOnly: true },
 ] as const;
 
+/**
+ * AppShell is now a thin pass-through kept for backwards compatibility with
+ * existing route files. The real chrome (header, tabs) lives in AppLayout
+ * mounted once at the root, so it survives route navigations and the
+ * sliding tab indicator can animate smoothly between any tabs.
+ */
 export function AppShell({ children }: { children: ReactNode }) {
+  return <>{children}</>;
+}
+
+export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <PasswordGate>
-      <AppShellInner>{children}</AppShellInner>
+      <AppLayoutInner>{children}</AppLayoutInner>
     </PasswordGate>
   );
 }
 
-function AppShellInner({ children }: { children: ReactNode }) {
+function AppLayoutInner({ children }: { children: ReactNode }) {
   const { season, isEnded } = useActiveSeason();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const role = useAuthRole();
