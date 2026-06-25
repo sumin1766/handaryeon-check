@@ -128,6 +128,7 @@ function IntakeSheetPage() {
                 <th className="text-left px-3 py-2 w-44">체크시각</th>
                 <th className="text-center px-3 py-2 w-16">접수</th>
                 <th className="text-right px-3 py-2 w-28">실접수</th>
+                {isAdmin && <th className="px-2 py-2 w-28">관리</th>}
               </tr>
             </thead>
             <tbody>
