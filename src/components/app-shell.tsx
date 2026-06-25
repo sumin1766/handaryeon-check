@@ -57,12 +57,14 @@ function AppShellInner({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-6 py-3">
           <Link
             to="/"
-            className="group flex items-center gap-3 rounded-full px-1.5 py-1 -ml-1.5 transition-colors hover:bg-muted/60"
+            className="group flex items-center gap-3 rounded-xl px-1.5 py-1 -ml-1.5 transition-colors hover:bg-muted/60"
             aria-label="대시보드로 이동"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-border overflow-hidden">
-              <img src={logoAsset.url} alt="한국다음세대훈련원" className="h-7 w-7 object-contain" />
-            </div>
+            <img
+              src={logoAsset.url}
+              alt="한국다음세대훈련원"
+              className="h-12 w-12 object-contain"
+            />
             <div>
               <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground group-hover:text-foreground/80">
                 한다련 캠프 접수 관리
@@ -201,12 +203,12 @@ function SlidingTabs({
                 aria-disabled={disabled}
                 onClick={(e) => disabled && e.preventDefault()}
                 className={cn(
-                  "flex w-full items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-colors",
+                  "flex w-full items-center justify-center gap-2 px-3 py-4 text-base font-medium transition-colors",
                   isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                   disabled && "cursor-not-allowed opacity-40 hover:text-muted-foreground",
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-[18px] w-[18px]" />
                 {t.label}
               </Link>
             </li>

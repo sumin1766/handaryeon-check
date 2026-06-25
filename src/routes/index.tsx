@@ -75,45 +75,51 @@ function DashboardPage() {
 
   return (
     <AppShell>
-      <div className="lumina-scope -mx-6 -my-6 px-6 py-8 min-h-[calc(100vh-130px)]">
-        <div className="space-y-8">
-          <header className="flex items-end justify-between">
+      <div className="lumina-scope -mx-6 -my-6 min-h-[calc(100vh-130px)]">
+        <div className="mx-auto max-w-[1200px] px-10 py-12 space-y-12">
+          <header className="flex items-end justify-between gap-4">
             <div>
               <h1
-                className="font-bold tracking-tight"
-                style={{ fontSize: "32px", letterSpacing: "-0.02em" }}
+                className="font-bold"
+                style={{ fontSize: "40px", fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.1 }}
               >
                 대시보드
               </h1>
-              <p className="text-sm lumina-muted mt-1">{season.name} 현황</p>
+              <p
+                className="lumina-muted mt-2"
+                style={{ fontSize: "22px", fontWeight: 600, letterSpacing: "-0.01em" }}
+              >
+                {season.name} 현황
+              </p>
             </div>
             <Link
               to="/pre-registration"
-              className="lumina-btn-primary inline-flex items-center px-4 py-2 text-xs font-semibold"
+              className="lumina-btn-primary inline-flex items-center px-5 py-2.5 text-sm font-semibold"
             >
               사전접수 →
             </Link>
           </header>
 
           <section>
-            <h2 className="text-lg font-semibold mb-4">사전접수 현황</h2>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+            <h2 className="font-semibold mb-5" style={{ fontSize: "24px", fontWeight: 600, letterSpacing: "-0.01em" }}>
+              사전접수 현황
+            </h2>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
               <Kpi label="접수 교회" value={preChurchCount} unit="교회" accent />
               <Kpi label="전체 사전접수" value={preTotal} unit="명" accent />
               <Kpi label="숙박 인원" value={people.filter((p: any) => p.lodging).length} unit="명" />
               <Kpi label="비숙박 인원" value={people.filter((p: any) => !p.lodging).length} unit="명" />
             </div>
-            <div className="lumina-solid overflow-hidden">
+            <div className="lumina-glass overflow-hidden p-2">
               <table className="w-full text-base tabular-nums">
                 <thead style={{ background: "var(--lumina-surface-high)" }}>
                   <tr className="text-xs uppercase tracking-wider lumina-muted">
-                    <th className="text-left px-4 py-3 w-24 font-semibold">구분</th>
+                    <th className="text-left px-5 py-4 w-28 font-semibold">구분</th>
                     {CAT_COLS.map((c) => (
-                      <th key={c.key} className="text-right px-4 py-3 font-semibold">{c.label}</th>
+                      <th key={c.key} className="text-right px-5 py-4 font-semibold">{c.label}</th>
                     ))}
                     <th
-                      className="text-right px-4 py-3 font-semibold"
-                      style={{ background: "var(--lumina-primary-container)", color: "var(--lumina-primary)" }}
+                      className="text-right px-5 py-4 font-semibold lumina-sum-cell"
                     >
                       합계
                     </th>
@@ -125,13 +131,12 @@ function DashboardPage() {
                     const sum = Object.values(m).reduce((a, b) => a + b, 0);
                     return (
                       <tr key={r.key} style={{ borderTop: "1px solid var(--lumina-border)" }}>
-                        <td className="px-4 py-3 font-medium">{r.label}</td>
+                        <td className="px-5 py-5 font-medium text-base">{r.label}</td>
                         {CAT_COLS.map((c) => (
-                          <td key={c.key} className="text-right px-4 py-3">{num(m[c.key])}</td>
+                          <td key={c.key} className="text-right px-5 py-5 text-base">{num(m[c.key])}</td>
                         ))}
                         <td
-                          className="text-right px-4 py-3 font-semibold"
-                          style={{ background: "var(--lumina-primary-container)", color: "var(--lumina-primary)" }}
+                          className="text-right px-5 py-5 font-semibold text-base lumina-sum-cell"
                         >
                           {num(sum)}
                         </td>
@@ -144,8 +149,10 @@ function DashboardPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold mb-4">실접수 현황</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h2 className="font-semibold mb-5" style={{ fontSize: "24px", fontWeight: 600, letterSpacing: "-0.01em" }}>
+              실접수 현황
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <CompareCard label="실접수 교회" actual={actualChurchCount} pre={preChurchCount} diff={diffChurch} pct={pctChurch} unit="교회" />
               <CompareCard label="실접수 총인원" actual={actualTotal} pre={preTotal} diff={diffTotal} pct={pctTotal} unit="명" />
             </div>
@@ -158,16 +165,16 @@ function DashboardPage() {
 
 function Kpi({ label, value, unit, accent }: { label: string; value: number; unit: string; accent?: boolean }) {
   return (
-    <div className="lumina-glass p-6">
-      <div className="text-sm lumina-muted">{label}</div>
-      <div className="mt-2 flex items-baseline gap-2">
+    <div className="lumina-glass p-7">
+      <div className="text-sm lumina-muted font-medium">{label}</div>
+      <div className="mt-3 flex items-baseline gap-2">
         <span
-          className={accent ? "lumina-accent" : ""}
-          style={{ fontSize: "48px", fontWeight: 700, letterSpacing: "-0.03em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}
+          className={accent ? "lumina-accent" : "lumina-num"}
+          style={{ fontSize: "52px", fontWeight: 700, letterSpacing: "-0.03em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}
         >
           {num(value)}
         </span>
-        <span className="text-base lumina-muted">{unit}</span>
+        <span className="lumina-muted" style={{ fontSize: "16px" }}>{unit}</span>
       </div>
     </div>
   );
@@ -182,19 +189,20 @@ function CompareCard({ label, actual, pre, diff, pct, unit }: any) {
         ? { color: "#ba1a1a", bg: "rgba(186,26,26,0.12)" }
         : { color: "var(--lumina-fg-muted)", bg: "var(--lumina-surface-high)" };
   return (
-    <div className="lumina-glass p-6">
-      <div className="text-sm lumina-muted">{label}</div>
-      <div className="mt-2 flex items-baseline gap-3">
+    <div className="lumina-glass p-7">
+      <div className="text-sm lumina-muted font-medium">{label}</div>
+      <div className="mt-3 flex items-baseline gap-3 flex-wrap">
         <span
+          className="lumina-num"
           style={{ fontSize: "56px", fontWeight: 700, letterSpacing: "-0.04em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}
         >
           {num(actual)}
         </span>
-        <span className="text-base lumina-muted">{unit}</span>
+        <span className="lumina-muted" style={{ fontSize: "16px" }}>{unit}</span>
         <span className="text-sm lumina-muted ml-auto">사전 {num(pre)}{unit}</span>
       </div>
       <div
-        className="mt-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold"
+        className="mt-5 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold"
         style={{ color: trend.color, background: trend.bg }}
       >
         <Icon className="h-4 w-4" />
