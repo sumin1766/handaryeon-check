@@ -173,9 +173,9 @@ function CompareCard({ label, actual, pre, diff, pct, unit }: any) {
   const Icon = diff > 0 ? ArrowUp : diff < 0 ? ArrowDown : Minus;
   const trend =
     diff > 0
-      ? { color: "#0d8a5a", bg: "rgba(13,138,90,0.12)" }
+      ? { color: "#ffffff", bg: "#0d8a5a" }
       : diff < 0
-        ? { color: "#ba1a1a", bg: "rgba(186,26,26,0.12)" }
+        ? { color: "#ffffff", bg: "#ba1a1a" }
         : { color: "var(--lumina-fg-muted)", bg: "var(--lumina-surface-high)" };
   return (
     <div className="lumina-glass p-7">
@@ -194,7 +194,7 @@ function CompareCard({ label, actual, pre, diff, pct, unit }: any) {
         className="mt-5 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold"
         style={{ color: trend.color, background: trend.bg }}
       >
-        <Icon className="h-4 w-4" />
+        <Icon className="h-4 w-4" style={{ color: trend.color }} />
         {diff > 0 ? "+" : ""}{num(diff)} {unit} ({pct >= 0 ? "+" : ""}{pct.toFixed(1)}%)
       </div>
     </div>
