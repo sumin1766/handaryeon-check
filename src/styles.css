@@ -360,3 +360,71 @@
 .dark .intake-row-checked .text-muted-foreground {
   color: #bbf7d0 !important;
 }
+
+/* =====================================================
+   Global typography bump for non-dashboard pages.
+   Applies to <main>; .lumina-scope (dashboard) opts out.
+   Targets common text utility classes used by route pages.
+   ===================================================== */
+main :is(h1).text-2xl,
+main :is(h1).text-xl {
+  font-size: 2.25rem; /* 36px */
+  line-height: 1.15;
+  font-weight: 700;
+}
+main h2.text-base,
+main h2.text-lg,
+main h2.text-xl {
+  font-size: 1.375rem; /* 22px */
+  line-height: 1.3;
+  font-weight: 600;
+}
+main p.text-sm,
+main .text-sm:not(.tab-indicator) {
+  font-size: 1rem; /* 16px */
+}
+main .text-xs {
+  font-size: 0.875rem; /* 14px */
+}
+main table th {
+  font-size: 1rem !important;
+  font-weight: 600;
+  padding-top: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
+}
+main table td {
+  font-size: 1.0625rem; /* 17px */
+  padding-top: 0.875rem !important;
+  padding-bottom: 0.875rem !important;
+}
+main input,
+main textarea,
+main select,
+main button {
+  font-size: 1rem;
+}
+main input,
+main textarea,
+main select {
+  min-height: 2.5rem;
+}
+
+/* Dashboard opt-out — preserve existing tuned sizes. */
+.lumina-scope h1,
+.lumina-scope h2,
+.lumina-scope table th,
+.lumina-scope table td,
+.lumina-scope .text-sm,
+.lumina-scope .text-xs,
+.lumina-scope input,
+.lumina-scope button,
+.lumina-scope p {
+  font-size: revert;
+  padding-top: revert;
+  padding-bottom: revert;
+  min-height: revert;
+}
+
+/* Intake sheet — bump church name + summary KPI numbers. */
+main .intake-church-name { font-size: 1.125rem !important; font-weight: 600; }
+main .kpi-num { font-size: 2.75rem !important; line-height: 1.05; font-weight: 700; font-variant-numeric: tabular-nums; }
