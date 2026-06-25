@@ -151,7 +151,7 @@ function SlidingTabs({
 
   const activeIndex = tabs.findIndex((t) => t.to === pathname);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const measure = () => {
       const container = containerRef.current;
       const el = itemRefs.current[activeIndex];
