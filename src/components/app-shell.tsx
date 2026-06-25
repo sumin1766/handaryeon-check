@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   ClipboardList,
@@ -13,27 +13,45 @@ import {
   Lock,
   Sun,
   Moon,
+  Users,
 } from "lucide-react";
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { PasswordGate } from "@/components/password-gate";
-import { useAuthRole, setAuthRole } from "@/lib/use-auth-role";
+import { useAuthRole, setAuthRole, type AuthRole } from "@/lib/use-auth-role";
 import { useTheme } from "@/lib/use-theme";
 import logoAsset from "@/assets/handaryeon-symbol.png.asset.json";
 
+type RoleSet = readonly AuthRole[];
+const ALL: RoleSet = ["admin", "staff", "user"];
+const STAFF: RoleSet = ["admin", "staff"];
+const ADMIN: RoleSet = ["admin"];
+
 const TABS = [
-  { to: "/", label: "대시보드", icon: LayoutDashboard, allowEnded: true, adminOnly: false },
-  { to: "/pre-registration", label: "사전접수", icon: ClipboardList, adminOnly: false },
-  { to: "/intake-sheet", label: "접수시트", icon: CheckSquare, adminOnly: false },
-  { to: "/onsite", label: "현장접수", icon: UserPlus, adminOnly: false },
-  { to: "/lodgings", label: "숙소배치", icon: Building2, adminOnly: false },
-  { to: "/nametags", label: "이름표 출력", icon: Tag, adminOnly: false },
-  { to: "/bath-coupons", label: "목욕쿠폰", icon: Bath, adminOnly: false },
-  { to: "/receipt", label: "영수증", icon: ReceiptText, adminOnly: false },
-  { to: "/settings", label: "설정", icon: Settings, allowEnded: true, adminOnly: true },
+  { to: "/", label: "대시보드", icon: LayoutDashboard, allowEnded: true, roles: ALL },
+  { to: "/pre-registration", label: "사전접수", icon: ClipboardList, roles: STAFF },
+  { to: "/intake-sheet", label: "접수시트", icon: CheckSquare, roles: ALL },
+  { to: "/registry", label: "접수 명단", icon: Users, roles: STAFF },
+  { to: "/onsite", label: "현장접수", icon: UserPlus, roles: ALL },
+  { to: "/lodgings", label: "숙소배치", icon: Building2, roles: STAFF },
+  { to: "/nametags", label: "이름표 출력", icon: Tag, roles: STAFF },
+  { to: "/bath-coupons", label: "목욕쿠폰", icon: Bath, roles: STAFF },
+  { to: "/receipt", label: "영수증", icon: ReceiptText, roles: STAFF },
+  { to: "/settings", label: "설정", icon: Settings, allowEnded: true, roles: ADMIN },
 ] as const;
+
+/** Map of route path → allowed roles. Used by per-route guards. */
+export const PAGE_ACCESS: Record<string, RoleSet> = Object.fromEntries(
+  TABS.map((t) => [t.to, t.roles]),
+);
+
+export function roleAllowed(role: AuthRole | null, path: string): boolean {
+  if (!role) return false;
+  const allowed = PAGE_ACCESS[path] ?? ALL;
+  return allowed.includes(role);
+}
 
 /**
  * AppShell is now a thin pass-through kept for backwards compatibility with
@@ -56,10 +74,18 @@ export function AppLayout({ children }: { children: ReactNode }) {
 function AppLayoutInner({ children }: { children: ReactNode }) {
   const { season, isEnded } = useActiveSeason();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const router = useRouter();
   const role = useAuthRole();
   const [theme, setTheme] = useTheme();
   const isAdmin = role === "admin";
-  const visibleTabs = TABS.filter((t) => !t.adminOnly || isAdmin);
+  const visibleTabs = TABS.filter((t) => role !== null && (t.roles as readonly AuthRole[]).includes(role));
+
+  // Role-based URL guard: redirect to dashboard if user opens a forbidden path.
+  useEffect(() => {
+    if (role && pathname !== "/" && !roleAllowed(role, pathname)) {
+      router.navigate({ to: "/" });
+    }
+  }, [role, pathname, router]);
 
   return (
     <div className="min-h-screen text-foreground">
@@ -99,7 +125,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
               </div>
             )}
             <span className="hidden sm:inline rounded-full border bg-muted/40 px-2.5 py-1 text-[11px] font-medium">
-              {isAdmin ? "전체관리자" : "일반 사용자"}
+              {role === "admin" ? "전체관리자" : role === "staff" ? "접수담당자" : "일반 사용자"}
             </span>
             <button
               type="button"

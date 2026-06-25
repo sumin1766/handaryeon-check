@@ -44,18 +44,21 @@ export type Database = {
         Row: {
           admin_password_hash: string
           id: number
+          staff_password_hash: string | null
           updated_at: string
           user_password_hash: string
         }
         Insert: {
           admin_password_hash: string
           id?: number
+          staff_password_hash?: string | null
           updated_at?: string
           user_password_hash: string
         }
         Update: {
           admin_password_hash?: string
           id?: number
+          staff_password_hash?: string | null
           updated_at?: string
           user_password_hash?: string
         }
@@ -316,7 +319,12 @@ export type Database = {
     }
     Functions: {
       change_passwords: {
-        Args: { current_admin: string; new_admin: string; new_user: string }
+        Args: {
+          current_admin: string
+          new_admin: string
+          new_staff: string
+          new_user: string
+        }
         Returns: undefined
       }
       verify_password: { Args: { p: string }; Returns: string }

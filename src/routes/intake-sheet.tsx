@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, GenderBadge } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -6,8 +6,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
+import { useAuthRole } from "@/lib/use-auth-role";
 import { num, formatTime } from "@/lib/format";
+import { Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { useMemo, useState } from "react";
 
 export const Route = createFileRoute("/intake-sheet")({
@@ -18,6 +22,8 @@ export const Route = createFileRoute("/intake-sheet")({
 function IntakeSheetPage() {
   const { season } = useActiveSeason();
   const qc = useQueryClient();
+  const role = useAuthRole();
+  const isAdmin = role === "admin";
   useRealtimeInvalidate(["churches", "people", "lodgings"], [["intake", season?.id]]);
   const [filter, setFilter] = useState("");
 
@@ -29,7 +35,7 @@ function IntakeSheetPage() {
         .from("churches").select("*").eq("season_id", season!.id).order("name");
       const ids = (churches ?? []).map((c: any) => c.id);
       const { data: people } = ids.length
-        ? await supabase.from("people").select("church_id, lodging, gender, age_group, lodging_id").in("church_id", ids)
+        ? await supabase.from("people").select("church_id, name, lodging, gender, age_group, lodging_id").in("church_id", ids)
         : { data: [] };
       const { data: lodgings } = await supabase
         .from("lodgings").select("id, name, gender").eq("season_id", season!.id);
@@ -41,10 +47,6 @@ function IntakeSheetPage() {
   const people = data?.people ?? [];
   const lodgingMap = new Map((data?.lodgings ?? []).map((l: any) => [l.id, l]));
 
-  const filtered = churches.filter((c: any) => !filter || c.name.includes(filter));
-  const totalChecked = filtered.filter((c: any) => c.is_checked_in).length;
-  const totalActual = filtered.reduce((s: number, c: any) => s + (c.actual_count ?? 0), 0);
-
   const peopleByChurch = useMemo(() => {
     const m = new Map<string, any[]>();
     for (const p of people) {
@@ -54,6 +56,15 @@ function IntakeSheetPage() {
     }
     return m;
   }, [people]);
+
+  const trimmed = filter.trim();
+  const filtered = churches.filter((c: any) => {
+    if (!trimmed) return true;
+    if (c.name?.includes(trimmed)) return true;
+    return (peopleByChurch.get(c.id) ?? []).some((p: any) => p.name?.includes(trimmed));
+  });
+  const totalChecked = filtered.filter((c: any) => c.is_checked_in).length;
+  const totalActual = filtered.reduce((s: number, c: any) => s + (c.actual_count ?? 0), 0);
 
   const updateCheck = useMutation({
     mutationFn: async ({ id, checked }: any) => {
@@ -72,6 +83,18 @@ function IntakeSheetPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["intake"] }),
   });
 
+  const removeChurch = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("churches").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("삭제 완료");
+      qc.invalidateQueries({ queryKey: ["intake"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "삭제 실패"),
+  });
+
   if (!season) return <AppShell><div className="text-sm text-muted-foreground">시즌이 없습니다.</div></AppShell>;
 
   return (
@@ -82,7 +105,7 @@ function IntakeSheetPage() {
             <h1 className="text-2xl font-bold">접수시트</h1>
             <p className="text-sm text-muted-foreground">교회별 접수 체크 및 실접수 인원 기록</p>
           </div>
-          <Input placeholder="교회명 검색…" value={filter} onChange={(e) => setFilter(e.target.value)} className="w-64" />
+          <Input placeholder="교회명 / 이름 검색…" value={filter} onChange={(e) => setFilter(e.target.value)} className="w-64" />
         </header>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -105,6 +128,7 @@ function IntakeSheetPage() {
                 <th className="text-left px-3 py-2 w-44">체크시각</th>
                 <th className="text-center px-3 py-2 w-16">접수</th>
                 <th className="text-right px-3 py-2 w-28">실접수</th>
+                {isAdmin && <th className="px-2 py-2 w-28">관리</th>}
               </tr>
             </thead>
             <tbody>
@@ -119,6 +143,11 @@ function IntakeSheetPage() {
                       {c.name}
                       {c.denomination && <span className="ml-1 text-[11px] text-muted-foreground">({c.denomination})</span>}
                       {c.source === "onsite" && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">현장</span>}
+                      {trimmed && !c.name?.includes(trimmed) && (
+                        <div className="text-[11px] text-emerald-600 mt-0.5">
+                          매칭: {ps.filter((p: any) => p.name?.includes(trimmed)).map((p: any) => p.name).slice(0, 4).join(", ")}
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-xs">
                       <div>{c.contact_name ?? "-"}</div>
@@ -165,11 +194,32 @@ function IntakeSheetPage() {
                         className="h-12 w-24 text-right tabular-nums text-lg font-semibold"
                       />
                     </td>
+                    {isAdmin && (
+                      <td className="px-2 py-1">
+                        <div className="flex gap-1 justify-end">
+                          <Link to="/registry" className="inline-flex h-8 w-8 items-center justify-center rounded border hover:bg-muted" title="접수명단에서 수정">
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`'${c.name}' 교회를 삭제하시겠습니까? (연결된 명단도 함께 삭제됩니다)`)) {
+                                removeChurch.mutate(c.id);
+                              }
+                            }}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded border text-destructive hover:bg-destructive/10"
+                            title="삭제"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
               {filtered.length === 0 && (
-                <tr><td colSpan={9} className="text-center py-10 text-sm text-muted-foreground">등록된 교회가 없습니다.</td></tr>
+                <tr><td colSpan={isAdmin ? 10 : 9} className="text-center py-10 text-sm text-muted-foreground">등록된 교회가 없습니다.</td></tr>
               )}
             </tbody>
           </table>
