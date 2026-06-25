@@ -77,7 +77,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   const role = useAuthRole();
   const [theme, setTheme] = useTheme();
   const isAdmin = role === "admin";
-  const visibleTabs = TABS.filter((t) => !t.adminOnly || isAdmin);
+  const visibleTabs = TABS.filter((t) => role !== null && (t.roles as readonly AuthRole[]).includes(role));
 
   return (
     <div className="min-h-screen text-foreground">
