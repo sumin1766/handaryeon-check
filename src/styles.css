@@ -48,39 +48,39 @@
 
 :root {
   --radius: 0.5rem;
-  /* Neutral admin palette — slate ink on near-white */
-  --background: oklch(0.985 0.003 240);
-  --foreground: oklch(0.18 0.025 255);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.025 255);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.025 255);
-  --primary: oklch(0.42 0.13 250); /* deep indigo-blue */
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.95 0.008 250);
-  --secondary-foreground: oklch(0.25 0.03 255);
-  --muted: oklch(0.96 0.005 250);
-  --muted-foreground: oklch(0.48 0.018 255);
-  --accent: oklch(0.94 0.02 250);
-  --accent-foreground: oklch(0.25 0.04 255);
+  /* Lumina-aligned palette — soft lavender white */
+  --background: #fdf7ff;
+  --foreground: #1d1b20;
+  --card: #ffffff;
+  --card-foreground: #1d1b20;
+  --popover: #ffffff;
+  --popover-foreground: #1d1b20;
+  --primary: #4f378a;
+  --primary-foreground: #ffffff;
+  --secondary: #f2ecf4;
+  --secondary-foreground: #1d1b20;
+  --muted: #f2ecf4;
+  --muted-foreground: #494551;
+  --accent: #e9ddff;
+  --accent-foreground: #1d1b20;
   --destructive: oklch(0.58 0.22 27);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.91 0.01 250);
-  --input: oklch(0.92 0.01 250);
-  --ring: oklch(0.55 0.12 250);
+  --border: #e6dfea;
+  --input: #e6dfea;
+  --ring: #6750a4;
   --chart-1: oklch(0.6 0.15 250);
   --chart-2: oklch(0.65 0.17 160);
   --chart-3: oklch(0.7 0.18 60);
   --chart-4: oklch(0.6 0.2 0);
   --chart-5: oklch(0.55 0.2 300);
-  --sidebar: oklch(0.98 0.005 250);
-  --sidebar-foreground: oklch(0.18 0.025 255);
-  --sidebar-primary: oklch(0.42 0.13 250);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.94 0.02 250);
-  --sidebar-accent-foreground: oklch(0.25 0.04 255);
-  --sidebar-border: oklch(0.91 0.01 250);
-  --sidebar-ring: oklch(0.55 0.12 250);
+  --sidebar: #fdf7ff;
+  --sidebar-foreground: #1d1b20;
+  --sidebar-primary: #4f378a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e9ddff;
+  --sidebar-accent-foreground: #1d1b20;
+  --sidebar-border: #e6dfea;
+  --sidebar-ring: #6750a4;
 
   /* Gender semantic tokens — shared across lodgings, intake sheet, etc. */
   --gender-male-bg: oklch(0.93 0.05 235);
