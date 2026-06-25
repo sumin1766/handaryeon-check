@@ -79,6 +79,12 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   const isAdmin = role === "admin";
   const visibleTabs = TABS.filter((t) => role !== null && (t.roles as readonly AuthRole[]).includes(role));
 
+  // Role-based URL guard: redirect to dashboard if user types a forbidden path.
+  if (typeof window !== "undefined" && role && pathname !== "/" && !roleAllowed(role, pathname)) {
+    window.history.replaceState(null, "", "/");
+    window.location.reload();
+  }
+
   return (
     <div className="min-h-screen text-foreground">
       <header className="sticky top-0 z-30 border-b border-border/40 bg-background/70 backdrop-blur-xl">
