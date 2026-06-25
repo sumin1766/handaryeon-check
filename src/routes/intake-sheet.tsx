@@ -114,7 +114,7 @@ function IntakeSheetPage() {
                 const nonLodgingCount = ps.filter((p) => !p.lodging).length;
                 const lodgingsForChurch = Array.from(new Set(ps.filter((p) => p.lodging_id).map((p) => p.lodging_id))) as string[];
                 return (
-                  <tr key={c.id} className={`border-t hover:bg-muted/30 ${c.is_checked_in ? "bg-emerald-50/60" : ""}`}>
+                  <tr key={c.id} className={`border-t hover:bg-muted/30 transition-colors ${c.is_checked_in ? "intake-row-checked" : ""}`}>
                     <td className="px-3 py-2 font-medium">
                       {c.name}
                       {c.denomination && <span className="ml-1 text-[11px] text-muted-foreground">({c.denomination})</span>}
