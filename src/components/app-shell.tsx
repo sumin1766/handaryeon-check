@@ -199,9 +199,9 @@ function SlidingTabs({
                 aria-disabled={disabled}
                 onClick={(e) => disabled && e.preventDefault()}
                 className={cn(
-                  "flex w-full items-center justify-center gap-2 px-3 py-4 text-base font-medium transition-colors",
+                  "flex w-full items-center justify-center gap-2 px-3 py-4 text-base font-medium transition-[color,background-color] duration-200 ease-out hover:bg-foreground/[0.04]",
                   isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-                  disabled && "cursor-not-allowed opacity-40 hover:text-muted-foreground",
+                  disabled && "cursor-not-allowed opacity-40 hover:text-muted-foreground hover:bg-transparent",
                 )}
               >
                 <Icon className="h-[18px] w-[18px]" />
