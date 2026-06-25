@@ -66,16 +66,6 @@ function IntakeSheetPage() {
   const totalChecked = filtered.filter((c: any) => c.is_checked_in).length;
   const totalActual = filtered.reduce((s: number, c: any) => s + (c.actual_count ?? 0), 0);
 
-  const peopleByChurch = useMemo(() => {
-    const m = new Map<string, any[]>();
-    for (const p of people) {
-      const arr = m.get(p.church_id) ?? [];
-      arr.push(p);
-      m.set(p.church_id, arr);
-    }
-    return m;
-  }, [people]);
-
   const updateCheck = useMutation({
     mutationFn: async ({ id, checked }: any) => {
       await supabase.from("churches").update({
@@ -91,6 +81,18 @@ function IntakeSheetPage() {
       await supabase.from("churches").update({ actual_count: count }).eq("id", id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["intake"] }),
+  });
+
+  const removeChurch = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("churches").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("삭제 완료");
+      qc.invalidateQueries({ queryKey: ["intake"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "삭제 실패"),
   });
 
   if (!season) return <AppShell><div className="text-sm text-muted-foreground">시즌이 없습니다.</div></AppShell>;
