@@ -74,16 +74,18 @@ export function AppLayout({ children }: { children: ReactNode }) {
 function AppLayoutInner({ children }: { children: ReactNode }) {
   const { season, isEnded } = useActiveSeason();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const router = useRouter();
   const role = useAuthRole();
   const [theme, setTheme] = useTheme();
   const isAdmin = role === "admin";
   const visibleTabs = TABS.filter((t) => role !== null && (t.roles as readonly AuthRole[]).includes(role));
 
-  // Role-based URL guard: redirect to dashboard if user types a forbidden path.
-  if (typeof window !== "undefined" && role && pathname !== "/" && !roleAllowed(role, pathname)) {
-    window.history.replaceState(null, "", "/");
-    window.location.reload();
-  }
+  // Role-based URL guard: redirect to dashboard if user opens a forbidden path.
+  useEffect(() => {
+    if (role && pathname !== "/" && !roleAllowed(role, pathname)) {
+      router.navigate({ to: "/" });
+    }
+  }, [role, pathname, router]);
 
   return (
     <div className="min-h-screen text-foreground">
