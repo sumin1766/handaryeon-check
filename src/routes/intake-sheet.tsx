@@ -35,7 +35,7 @@ function IntakeSheetPage() {
         .from("churches").select("*").eq("season_id", season!.id).order("name");
       const ids = (churches ?? []).map((c: any) => c.id);
       const { data: people } = ids.length
-        ? await supabase.from("people").select("church_id, lodging, gender, age_group, lodging_id").in("church_id", ids)
+        ? await supabase.from("people").select("church_id, name, lodging, gender, age_group, lodging_id").in("church_id", ids)
         : { data: [] };
       const { data: lodgings } = await supabase
         .from("lodgings").select("id, name, gender").eq("season_id", season!.id);
@@ -47,7 +47,22 @@ function IntakeSheetPage() {
   const people = data?.people ?? [];
   const lodgingMap = new Map((data?.lodgings ?? []).map((l: any) => [l.id, l]));
 
-  const filtered = churches.filter((c: any) => !filter || c.name.includes(filter));
+  const peopleByChurch = useMemo(() => {
+    const m = new Map<string, any[]>();
+    for (const p of people) {
+      const arr = m.get(p.church_id) ?? [];
+      arr.push(p);
+      m.set(p.church_id, arr);
+    }
+    return m;
+  }, [people]);
+
+  const trimmed = filter.trim();
+  const filtered = churches.filter((c: any) => {
+    if (!trimmed) return true;
+    if (c.name?.includes(trimmed)) return true;
+    return (peopleByChurch.get(c.id) ?? []).some((p: any) => p.name?.includes(trimmed));
+  });
   const totalChecked = filtered.filter((c: any) => c.is_checked_in).length;
   const totalActual = filtered.reduce((s: number, c: any) => s + (c.actual_count ?? 0), 0);
 
