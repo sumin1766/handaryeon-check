@@ -1,13 +1,13 @@
 import { useSyncExternalStore } from "react";
 
-export type AuthRole = "admin" | "user";
+export type AuthRole = "admin" | "staff" | "user";
 const KEY = "hdr_auth_role";
 const EVT = "hdr-auth-role-changed";
 
 function read(): AuthRole | null {
   if (typeof window === "undefined") return null;
   const v = window.localStorage.getItem(KEY);
-  return v === "admin" || v === "user" ? v : null;
+  return v === "admin" || v === "staff" || v === "user" ? v : null;
 }
 
 const listeners = new Set<() => void>();
