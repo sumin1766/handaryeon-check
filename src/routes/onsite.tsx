@@ -57,7 +57,12 @@ function emptyForm() {
 
 function OnsitePage() {
   const { season } = useActiveSeason();
+  const qc = useQueryClient();
+  const role = useAuthRole();
+  const canManage = role === "admin" || role === "staff";
   const [form, setForm] = useState(emptyForm());
+
+  useRealtimeInvalidate(["churches", "people"], [["onsite-list", season?.id]]);
 
   const counts = CATS.map((c) => ({ ...c, n: parseNames(form[c.key]).length }));
   const lodgingTotal = counts.filter((c) => c.lodging).reduce((s, c) => s + c.n, 0);
