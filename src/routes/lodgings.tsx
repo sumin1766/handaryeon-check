@@ -1,15 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell, GenderBadge } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, useCallback } from "react";
 import { num } from "@/lib/format";
-import { AlertTriangle, Plus, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -18,19 +18,27 @@ export const Route = createFileRoute("/lodgings")({
   component: LodgingsPage,
 });
 
+type DragPayload = { churchId: string; gender: "M" | "F" };
+
 function LodgingsPage() {
   const { season } = useActiveSeason();
   const qc = useQueryClient();
   useRealtimeInvalidate(["lodgings", "people", "churches"], [["lodgings-page", season?.id]]);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState<string | null>(null);
+  const [flipped, setFlipped] = useState<string | null>(null); // `${churchId}:${gender}`
+  const [pickMode, setPickMode] = useState<DragPayload | null>(null);
+  const retryRef = useRef<Set<string>>(new Set()); // `${churchId}:${gender}:${lodgingId}` previously warned
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const roomRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   const { data } = useQuery({
     queryKey: ["lodgings-page", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
       const { data: lodgings } = await supabase.from("lodgings").select("*").eq("season_id", season!.id).order("sort_order");
-      const { data: churches } = await supabase.from("churches").select("id, name").eq("season_id", season!.id);
+      const { data: churches } = await supabase.from("churches").select("id, name, denomination").eq("season_id", season!.id);
       const ids = (churches ?? []).map((c: any) => c.id);
       const { data: people } = ids.length
         ? await supabase.from("people").select("*").in("church_id", ids)
@@ -42,7 +50,10 @@ function LodgingsPage() {
   const lodgings = data?.lodgings ?? [];
   const churches = data?.churches ?? [];
   const people = data?.people ?? [];
-  const churchMap = new Map(churches.map((c: any) => [c.id, c.name]));
+  const churchMap = useMemo(
+    () => new Map(churches.map((c: any) => [c.id, c.denomination ? `${c.name}(${c.denomination})` : c.name])),
+    [churches],
+  );
 
   const peopleByLodging = useMemo(() => {
     const m = new Map<string, any[]>();
@@ -51,6 +62,25 @@ function LodgingsPage() {
     }
     return m;
   }, [people]);
+
+  // Unassigned (lodging=true && !lodging_id) grouped by church+gender
+  const unassignedGroups = useMemo(() => {
+    const byKey = new Map<string, { churchId: string; gender: "M" | "F"; persons: any[] }>();
+    for (const p of people) {
+      if (!p.lodging || p.lodging_id) continue;
+      const g = p.gender === "F" ? "F" : "M";
+      const key = `${p.church_id}:${g}`;
+      const e = byKey.get(key) ?? { churchId: p.church_id, gender: g as "M" | "F", persons: [] };
+      e.persons.push(p);
+      byKey.set(key, e);
+    }
+    return Array.from(byKey.values());
+  }, [people]);
+
+  const unassignedM = unassignedGroups.filter((g) => g.gender === "M");
+  const unassignedF = unassignedGroups.filter((g) => g.gender === "F");
+  const unMCount = unassignedM.reduce((s, g) => s + g.persons.length, 0);
+  const unFCount = unassignedF.reduce((s, g) => s + g.persons.length, 0);
 
   const totalCap = lodgings.filter((l: any) => l.active).reduce((s: number, l: any) => s + l.capacity, 0);
   const totalAssigned = lodgings.reduce((s: number, l: any) => s + (peopleByLodging.get(l.id)?.length ?? 0), 0);
@@ -67,18 +97,52 @@ function LodgingsPage() {
     return g;
   }, [lodgings]);
 
-  // search
-  const searchHits = useMemo(() => {
-    if (!search.trim()) return null;
-    const matching = churches.filter((c: any) => c.name.includes(search.trim()));
-    const result = matching.map((c: any) => {
-      const cp = people.filter((p: any) => p.church_id === c.id && p.lodging);
-      const assigned = cp.filter((p: any) => p.lodging_id);
-      const unassigned = cp.filter((p: any) => !p.lodging_id);
-      return { church: c, assigned, unassigned };
-    });
-    return result;
-  }, [search, churches, people]);
+  // Person-name search → returns rooms containing matches
+  const nameSearchHits = useMemo(() => {
+    const q = search.trim();
+    if (!q) return null;
+    const matches = people.filter((p: any) => p.name && p.name.includes(q) && p.lodging_id);
+    const roomIds = new Set(matches.map((p: any) => p.lodging_id));
+    return { matches, roomIds };
+  }, [search, people]);
+
+  const focusRoom = (id: string) => {
+    setHighlightId(id);
+    const el = roomRefs.current.get(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setTimeout(() => setHighlightId((h) => (h === id ? null : h)), 2500);
+  };
+
+  const performAssign = useCallback(async (payload: DragPayload, lodging: any) => {
+    const group = unassignedGroups.find((g) => g.churchId === payload.churchId && g.gender === payload.gender);
+    if (!group || group.persons.length === 0) return;
+
+    // Gender check
+    if (lodging.gender && lodging.gender !== payload.gender) {
+      const key = `${payload.churchId}:${payload.gender}:${lodging.id}`;
+      if (!retryRef.current.has(key)) {
+        retryRef.current.add(key);
+        toast.warning(`성별이 다른 방입니다 (${lodging.gender === "M" ? "남성" : "여성"} 방). 다시 시도하면 강제 배정됩니다.`);
+        return;
+      }
+      retryRef.current.delete(key);
+    }
+
+    // Capacity
+    const current = peopleByLodging.get(lodging.id)?.length ?? 0;
+    const remain = Math.max(0, (lodging.capacity ?? 0) - current);
+    const slots = lodging.capacity > 0 ? Math.min(remain, group.persons.length) : group.persons.length;
+    if (slots === 0) {
+      toast.error("남은 자리가 없습니다.");
+      return;
+    }
+    const ids = group.persons.slice(0, slots).map((p) => p.id);
+    const { error } = await supabase.from("people").update({ lodging_id: lodging.id, lodging: true }).in("id", ids);
+    if (error) return toast.error(error.message);
+    const leftover = group.persons.length - slots;
+    toast.success(`${churchMap.get(payload.churchId)} · ${payload.gender === "M" ? "남" : "여"} ${slots}명 배정${leftover ? ` (잔여 ${leftover}명)` : ""}`);
+    qc.invalidateQueries({ queryKey: ["lodgings-page"] });
+  }, [unassignedGroups, peopleByLodging, churchMap, qc]);
 
   if (!season) return <AppShell><div className="text-sm text-muted-foreground">시즌이 없습니다.</div></AppShell>;
 
@@ -87,104 +151,189 @@ function LodgingsPage() {
 
   return (
     <AppShell>
-      <div className="space-y-4">
-        <header className="flex items-end justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold">숙소배치</h1>
-            <p className="text-sm text-muted-foreground">카드를 클릭하여 명단 작성</p>
-          </div>
-          <Input placeholder="교회명 검색…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-64" />
-        </header>
+      <style>{`
+        @keyframes lodging-blink { 0%,100%{box-shadow:0 0 0 0 hsl(var(--primary)/0.6)} 50%{box-shadow:0 0 0 6px hsl(var(--primary)/0.15)} }
+        .lodging-blink { animation: lodging-blink 0.9s ease-in-out infinite; }
+        .lodging-highlight { box-shadow: 0 0 0 3px hsl(var(--primary)); }
+        .flip-card { perspective: 600px; }
+        .flip-inner { transition: transform 0.4s; transform-style: preserve-3d; position: relative; }
+        .flip-inner.is-flipped { transform: rotateY(180deg); }
+        .flip-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+        .flip-back { position: absolute; inset: 0; transform: rotateY(180deg); }
+      `}</style>
 
-        <Card className="p-4">
-          <div className="flex gap-6 text-sm tabular-nums">
-            <span>전체 정원 <b className="text-lg">{num(totalCap)}</b>명</span>
-            <span>배정 <b className="text-lg">{num(totalAssigned)}</b>명</span>
-            <span>남은 자리 <b className="text-lg text-emerald-600">{num(totalCap - totalAssigned)}</b>명</span>
-          </div>
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {Object.keys(groups).map((building) => {
-              const items = lodgings.filter((l: any) => (l.building ?? "기타") === building);
-              const cap = items.filter((l: any) => l.active).reduce((s: number, l: any) => s + l.capacity, 0);
-              const asg = items.reduce((s: number, l: any) => s + (peopleByLodging.get(l.id)?.length ?? 0), 0);
-              return (
-                <div key={building} className="rounded border bg-muted/30 px-3 py-2 text-sm tabular-nums">
-                  <div className="font-semibold mb-0.5">{building}</div>
-                  <div className="text-xs">정원 <b>{num(cap)}</b>명 / 배정 <b>{num(asg)}</b>명 / 남은 자리 <b className="text-emerald-600">{num(cap - asg)}</b>명</div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-
-        {searchHits && (
-          <Card className="p-4 space-y-2">
-            <div className="text-sm font-semibold">검색 결과: "{search}"</div>
-            {searchHits.length === 0 && <div className="text-xs text-muted-foreground">매칭 없음</div>}
-            {searchHits.map((h: any) => (
-              <div key={h.church.id} className="rounded border p-2 text-sm">
-                <div className="font-medium">{h.church.name}</div>
-                <div className="mt-1 text-xs">
-                  <div>배정 {h.assigned.length}명 / 미배정 {h.unassigned.length}명</div>
-                  {h.unassigned.length > 0 && (
-                    <div className="mt-1 flex flex-wrap items-center gap-1">
-                      <span className="text-muted-foreground">미배정:</span>
-                      {h.unassigned.map((p: any) => (
-                        <span key={p.id} className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-amber-900">
-                          <GenderBadge gender={p.gender} /> {p.name}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </Card>
-        )}
-
-        {Object.entries(groups).map(([building, floors]) => (
-          <section key={building}>
-            <h2 className="text-base font-semibold mb-2">{building}</h2>
-            <div className="space-y-3">
-              {Object.entries(floors).map(([floor, items]) => (
-                <div key={floor}>
-                  <div className="text-xs font-semibold text-muted-foreground mb-1.5">{floor}</div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                    {items.map((l: any) => {
-                      const ps = peopleByLodging.get(l.id) ?? [];
-                      const pct = l.capacity ? Math.min(100, (ps.length / l.capacity) * 100) : 0;
-                      const over = l.capacity > 0 && ps.length > l.capacity;
-                      const cls = l.gender === "M" ? "lodging-male" : l.gender === "F" ? "lodging-female" : "lodging-none";
-                      return (
-                        <button
-                          key={l.id}
-                          onClick={() => setSelected(l.id)}
-                          className={`group rounded-md border-2 p-3 text-left transition hover:shadow-md ${cls} ${!l.active ? "opacity-40" : ""}`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="font-semibold text-sm">{l.name}</div>
-                            <GenderBadge gender={l.gender} />
-                          </div>
-                          <div className="mt-1 flex items-baseline gap-1 tabular-nums">
-                            <span className={`text-lg font-bold ${over ? "text-destructive" : ""}`}>{ps.length}</span>
-                            <span className="text-xs text-muted-foreground">/ {l.capacity}</span>
-                          </div>
-                          <div className="mt-1 h-1.5 w-full overflow-hidden rounded bg-background/60">
-                            <div className={`h-full ${over ? "bg-destructive" : "bg-primary"}`} style={{ width: `${pct}%` }} />
-                          </div>
-                          <div className="mt-1 text-[10px] text-muted-foreground">
-                            남은 {Math.max(0, l.capacity - ps.length)}
-                            {l.note && <span className="ml-1">· {l.note}</span>}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+      <div className="flex flex-col lg:flex-row gap-4">
+        {/* LEFT 70% */}
+        <div className="flex-1 min-w-0 space-y-4">
+          <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold">숙소배치</h1>
+              <p className="text-sm text-muted-foreground">우측 카드 드래그 또는 더블클릭 → 방 선택</p>
             </div>
-          </section>
-        ))}
+            <Input placeholder="이름/교회 검색…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-56" />
+          </header>
+
+          <Card className="p-4">
+            <div className="flex gap-6 text-sm tabular-nums flex-wrap">
+              <span>전체 정원 <b className="text-lg">{num(totalCap)}</b>명</span>
+              <span>배정 <b className="text-lg">{num(totalAssigned)}</b>명</span>
+              <span>남은 자리 <b className="text-lg text-emerald-600">{num(totalCap - totalAssigned)}</b>명</span>
+            </div>
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {Object.keys(groups).map((building) => {
+                const items = lodgings.filter((l: any) => (l.building ?? "기타") === building);
+                const cap = items.filter((l: any) => l.active).reduce((s: number, l: any) => s + l.capacity, 0);
+                const asg = items.reduce((s: number, l: any) => s + (peopleByLodging.get(l.id)?.length ?? 0), 0);
+                return (
+                  <div key={building} className="rounded border bg-muted/30 px-3 py-2 text-sm tabular-nums">
+                    <div className="font-semibold mb-0.5">{building}</div>
+                    <div className="text-xs">정원 <b>{num(cap)}</b>명 / 배정 <b>{num(asg)}</b>명 / 남은 자리 <b className="text-emerald-600">{num(cap - asg)}</b>명</div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          {nameSearchHits && (
+            <Card className="p-3 space-y-1.5">
+              <div className="text-sm font-semibold">"{search}" 검색 결과 ({nameSearchHits.matches.length})</div>
+              {nameSearchHits.matches.length === 0 && <div className="text-xs text-muted-foreground">해당 이름의 배정된 인원이 없습니다.</div>}
+              <div className="flex flex-wrap gap-1.5">
+                {nameSearchHits.matches.map((p: any) => {
+                  const l = lodgings.find((x: any) => x.id === p.lodging_id);
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => focusRoom(p.lodging_id)}
+                      className="rounded border bg-accent/40 px-2 py-1 text-xs hover:bg-accent"
+                    >
+                      <b>{p.name}</b> → {l?.name ?? "?"} <span className="text-muted-foreground">({churchMap.get(p.church_id)}, {p.gender === "M" ? "남" : "여"})</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+
+          {Object.entries(groups).map(([building, floors]) => (
+            <section key={building}>
+              <h2 className="text-base font-semibold mb-2">{building}</h2>
+              <div className="space-y-3">
+                {Object.entries(floors).map(([floor, items]) => (
+                  <div key={floor}>
+                    <div className="text-xs font-semibold text-muted-foreground mb-1.5">{floor}</div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                      {items.map((l: any) => {
+                        const ps = peopleByLodging.get(l.id) ?? [];
+                        const pct = l.capacity ? Math.min(100, (ps.length / l.capacity) * 100) : 0;
+                        const over = l.capacity > 0 && ps.length > l.capacity;
+                        const cls = l.gender === "M" ? "lodging-male" : l.gender === "F" ? "lodging-female" : "lodging-none";
+                        const isDragOver = dragOver === l.id;
+                        const canPick = pickMode && (l.capacity ?? 0) - ps.length > 0;
+                        const blink = pickMode ? canPick ? "lodging-blink" : "" : "";
+                        const dim =
+                          (nameSearchHits && !nameSearchHits.roomIds.has(l.id)) ||
+                          (pickMode && !canPick);
+                        const highlight =
+                          highlightId === l.id ||
+                          (nameSearchHits && nameSearchHits.roomIds.has(l.id))
+                            ? "lodging-highlight"
+                            : "";
+                        return (
+                          <button
+                            key={l.id}
+                            ref={(el) => { if (el) roomRefs.current.set(l.id, el); else roomRefs.current.delete(l.id); }}
+                            onClick={() => {
+                              if (pickMode) {
+                                if (!canPick) return;
+                                performAssign(pickMode, l);
+                                setPickMode(null);
+                                setFlipped(null);
+                              } else {
+                                setSelected(l.id);
+                              }
+                            }}
+                            onDragOver={(e) => { e.preventDefault(); setDragOver(l.id); }}
+                            onDragLeave={() => setDragOver((d) => (d === l.id ? null : d))}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              setDragOver(null);
+                              try {
+                                const raw = e.dataTransfer.getData("application/json");
+                                if (!raw) return;
+                                const payload = JSON.parse(raw) as DragPayload;
+                                performAssign(payload, l);
+                              } catch { /* ignore */ }
+                            }}
+                            className={`group rounded-md border-2 p-3 text-left transition hover:shadow-md ${cls} ${!l.active ? "opacity-40" : ""} ${isDragOver ? "ring-2 ring-primary" : ""} ${blink} ${highlight} ${dim ? "opacity-40" : ""}`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="font-semibold text-sm truncate">{l.name}</div>
+                              <GenderBadge gender={l.gender} />
+                            </div>
+                            <div className="mt-1 flex items-baseline gap-1 tabular-nums">
+                              <span className={`text-lg font-bold ${over ? "text-destructive" : ""}`}>{ps.length}</span>
+                              <span className="text-xs text-muted-foreground">/ {l.capacity}</span>
+                            </div>
+                            <div className="mt-1 h-1.5 w-full overflow-hidden rounded bg-background/60">
+                              <div className={`h-full ${over ? "bg-destructive" : "bg-primary"}`} style={{ width: `${pct}%` }} />
+                            </div>
+                            <div className="mt-1 text-[10px] text-muted-foreground">
+                              남은 {Math.max(0, l.capacity - ps.length)}
+                              {l.note && <span className="ml-1">· {l.note}</span>}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+
+        {/* RIGHT 30% — Unassigned panel */}
+        <aside className="w-full lg:w-[340px] lg:sticky lg:top-4 lg:self-start">
+          <Card className="p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-semibold">미배치 교회</div>
+              <div className="text-xs tabular-nums text-muted-foreground">
+                남 <b className="text-foreground">{unMCount}</b> · 여 <b className="text-foreground">{unFCount}</b>
+              </div>
+            </div>
+            {pickMode && (
+              <div className="mb-2 rounded border border-primary/40 bg-primary/10 px-2 py-1.5 text-xs">
+                <b>{churchMap.get(pickMode.churchId)}</b> · {pickMode.gender === "M" ? "남" : "여"} 배치할 방을 클릭하세요.
+                <button onClick={() => { setPickMode(null); setFlipped(null); }} className="float-right text-muted-foreground hover:text-foreground">취소</button>
+              </div>
+            )}
+
+            <UnassignedSection
+              title="남자"
+              tone="male"
+              groups={unassignedM}
+              churchMap={churchMap}
+              flipped={flipped}
+              setFlipped={setFlipped}
+              onPick={(g) => { setPickMode(g); setFlipped(null); }}
+            />
+            <div className="my-3 border-t" />
+            <UnassignedSection
+              title="여자"
+              tone="female"
+              groups={unassignedF}
+              churchMap={churchMap}
+              flipped={flipped}
+              setFlipped={setFlipped}
+              onPick={(g) => { setPickMode(g); setFlipped(null); }}
+            />
+
+            {unassignedGroups.length === 0 && (
+              <div className="text-xs text-muted-foreground py-4 text-center">전원 배정 완료 🎉</div>
+            )}
+          </Card>
+        </aside>
       </div>
 
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
@@ -202,13 +351,11 @@ function LodgingsPage() {
                   )}
                 </div>
               </SheetHeader>
-              <AssignmentPanel
+              <RoomDetail
                 lodging={selectedLodging}
                 people={selectedPeople}
                 churchMap={churchMap}
-                allPeople={people}
                 onChanged={() => qc.invalidateQueries({ queryKey: ["lodgings-page"] })}
-                seasonId={season.id}
               />
             </>
           )}
@@ -218,119 +365,126 @@ function LodgingsPage() {
   );
 }
 
-function AssignmentPanel({ lodging, people, churchMap, allPeople, onChanged, seasonId }: any) {
-  const [query, setQuery] = useState("");
-  const [candidates, setCandidates] = useState<any[]>([]);
-  const [manualChurch, setManualChurch] = useState("");
+function UnassignedSection({
+  title, tone, groups, churchMap, flipped, setFlipped, onPick,
+}: {
+  title: string;
+  tone: "male" | "female";
+  groups: { churchId: string; gender: "M" | "F"; persons: any[] }[];
+  churchMap: Map<string, string>;
+  flipped: string | null;
+  setFlipped: (v: string | null) => void;
+  onPick: (g: DragPayload) => void;
+}) {
+  const toneCls = tone === "male" ? "lodging-male" : "lodging-female";
+  return (
+    <div>
+      <div className="text-xs font-semibold mb-1.5 flex items-center justify-between">
+        <span>{title}</span>
+        <span className="text-muted-foreground tabular-nums">
+          {groups.length} 교회 / {groups.reduce((s, g) => s + g.persons.length, 0)}명
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        {groups.map((g) => {
+          const key = `${g.churchId}:${g.gender}`;
+          const isFlipped = flipped === key;
+          return (
+            <div key={key} className="flip-card h-20">
+              <div className={`flip-inner h-full ${isFlipped ? "is-flipped" : ""}`}>
+                <div
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData("application/json", JSON.stringify({ churchId: g.churchId, gender: g.gender }));
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
+                  onDoubleClick={() => setFlipped(isFlipped ? null : key)}
+                  className={`flip-face h-full rounded-md border-2 p-2 cursor-grab active:cursor-grabbing select-none ${toneCls}`}
+                  title="드래그하여 방에 배치 · 더블클릭 → 방 선택"
+                >
+                  <div className="text-xs font-semibold truncate">{churchMap.get(g.churchId) ?? "?"}</div>
+                  <div className="mt-1 tabular-nums">
+                    <span className="text-lg font-bold">{g.persons.length}</span>
+                    <span className="text-[10px] text-muted-foreground"> 명</span>
+                  </div>
+                </div>
+                <div className={`flip-face flip-back h-full rounded-md border-2 border-primary bg-background p-2 flex flex-col items-center justify-center gap-1`}>
+                  <div className="text-[10px] truncate w-full text-center">{churchMap.get(g.churchId)}</div>
+                  <Button size="sm" className="h-7 px-2 text-xs" onClick={() => onPick({ churchId: g.churchId, gender: g.gender })}>
+                    방 지정
+                  </Button>
+                  <button className="text-[10px] text-muted-foreground" onClick={() => setFlipped(null)}>닫기</button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
-  const search = (v: string) => {
-    setQuery(v);
-    if (!v.trim()) return setCandidates([]);
-    const hits = allPeople.filter(
-      (p: any) => p.name.includes(v.trim()) && p.lodging && p.lodging_id !== lodging.id,
-    );
-    setCandidates(hits.slice(0, 8));
-  };
-
-  const assign = async (personId: string) => {
-    const p = allPeople.find((x: any) => x.id === personId);
-    if (!p) return;
-    if (lodging.gender && p.gender !== lodging.gender) {
-      if (!confirm("성별이 일치하지 않습니다. 그래도 배정하시겠습니까?")) return;
+function RoomDetail({ lodging, people, churchMap, onChanged }: any) {
+  const byChurch = useMemo(() => {
+    const m = new Map<string, any[]>();
+    for (const p of people) {
+      const arr = m.get(p.church_id) ?? []; arr.push(p); m.set(p.church_id, arr);
     }
-    await supabase.from("people").update({ lodging_id: lodging.id, lodging: true }).eq("id", personId);
-    setQuery(""); setCandidates([]);
-    toast.success("배정됨");
-    onChanged();
-  };
+    return Array.from(m.entries());
+  }, [people]);
 
-  const remove = async (personId: string) => {
-    await supabase.from("people").update({ lodging_id: null }).eq("id", personId);
+  const unassignOne = async (id: string) => {
+    await supabase.from("people").update({ lodging_id: null }).eq("id", id);
     toast.success("배정 해제");
     onChanged();
   };
-
-  const addNew = async () => {
-    if (!query.trim()) return;
-    if (!manualChurch.trim()) {
-      toast.error("교회명을 입력하세요");
-      return;
-    }
-    const gender = lodging.gender ?? "M";
-    // find or create church
-    const { data: existing } = await supabase
-      .from("churches").select("id").eq("season_id", seasonId).eq("name", manualChurch.trim()).maybeSingle();
-    let churchId = existing?.id;
-    if (!churchId) {
-      const { data: c } = await supabase.from("churches").insert({
-        season_id: seasonId, name: manualChurch.trim(), source: "onsite",
-      }).select("id").single();
-      churchId = c!.id;
-    }
-    await supabase.from("people").insert({
-      church_id: churchId, name: query.trim(), gender, age_group: "student", lodging: true, lodging_id: lodging.id,
-    });
-    setQuery(""); setManualChurch(""); setCandidates([]);
-    toast.success("새로 등록 및 배정");
+  const unassignGroup = async (churchId: string) => {
+    const ids = people.filter((p: any) => p.church_id === churchId).map((p: any) => p.id);
+    if (ids.length === 0) return;
+    if (!confirm(`${churchMap.get(churchId)} ${ids.length}명을 모두 해제하시겠습니까?`)) return;
+    await supabase.from("people").update({ lodging_id: null }).in("id", ids);
+    toast.success(`${ids.length}명 해제`);
+    onChanged();
+  };
+  const unassignAll = async () => {
+    if (people.length === 0) return;
+    if (!confirm(`방 전체 ${people.length}명을 해제하시겠습니까?`)) return;
+    await supabase.from("people").update({ lodging_id: null }).eq("lodging_id", lodging.id);
+    toast.success("전체 해제");
     onChanged();
   };
 
   return (
     <div className="space-y-3 mt-4">
-      <div className="space-y-2 rounded border p-2 bg-muted/30">
-        <Input placeholder="이름으로 검색하여 배정…" value={query} onChange={(e) => search(e.target.value)} />
-        {candidates.length > 0 && (
-          <div className="space-y-1">
-            {candidates.map((p) => {
-              const mismatch = lodging.gender && p.gender !== lodging.gender;
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => assign(p.id)}
-                  className="w-full text-left rounded border px-2 py-1.5 text-sm hover:bg-accent flex items-center justify-between"
-                >
-                  <span className="flex items-center gap-2">
-                    <GenderBadge gender={p.gender} />
-                    <b>{p.name}</b>
-                    <span className="text-xs text-muted-foreground">{churchMap.get(p.church_id)}</span>
-                    {mismatch && <AlertTriangle className="h-3 w-3 text-amber-600" />}
-                  </span>
-                  <Plus className="h-3 w-3" />
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-semibold text-muted-foreground">교회별 배정 ({people.length}명)</div>
+        {people.length > 0 && (
+          <Button size="sm" variant="outline" onClick={unassignAll}>전체 해제</Button>
+        )}
+      </div>
+      {byChurch.length === 0 && <div className="text-xs text-muted-foreground py-3 text-center">아직 배정된 인원이 없습니다.</div>}
+      {byChurch.map(([churchId, ps]) => (
+        <div key={churchId} className="rounded border bg-background">
+          <div className="flex items-center justify-between px-2 py-1.5 border-b bg-muted/30">
+            <div className="text-sm font-semibold">{churchMap.get(churchId)} <span className="text-xs text-muted-foreground">({ps.length}명)</span></div>
+            <button onClick={() => unassignGroup(churchId)} className="text-xs text-muted-foreground hover:text-destructive">교회 전체 해제</button>
+          </div>
+          <div className="p-2 space-y-1">
+            {ps.map((p: any) => (
+              <div key={p.id} className="flex items-center justify-between rounded px-2 py-1 text-sm hover:bg-accent/30">
+                <span className="flex items-center gap-2">
+                  <GenderBadge gender={p.gender} />
+                  <b>{p.name}</b>
+                  {p.note && <span className="text-xs text-muted-foreground">({p.note})</span>}
+                </span>
+                <button onClick={() => unassignOne(p.id)} className="text-muted-foreground hover:text-destructive">
+                  <X className="h-4 w-4" />
                 </button>
-              );
-            })}
+              </div>
+            ))}
           </div>
-        )}
-        {query.trim() && candidates.length === 0 && (
-          <div className="rounded border p-2 text-xs bg-background">
-            <div className="text-muted-foreground mb-1">명단에 없습니다. 새로 등록:</div>
-            <div className="flex gap-1">
-              <Input placeholder="교회명" value={manualChurch} onChange={(e) => setManualChurch(e.target.value)} className="h-8 text-sm" />
-              <Button size="sm" onClick={addNew}>등록</Button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div>
-        <div className="text-xs font-semibold text-muted-foreground mb-2">현재 배정 명단 ({people.length})</div>
-        <div className="space-y-1">
-          {people.map((p: any) => (
-            <div key={p.id} className="flex items-center justify-between rounded border bg-background px-2 py-1.5 text-sm">
-              <span className="flex items-center gap-2">
-                <GenderBadge gender={p.gender} />
-                <b>{p.name}</b>
-                {p.note && <span className="text-xs text-muted-foreground">({p.note})</span>}
-                <span className="text-xs text-muted-foreground">— {churchMap.get(p.church_id)}</span>
-              </span>
-              <button onClick={() => remove(p.id)} className="text-muted-foreground hover:text-destructive">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          ))}
-          {people.length === 0 && <div className="text-xs text-muted-foreground py-3 text-center">아직 배정된 인원이 없습니다.</div>}
         </div>
-      </div>
+      ))}
     </div>
   );
 }
