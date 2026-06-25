@@ -599,9 +599,9 @@ function ReceiptLayoutSection() {
 function PasswordSummary() {
   return (
     <div>
-      <div>관리자 / 일반 사용자 비밀번호를 변경합니다.</div>
+      <div>전체관리자 / 접수담당자 / 일반 사용자 비밀번호를 변경합니다.</div>
       <div className="text-xs mt-1 text-muted-foreground">
-        보안을 위해 비밀번호는 해시로만 저장됩니다. 변경하려면 현재 관리자 비밀번호가 필요합니다.
+        해시로만 저장됩니다. 변경하려면 현재 관리자 비밀번호가 필요합니다.
       </div>
     </div>
   );
@@ -611,91 +611,55 @@ function PasswordSection() {
   const change = useChangePasswords();
   const [current, setCurrent] = useState("");
   const [admin, setAdmin] = useState("");
+  const [staff, setStaff] = useState("");
   const [user, setUser] = useState("");
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showAdmin, setShowAdmin] = useState(false);
-  const [showUser, setShowUser] = useState(false);
+  const [show, setShow] = useState(false);
 
-  const cTrim = current.trim();
-  const aTrim = admin.trim();
-  const uTrim = user.trim();
-  const sameAsEach = aTrim !== "" && aTrim === uTrim;
-  const empty = !cTrim || !aTrim || !uTrim;
-  const disabled = change.isPending || empty || sameAsEach;
+  const cT = current.trim(), aT = admin.trim(), sT = staff.trim(), uT = user.trim();
+  const empty = !cT || !aT || !sT || !uT;
+  const dup = (aT && (aT === sT || aT === uT)) || (sT && sT === uT);
+  const disabled = change.isPending || empty || !!dup;
 
   const onSave = () => {
     change.mutate(
-      { current_admin: current, new_admin: admin, new_user: user },
+      { current_admin: current, new_admin: admin, new_staff: staff, new_user: user },
       {
         onSuccess: () => {
           toast.success("비밀번호가 변경되었습니다.");
-          setCurrent("");
-          setAdmin("");
-          setUser("");
+          setCurrent(""); setAdmin(""); setStaff(""); setUser("");
         },
         onError: (e: any) => toast.error(e?.message ?? "저장 실패"),
       },
     );
   };
 
+  const Field = ({ id, label, value, set, placeholder, auto }: any) => (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={(e) => set(e.target.value)}
+        placeholder={placeholder}
+        autoComplete={auto}
+      />
+    </div>
+  );
+
   return (
     <div className="space-y-4 max-w-md">
-      <div className="space-y-1.5">
-        <Label htmlFor="current-pw">현재 관리자 비밀번호</Label>
-        <div className="flex gap-2">
-          <Input
-            id="current-pw"
-            type={showCurrent ? "text" : "password"}
-            value={current}
-            onChange={(e) => setCurrent(e.target.value)}
-            placeholder="현재 관리자 비밀번호 확인"
-            autoComplete="current-password"
-          />
-          <Button type="button" variant="outline" size="sm" onClick={() => setShowCurrent((v) => !v)}>
-            {showCurrent ? "숨김" : "표시"}
-          </Button>
-        </div>
+      <Field id="current-pw" label="현재 관리자 비밀번호" value={current} set={setCurrent} placeholder="현재 관리자 비밀번호 확인" auto="current-password" />
+      <Field id="admin-pw" label="새 전체관리자 비밀번호 (admin)" value={admin} set={setAdmin} placeholder="예: 031213" auto="new-password" />
+      <Field id="staff-pw" label="새 접수담당자 비밀번호 (staff)" value={staff} set={setStaff} placeholder="예: 007123" auto="new-password" />
+      <Field id="user-pw" label="새 일반 사용자 비밀번호 (user)" value={user} set={setUser} placeholder="예: 007124" auto="new-password" />
+      <div className="flex items-center gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={() => setShow((v) => !v)}>
+          {show ? "비밀번호 숨김" : "비밀번호 표시"}
+        </Button>
       </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="admin-pw">새 전체관리자 비밀번호</Label>
-        <div className="flex gap-2">
-          <Input
-            id="admin-pw"
-            type={showAdmin ? "text" : "password"}
-            value={admin}
-            onChange={(e) => setAdmin(e.target.value)}
-            placeholder="새 전체관리자 비밀번호"
-            autoComplete="new-password"
-          />
-          <Button type="button" variant="outline" size="sm" onClick={() => setShowAdmin((v) => !v)}>
-            {showAdmin ? "숨김" : "표시"}
-          </Button>
-        </div>
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="user-pw">새 일반 사용자 비밀번호</Label>
-        <div className="flex gap-2">
-          <Input
-            id="user-pw"
-            type={showUser ? "text" : "password"}
-            value={user}
-            onChange={(e) => setUser(e.target.value)}
-            placeholder="새 일반 사용자 비밀번호"
-            autoComplete="new-password"
-          />
-          <Button type="button" variant="outline" size="sm" onClick={() => setShowUser((v) => !v)}>
-            {showUser ? "숨김" : "표시"}
-          </Button>
-        </div>
-      </div>
-      {empty && (
-        <div className="text-xs text-destructive">모든 비밀번호 칸을 채워주세요.</div>
-      )}
-      {sameAsEach && (
-        <div className="text-xs text-destructive">
-          관리자와 일반 사용자 비밀번호가 같을 수 없습니다 (권한 구분 불가).
-        </div>
-      )}
+      {empty && <div className="text-xs text-destructive">모든 비밀번호 칸을 채워주세요.</div>}
+      {dup && <div className="text-xs text-destructive">세 비밀번호는 모두 달라야 합니다.</div>}
       <div className="flex items-center gap-2">
         <Button onClick={onSave} disabled={disabled}>
           {change.isPending ? "저장 중..." : "저장"}
@@ -704,6 +668,13 @@ function PasswordSection() {
           저장 즉시 적용되며, 다음 잠금 해제부터 새 비밀번호가 사용됩니다.
         </span>
       </div>
+      <div className="text-xs text-muted-foreground border-t pt-3">
+        역할별 권한:<br />
+        • <b>admin</b> — 전 메뉴 + 설정 + 모든 수정/삭제<br />
+        • <b>staff</b> — 설정 제외 전 메뉴(접수명단 포함), 접수시트 수정/삭제 불가<br />
+        • <b>user</b> — 대시보드 · 접수시트 · 현장접수 (수정/삭제 불가)
+      </div>
     </div>
   );
 }
+
