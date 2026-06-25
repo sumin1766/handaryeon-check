@@ -104,14 +104,14 @@ function DashboardPage() {
             </div>
             <div className="lumina-glass p-3">
               <div className="overflow-hidden rounded-[1.15rem]">
-                <table className="w-full text-base tabular-nums border-separate border-spacing-0">
+                <table className="w-full tabular-nums border-separate border-spacing-0">
                   <thead style={{ background: "var(--lumina-surface-high)" }}>
-                    <tr className="text-xs uppercase tracking-wider lumina-muted">
-                      <th className="text-left px-5 py-4 w-28 font-semibold">구분</th>
+                    <tr className="lumina-muted">
+                      <th className="text-center px-5 py-4 w-32" style={{ fontSize: "16px", fontWeight: 600 }}>구분</th>
                       {CAT_COLS.map((c) => (
-                        <th key={c.key} className="text-right px-5 py-4 font-semibold">{c.label}</th>
+                        <th key={c.key} className="text-center px-5 py-4" style={{ fontSize: "16px", fontWeight: 600 }}>{c.label}</th>
                       ))}
-                      <th className="text-right px-5 py-4 font-semibold lumina-sum-cell">합계</th>
+                      <th className="text-center px-5 py-4 lumina-sum-cell" style={{ fontSize: "16px", fontWeight: 600 }}>합계</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -121,11 +121,11 @@ function DashboardPage() {
                       const topBorder = idx === 0 ? "none" : "1px solid var(--lumina-border)";
                       return (
                         <tr key={r.key}>
-                          <td className="px-5 py-5 font-medium text-base" style={{ borderTop: topBorder }}>{r.label}</td>
+                          <td className="text-center px-5 py-6" style={{ fontSize: "21px", fontWeight: 600, borderTop: topBorder }}>{r.label}</td>
                           {CAT_COLS.map((c) => (
-                            <td key={c.key} className="text-right px-5 py-5 text-base" style={{ borderTop: topBorder }}>{num(m[c.key])}</td>
+                            <td key={c.key} className="text-center px-5 py-6" style={{ fontSize: "21px", fontWeight: 600, borderTop: topBorder, fontVariantNumeric: "tabular-nums" }}>{num(m[c.key])}</td>
                           ))}
-                          <td className="text-right px-5 py-5 font-semibold text-base lumina-sum-cell" style={{ borderTop: topBorder }}>
+                          <td className="text-center px-5 py-6 lumina-sum-cell" style={{ fontSize: "21px", fontWeight: 700, borderTop: topBorder, fontVariantNumeric: "tabular-nums" }}>
                             {num(sum)}
                           </td>
                         </tr>
@@ -135,6 +135,7 @@ function DashboardPage() {
                 </table>
               </div>
             </div>
+
           </section>
 
           <section>

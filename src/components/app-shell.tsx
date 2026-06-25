@@ -14,7 +14,7 @@ import {
   Sun,
   Moon,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
@@ -153,21 +153,20 @@ function SlidingTabs({
 
   const activeIndex = tabs.findIndex((t) => t.to === pathname);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const measure = () => {
       const container = containerRef.current;
       const el = itemRefs.current[activeIndex];
-      if (!container || !el) {
-        setIndicator(null);
-        return;
-      }
-      const c = container.getBoundingClientRect();
-      const r = el.getBoundingClientRect();
-      setIndicator({ left: r.left - c.left, width: r.width });
+      if (!container || !el) return;
+      setIndicator({ left: el.offsetLeft, width: el.offsetWidth });
     };
     measure();
+    // Re-measure once fonts have loaded (prevents first-paint jump)
+    const fonts = (document as any).fonts;
+    if (fonts?.ready) fonts.ready.then(measure).catch(() => {});
     const ro = new ResizeObserver(measure);
     if (containerRef.current) ro.observe(containerRef.current);
+    itemRefs.current.forEach((el) => el && ro.observe(el));
     window.addEventListener("resize", measure);
     return () => {
       ro.disconnect();
