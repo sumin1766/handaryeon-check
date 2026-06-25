@@ -203,12 +203,12 @@ function SlidingTabs({
                 aria-disabled={disabled}
                 onClick={(e) => disabled && e.preventDefault()}
                 className={cn(
-                  "flex w-full items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-colors",
+                  "flex w-full items-center justify-center gap-2 px-3 py-4 text-base font-medium transition-colors",
                   isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                   disabled && "cursor-not-allowed opacity-40 hover:text-muted-foreground",
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-[18px] w-[18px]" />
                 {t.label}
               </Link>
             </li>
