@@ -117,7 +117,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
               </div>
             )}
             <span className="hidden sm:inline rounded-full border bg-muted/40 px-2.5 py-1 text-[11px] font-medium">
-              {isAdmin ? "전체관리자" : "일반 사용자"}
+              {role === "admin" ? "전체관리자" : role === "staff" ? "접수담당자" : "일반 사용자"}
             </span>
             <button
               type="button"
