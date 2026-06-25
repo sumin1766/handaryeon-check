@@ -77,27 +77,19 @@ function DashboardPage() {
     <AppShell>
       <div className="lumina-scope -mx-6 -my-6 min-h-[calc(100vh-130px)]">
         <div className="mx-auto max-w-[1200px] px-10 py-12 space-y-12">
-          <header className="flex items-end justify-between gap-4">
-            <div>
-              <h1
-                className="font-bold"
-                style={{ fontSize: "40px", fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.1 }}
-              >
-                대시보드
-              </h1>
-              <p
-                className="lumina-muted mt-2"
-                style={{ fontSize: "22px", fontWeight: 600, letterSpacing: "-0.01em" }}
-              >
-                {season.name} 현황
-              </p>
-            </div>
-            <Link
-              to="/pre-registration"
-              className="lumina-btn-primary inline-flex items-center px-5 py-2.5 text-sm font-semibold"
+          <header>
+            <h1
+              className="font-bold"
+              style={{ fontSize: "40px", fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.1 }}
             >
-              사전접수 →
-            </Link>
+              대시보드
+            </h1>
+            <p
+              className="lumina-muted mt-2"
+              style={{ fontSize: "22px", fontWeight: 600, letterSpacing: "-0.01em" }}
+            >
+              {season.name} 현황
+            </p>
           </header>
 
           <section>
