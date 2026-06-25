@@ -11,13 +11,17 @@ import {
   Settings,
   AlertCircle,
   Lock,
+  Sun,
+  Moon,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { PasswordGate } from "@/components/password-gate";
 import { useAuthRole, setAuthRole } from "@/lib/use-auth-role";
+import { useTheme } from "@/lib/use-theme";
+import logoAsset from "@/assets/handaryeon-symbol.png.asset.json";
 
 const TABS = [
   { to: "/", label: "대시보드", icon: LayoutDashboard, allowEnded: true, adminOnly: false },
@@ -43,29 +47,34 @@ function AppShellInner({ children }: { children: ReactNode }) {
   const { season, isEnded } = useActiveSeason();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const role = useAuthRole();
+  const [theme, setTheme] = useTheme();
   const isAdmin = role === "admin";
   const visibleTabs = TABS.filter((t) => !t.adminOnly || isAdmin);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b bg-card/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-6 py-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
-              한
+          <Link
+            to="/"
+            className="group flex items-center gap-3 rounded-full px-1.5 py-1 -ml-1.5 transition-colors hover:bg-muted/60"
+            aria-label="대시보드로 이동"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-border overflow-hidden">
+              <img src={logoAsset.url} alt="한국다음세대훈련원" className="h-7 w-7 object-contain" />
             </div>
             <div>
-              <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground group-hover:text-foreground/80">
                 한다련 캠프 접수 관리
               </div>
               <div className="text-sm font-semibold leading-tight">
                 {season ? season.name : "시즌 미설정"}
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3 text-xs">
+          </Link>
+          <div className="flex items-center gap-2 text-xs">
             {season && (
-              <div className="hidden md:flex items-center gap-1.5 rounded-md border bg-muted/40 px-3 py-1.5 tabular-nums">
+              <div className="hidden md:flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 tabular-nums">
                 <span className="text-muted-foreground">접수기간</span>
                 <span className="font-medium">
                   {formatDate(season.start_date)} ~ {formatDate(season.end_date)}
@@ -77,13 +86,22 @@ function AppShellInner({ children }: { children: ReactNode }) {
                 )}
               </div>
             )}
-            <span className="hidden sm:inline rounded-md border bg-muted/40 px-2 py-1 text-[11px] font-medium">
+            <span className="hidden sm:inline rounded-full border bg-muted/40 px-2.5 py-1 text-[11px] font-medium">
               {isAdmin ? "전체관리자" : "일반 사용자"}
             </span>
             <button
               type="button"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full border text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              title={theme === "dark" ? "라이트 모드" : "다크 모드"}
+              aria-label="테마 전환"
+            >
+              {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+            </button>
+            <button
+              type="button"
               onClick={() => setAuthRole(null)}
-              className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60"
               title="다시 잠금"
             >
               <Lock className="h-3 w-3" />
@@ -91,35 +109,9 @@ function AppShellInner({ children }: { children: ReactNode }) {
             </button>
           </div>
         </div>
-        <nav className="mx-auto max-w-[1600px] px-3">
-          <ul className="flex flex-wrap items-center gap-0.5">
-            {visibleTabs.map((t) => {
-              const Icon = t.icon;
-              const isActive = pathname === t.to;
-              const disabled = isEnded && !("allowEnded" in t && t.allowEnded);
-              return (
-                <li key={t.to}>
-                  <Link
-                    to={t.to}
-                    disabled={disabled}
-                    aria-disabled={disabled}
-                    onClick={(e) => disabled && e.preventDefault()}
-                    className={cn(
-                      "flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
-                      isActive
-                        ? "border-primary text-foreground"
-                        : "border-transparent text-muted-foreground hover:text-foreground hover:border-border",
-                      disabled && "cursor-not-allowed opacity-40 hover:text-muted-foreground",
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {t.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
+        <div className="mx-auto max-w-[1600px] px-6">
+          <SlidingTabs tabs={visibleTabs} pathname={pathname} isEnded={isEnded} />
+        </div>
       </header>
 
       {!season && (
@@ -141,6 +133,89 @@ function AppShellInner({ children }: { children: ReactNode }) {
 
       <main className="mx-auto max-w-[1600px] px-6 py-6">{children}</main>
     </div>
+  );
+}
+
+function SlidingTabs({
+  tabs,
+  pathname,
+  isEnded,
+}: {
+  tabs: ReadonlyArray<(typeof TABS)[number]>;
+  pathname: string;
+  isEnded: boolean;
+}) {
+  const containerRef = useRef<HTMLUListElement | null>(null);
+  const itemRefs = useRef<Array<HTMLLIElement | null>>([]);
+  const [indicator, setIndicator] = useState<{ left: number; width: number } | null>(null);
+
+  const activeIndex = tabs.findIndex((t) => t.to === pathname);
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const container = containerRef.current;
+      const el = itemRefs.current[activeIndex];
+      if (!container || !el) {
+        setIndicator(null);
+        return;
+      }
+      const c = container.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      setIndicator({ left: r.left - c.left, width: r.width });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (containerRef.current) ro.observe(containerRef.current);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [activeIndex, tabs.length]);
+
+  return (
+    <nav className="relative">
+      <ul
+        ref={containerRef}
+        className="relative flex items-stretch justify-between gap-0"
+      >
+        {tabs.map((t, i) => {
+          const Icon = t.icon;
+          const isActive = pathname === t.to;
+          const disabled = isEnded && !("allowEnded" in t && t.allowEnded);
+          return (
+            <li
+              key={t.to}
+              ref={(el) => {
+                itemRefs.current[i] = el;
+              }}
+              className="flex-1"
+            >
+              <Link
+                to={t.to}
+                disabled={disabled}
+                aria-disabled={disabled}
+                onClick={(e) => disabled && e.preventDefault()}
+                className={cn(
+                  "flex w-full items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-colors",
+                  isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                  disabled && "cursor-not-allowed opacity-40 hover:text-muted-foreground",
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {t.label}
+              </Link>
+            </li>
+          );
+        })}
+        {indicator && (
+          <span
+            className="tab-indicator"
+            style={{ transform: `translateX(${indicator.left}px)`, width: indicator.width }}
+          />
+        )}
+      </ul>
+    </nav>
   );
 }
 
