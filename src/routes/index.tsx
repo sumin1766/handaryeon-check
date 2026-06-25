@@ -102,41 +102,38 @@ function DashboardPage() {
               <Kpi label="숙박 인원" value={people.filter((p: any) => p.lodging).length} unit="명" />
               <Kpi label="비숙박 인원" value={people.filter((p: any) => !p.lodging).length} unit="명" />
             </div>
-            <div className="lumina-glass overflow-hidden p-2">
-              <table className="w-full text-base tabular-nums">
-                <thead style={{ background: "var(--lumina-surface-high)" }}>
-                  <tr className="text-xs uppercase tracking-wider lumina-muted">
-                    <th className="text-left px-5 py-4 w-28 font-semibold">구분</th>
-                    {CAT_COLS.map((c) => (
-                      <th key={c.key} className="text-right px-5 py-4 font-semibold">{c.label}</th>
-                    ))}
-                    <th
-                      className="text-right px-5 py-4 font-semibold lumina-sum-cell"
-                    >
-                      합계
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {CAT_ROWS.map((r) => {
-                    const m = matrix(r.lodging);
-                    const sum = Object.values(m).reduce((a, b) => a + b, 0);
-                    return (
-                      <tr key={r.key} style={{ borderTop: "1px solid var(--lumina-border)" }}>
-                        <td className="px-5 py-5 font-medium text-base">{r.label}</td>
-                        {CAT_COLS.map((c) => (
-                          <td key={c.key} className="text-right px-5 py-5 text-base">{num(m[c.key])}</td>
-                        ))}
-                        <td
-                          className="text-right px-5 py-5 font-semibold text-base lumina-sum-cell"
-                        >
-                          {num(sum)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="lumina-glass p-3">
+              <div className="overflow-hidden rounded-[1.15rem]">
+                <table className="w-full text-base tabular-nums border-separate border-spacing-0">
+                  <thead style={{ background: "var(--lumina-surface-high)" }}>
+                    <tr className="text-xs uppercase tracking-wider lumina-muted">
+                      <th className="text-left px-5 py-4 w-28 font-semibold">구분</th>
+                      {CAT_COLS.map((c) => (
+                        <th key={c.key} className="text-right px-5 py-4 font-semibold">{c.label}</th>
+                      ))}
+                      <th className="text-right px-5 py-4 font-semibold lumina-sum-cell">합계</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {CAT_ROWS.map((r, idx) => {
+                      const m = matrix(r.lodging);
+                      const sum = Object.values(m).reduce((a, b) => a + b, 0);
+                      const topBorder = idx === 0 ? "none" : "1px solid var(--lumina-border)";
+                      return (
+                        <tr key={r.key}>
+                          <td className="px-5 py-5 font-medium text-base" style={{ borderTop: topBorder }}>{r.label}</td>
+                          {CAT_COLS.map((c) => (
+                            <td key={c.key} className="text-right px-5 py-5 text-base" style={{ borderTop: topBorder }}>{num(m[c.key])}</td>
+                          ))}
+                          <td className="text-right px-5 py-5 font-semibold text-base lumina-sum-cell" style={{ borderTop: topBorder }}>
+                            {num(sum)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </section>
 
