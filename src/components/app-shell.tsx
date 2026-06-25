@@ -77,11 +77,23 @@ function AppShellInner({ children }: { children: ReactNode }) {
                 )}
               </div>
             )}
+            <span className="hidden sm:inline rounded-md border bg-muted/40 px-2 py-1 text-[11px] font-medium">
+              {isAdmin ? "전체관리자" : "일반 사용자"}
+            </span>
+            <button
+              type="button"
+              onClick={() => setAuthRole(null)}
+              className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              title="다시 잠금"
+            >
+              <Lock className="h-3 w-3" />
+              잠금
+            </button>
           </div>
         </div>
         <nav className="mx-auto max-w-[1600px] px-3">
           <ul className="flex flex-wrap items-center gap-0.5">
-            {TABS.map((t) => {
+            {visibleTabs.map((t) => {
               const Icon = t.icon;
               const isActive = pathname === t.to;
               const disabled = isEnded && !("allowEnded" in t && t.allowEnded);
