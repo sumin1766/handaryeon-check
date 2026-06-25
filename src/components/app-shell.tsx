@@ -52,8 +52,8 @@ function AppShellInner({ children }: { children: ReactNode }) {
   const visibleTabs = TABS.filter((t) => !t.adminOnly || isAdmin);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-30 border-b bg-card/80 backdrop-blur-xl">
+    <div className="min-h-screen text-foreground">
+      <header className="sticky top-0 z-30 border-b border-border/40 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-6 py-3">
           <Link
             to="/"
