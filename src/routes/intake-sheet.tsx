@@ -105,7 +105,7 @@ function IntakeSheetPage() {
             <h1 className="text-2xl font-bold">접수시트</h1>
             <p className="text-sm text-muted-foreground">교회별 접수 체크 및 실접수 인원 기록</p>
           </div>
-          <Input placeholder="교회명 검색…" value={filter} onChange={(e) => setFilter(e.target.value)} className="w-64" />
+          <Input placeholder="교회명 / 이름 검색…" value={filter} onChange={(e) => setFilter(e.target.value)} className="w-64" />
         </header>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
