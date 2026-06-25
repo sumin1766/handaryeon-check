@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { Card } from "@/components/ui/card";
@@ -8,9 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { num } from "@/lib/format";
+import { useRealtimeInvalidate } from "@/lib/use-realtime";
+import { useAuthRole } from "@/lib/use-auth-role";
+import { Pencil, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/onsite")({
   head: () => ({ meta: [{ title: "현장접수 — 한다련 캠프" }] }),
