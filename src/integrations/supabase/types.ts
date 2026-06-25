@@ -40,6 +40,27 @@ export type Database = {
           },
         ]
       }
+      auth_config: {
+        Row: {
+          admin_password: string
+          id: number
+          updated_at: string
+          user_password: string
+        }
+        Insert: {
+          admin_password: string
+          id?: number
+          updated_at?: string
+          user_password: string
+        }
+        Update: {
+          admin_password?: string
+          id?: number
+          updated_at?: string
+          user_password?: string
+        }
+        Relationships: []
+      }
       bath_coupons: {
         Row: {
           amount: number
