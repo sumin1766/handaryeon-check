@@ -233,8 +233,8 @@
 .lumina-scope .lumina-muted { color: var(--lumina-fg-muted); }
 .lumina-scope .lumina-num { color: #1d1b20; }
 .dark .lumina-scope .lumina-num { color: #f5eff7; }
-.lumina-scope .lumina-accent { color: var(--lumina-tertiary-fg); }
-.dark .lumina-scope .lumina-accent { color: #cfbcff; }
+.lumina-scope .lumina-accent { color: #1d1b20; }
+.dark .lumina-scope .lumina-accent { color: #f5eff7; }
 .lumina-scope .lumina-sum-cell {
   background: #e9ddff;
   color: var(--lumina-primary);
