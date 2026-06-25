@@ -14,7 +14,7 @@ import {
   Sun,
   Moon,
 } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
