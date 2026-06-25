@@ -236,8 +236,18 @@
   border-radius: 1.5rem;
 }
 .lumina-scope .lumina-muted { color: var(--lumina-fg-muted); }
+.lumina-scope .lumina-num { color: #1d1b20; }
+.dark .lumina-scope .lumina-num { color: #f5eff7; }
 .lumina-scope .lumina-accent { color: var(--lumina-tertiary-fg); }
-.dark .lumina-scope .lumina-accent { color: var(--lumina-tertiary-container); }
+.dark .lumina-scope .lumina-accent { color: #cfbcff; }
+.lumina-scope .lumina-sum-cell {
+  background: #e9ddff;
+  color: var(--lumina-primary);
+}
+.dark .lumina-scope .lumina-sum-cell {
+  background: rgba(207, 188, 255, 0.14);
+  color: #cfbcff;
+}
 .lumina-scope .lumina-btn-primary {
   background: var(--lumina-primary-btn-bg);
   color: #fff;
@@ -257,8 +267,8 @@
   background: var(--color-primary);
   border-radius: 2px;
   transition:
-    transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
-    width 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+    width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
   pointer-events: none;
 }
 
