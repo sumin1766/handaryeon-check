@@ -97,8 +97,8 @@ function DashboardPage() {
               사전접수 현황
             </h2>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-              <Kpi label="접수 교회" value={preChurchCount} unit="교회" accent />
-              <Kpi label="전체 사전접수" value={preTotal} unit="명" accent />
+              <Kpi label="접수 교회" value={preChurchCount} unit="교회" />
+              <Kpi label="전체 사전접수" value={preTotal} unit="명" />
               <Kpi label="숙박 인원" value={people.filter((p: any) => p.lodging).length} unit="명" />
               <Kpi label="비숙박 인원" value={people.filter((p: any) => !p.lodging).length} unit="명" />
             </div>
