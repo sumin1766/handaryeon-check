@@ -125,9 +125,14 @@
     -webkit-font-smoothing: antialiased;
   }
   body {
-    background-color: var(--color-background);
     color: var(--color-foreground);
     font-feature-settings: "ss01", "ss02", "cv01", "tnum";
+    min-height: 100vh;
+    background-color: var(--color-background);
+    background-image:
+      radial-gradient(60% 50% at 12% 0%, color-mix(in oklab, var(--primary) 14%, transparent), transparent 60%),
+      radial-gradient(50% 40% at 100% 10%, color-mix(in oklab, var(--primary) 10%, transparent), transparent 60%);
+    background-attachment: fixed;
   }
   /* Tabular numerics globally for tables & stats */
   table, .tabular-nums, .stat, [class*="font-mono"] {
