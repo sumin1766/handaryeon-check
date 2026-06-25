@@ -42,22 +42,22 @@ export type Database = {
       }
       auth_config: {
         Row: {
-          admin_password: string
+          admin_password_hash: string
           id: number
           updated_at: string
-          user_password: string
+          user_password_hash: string
         }
         Insert: {
-          admin_password: string
+          admin_password_hash: string
           id?: number
           updated_at?: string
-          user_password: string
+          user_password_hash: string
         }
         Update: {
-          admin_password?: string
+          admin_password_hash?: string
           id?: number
           updated_at?: string
-          user_password?: string
+          user_password_hash?: string
         }
         Relationships: []
       }
@@ -315,7 +315,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      change_passwords: {
+        Args: { current_admin: string; new_admin: string; new_user: string }
+        Returns: undefined
+      }
+      verify_password: { Args: { p: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
