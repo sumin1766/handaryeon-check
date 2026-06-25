@@ -174,8 +174,12 @@
   }
 }
 
-/* Lodging gender card surfaces — light pastel backgrounds.
-   Force dark text in BOTH light & dark mode so content stays readable. */
+/* Lodging gender card surfaces.
+   - Light mode: pastel backgrounds with dark text everywhere.
+   - Dark mode: only the right-panel "unassigned" chips (.flip-face)
+     keep the pastel + dark text; left-side ROOM cards switch back
+     to the dark card surface with a colored accent border + light
+     text so contents stay legible. */
 .lodging-male {
   background: var(--gender-male-bg);
   border-color: var(--gender-male-border);
@@ -189,13 +193,36 @@
 .lodging-none {
   background: var(--gender-none-bg);
   border-color: var(--gender-none-border);
+  color: #1d1b20;
 }
-/* Override muted utility classes inside pastel cards so secondary text
-   (e.g. "명" units) stays legible on the light background in dark mode. */
 .lodging-male .text-muted-foreground,
-.lodging-female .text-muted-foreground {
+.lodging-female .text-muted-foreground,
+.lodging-none .text-muted-foreground {
   color: #5a5266 !important;
 }
+
+/* Dark mode — left room cards (NOT .flip-face): dark surface + accent border. */
+.dark .lodging-male:not(.flip-face) {
+  background: var(--card);
+  border-color: rgba(159, 196, 255, 0.55);
+  color: var(--card-foreground);
+}
+.dark .lodging-female:not(.flip-face) {
+  background: var(--card);
+  border-color: rgba(255, 168, 200, 0.55);
+  color: var(--card-foreground);
+}
+.dark .lodging-none:not(.flip-face) {
+  background: var(--card);
+  border-color: var(--border);
+  color: var(--card-foreground);
+}
+.dark .lodging-male:not(.flip-face) .text-muted-foreground,
+.dark .lodging-female:not(.flip-face) .text-muted-foreground,
+.dark .lodging-none:not(.flip-face) .text-muted-foreground {
+  color: var(--muted-foreground) !important;
+}
+
 
 /* Print: only show .printable */
 @media print {
