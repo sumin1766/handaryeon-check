@@ -19,9 +19,11 @@ import {
 } from "@/lib/receipt-layout";
 import { ReceiptLayoutEditor, type ReceiptData, type ReceiptMode } from "@/components/receipt-document";
 import { toast } from "sonner";
-import { Plus, Star, Calendar, Building2, Bath, Maximize2, Trash2, FileText } from "lucide-react";
+import { Plus, Star, Calendar, Building2, Bath, Maximize2, Trash2, FileText, Lock } from "lucide-react";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { krw } from "@/lib/format";
+import { useAuthRole } from "@/lib/use-auth-role";
+import { useAuthConfig, useUpdateAuthConfig } from "@/lib/auth-config";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "설정 — 한다련 캠프" }] }),
