@@ -172,7 +172,7 @@
    Used by the dashboard only. Other pages keep the base theme.
    ===================================================== */
 .lumina-scope {
-  --lumina-bg: #fdf7ff;
+  --lumina-bg: transparent;
   --lumina-fg: #1d1b20;
   --lumina-fg-muted: #494551;
   --lumina-primary: #4f378a;
@@ -180,8 +180,6 @@
   --lumina-primary-container: #e9ddff;
   --lumina-secondary: #63597c;
   --lumina-secondary-container: #e1d4fd;
-  --lumina-tertiary-container: #c9a74d;
-  --lumina-tertiary-fg: #765b00;
   --lumina-border: #cbc4d2;
   --lumina-surface-low: #f8f2fa;
   --lumina-surface: #f2ecf4;
@@ -192,15 +190,11 @@
   --lumina-glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
   --lumina-primary-btn-bg: var(--lumina-primary);
   --lumina-primary-btn-shadow: 0 6px 20px rgba(103, 80, 164, 0.18);
-  background:
-    radial-gradient(60% 50% at 12% 0%, rgba(103, 80, 164, 0.10), transparent 60%),
-    radial-gradient(50% 40% at 100% 10%, rgba(201, 167, 77, 0.10), transparent 60%),
-    var(--lumina-bg);
   color: var(--lumina-fg);
   font-family: "Inter", "Pretendard", "Pretendard Variable", sans-serif;
 }
 .dark .lumina-scope {
-  --lumina-bg: #0c0a0f;
+  --lumina-bg: transparent;
   --lumina-fg: #f5eff7;
   --lumina-fg-muted: #b8aecb;
   --lumina-primary: #cfbcff;
@@ -217,10 +211,6 @@
   --lumina-glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
   --lumina-primary-btn-bg: linear-gradient(135deg, #6750a4, #4f378a);
   --lumina-primary-btn-shadow: 0 0 20px rgba(103, 80, 164, 0.35);
-  background:
-    radial-gradient(60% 50% at 12% 0%, rgba(103, 80, 164, 0.18), transparent 60%),
-    radial-gradient(50% 40% at 100% 10%, rgba(207, 188, 255, 0.08), transparent 60%),
-    var(--lumina-bg);
   color: var(--lumina-fg);
 }
 .lumina-scope .lumina-glass {
