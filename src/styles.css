@@ -161,3 +161,104 @@
   }
   .no-print { display: none !important; }
 }
+
+/* =====================================================
+   Lumina design tokens — scoped to elements with .lumina-scope
+   Used by the dashboard only. Other pages keep the base theme.
+   ===================================================== */
+.lumina-scope {
+  --lumina-bg: #fdf7ff;
+  --lumina-fg: #1d1b20;
+  --lumina-fg-muted: #494551;
+  --lumina-primary: #4f378a;
+  --lumina-primary-strong: #6750a4;
+  --lumina-primary-container: #e9ddff;
+  --lumina-secondary: #63597c;
+  --lumina-secondary-container: #e1d4fd;
+  --lumina-tertiary-container: #c9a74d;
+  --lumina-tertiary-fg: #765b00;
+  --lumina-border: #cbc4d2;
+  --lumina-surface-low: #f8f2fa;
+  --lumina-surface: #f2ecf4;
+  --lumina-surface-high: #ece6ee;
+  --lumina-error: #ba1a1a;
+  --lumina-glass-bg: rgba(255, 255, 255, 0.7);
+  --lumina-glass-border: rgba(255, 255, 255, 0.5);
+  --lumina-glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+  --lumina-primary-btn-bg: var(--lumina-primary);
+  --lumina-primary-btn-shadow: 0 6px 20px rgba(103, 80, 164, 0.18);
+  background:
+    radial-gradient(60% 50% at 12% 0%, rgba(103, 80, 164, 0.10), transparent 60%),
+    radial-gradient(50% 40% at 100% 10%, rgba(201, 167, 77, 0.10), transparent 60%),
+    var(--lumina-bg);
+  color: var(--lumina-fg);
+  font-family: "Inter", "Pretendard", "Pretendard Variable", sans-serif;
+}
+.dark .lumina-scope {
+  --lumina-bg: #0c0a0f;
+  --lumina-fg: #f5eff7;
+  --lumina-fg-muted: #b8aecb;
+  --lumina-primary: #cfbcff;
+  --lumina-primary-strong: #6750a4;
+  --lumina-primary-container: #2a224a;
+  --lumina-secondary: #b8aecb;
+  --lumina-secondary-container: #2a2440;
+  --lumina-border: rgba(255, 255, 255, 0.08);
+  --lumina-surface-low: #14111a;
+  --lumina-surface: #18141f;
+  --lumina-surface-high: #201a2b;
+  --lumina-glass-bg: rgba(255, 255, 255, 0.03);
+  --lumina-glass-border: rgba(255, 255, 255, 0.08);
+  --lumina-glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+  --lumina-primary-btn-bg: linear-gradient(135deg, #6750a4, #4f378a);
+  --lumina-primary-btn-shadow: 0 0 20px rgba(103, 80, 164, 0.35);
+  background:
+    radial-gradient(60% 50% at 12% 0%, rgba(103, 80, 164, 0.18), transparent 60%),
+    radial-gradient(50% 40% at 100% 10%, rgba(207, 188, 255, 0.08), transparent 60%),
+    var(--lumina-bg);
+  color: var(--lumina-fg);
+}
+.lumina-scope .lumina-glass {
+  background: var(--lumina-glass-bg);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--lumina-glass-border);
+  box-shadow: var(--lumina-glass-shadow);
+  border-radius: 1.5rem;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.dark .lumina-scope .lumina-glass:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.lumina-scope .lumina-solid {
+  background: var(--lumina-surface);
+  border: 1px solid var(--lumina-border);
+  border-radius: 1.5rem;
+}
+.lumina-scope .lumina-muted { color: var(--lumina-fg-muted); }
+.lumina-scope .lumina-accent { color: var(--lumina-tertiary-fg); }
+.dark .lumina-scope .lumina-accent { color: var(--lumina-tertiary-container); }
+.lumina-scope .lumina-btn-primary {
+  background: var(--lumina-primary-btn-bg);
+  color: #fff;
+  border-radius: 9999px;
+  box-shadow: var(--lumina-primary-btn-shadow);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+.lumina-scope .lumina-btn-primary:hover { transform: translateY(-1px); opacity: 0.95; }
+
+/* =====================================================
+   Global tabbar — sliding indicator
+   ===================================================== */
+.tab-indicator {
+  position: absolute;
+  bottom: -1px;
+  height: 2px;
+  background: var(--color-primary);
+  border-radius: 2px;
+  transition:
+    transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
+    width 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  pointer-events: none;
+}
+
