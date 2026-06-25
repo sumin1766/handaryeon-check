@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Lock } from "lucide-react";
 import { useAuthRole, setAuthRole } from "@/lib/use-auth-role";
-import { fetchAuthConfig } from "@/lib/auth-config";
+import { verifyPassword } from "@/lib/auth-config";
+import { supabase } from "@/integrations/supabase/client";
 
 export function PasswordGate({ children }: { children: ReactNode }) {
   const role = useAuthRole();
@@ -16,6 +17,25 @@ export function PasswordGate({ children }: { children: ReactNode }) {
 
   useEffect(() => setMounted(true), []);
 
+  // When the stored role exists but the Supabase session is missing
+  // (e.g. user reloaded after token expiry), restore an anonymous session
+  // so RLS-protected tables (churches, people) stay reachable.
+  useEffect(() => {
+    if (!role) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (cancelled || data.session) return;
+      const { error: signErr } = await supabase.auth.signInAnonymously();
+      if (signErr) {
+        setAuthRole(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [role]);
+
   if (!mounted) return null;
   if (role) return <>{children}</>;
 
@@ -24,19 +44,21 @@ export function PasswordGate({ children }: { children: ReactNode }) {
     setError(null);
     setLoading(true);
     try {
-      const cfg = await fetchAuthConfig();
-      const entered = pw.trim();
-      if (!cfg) {
-        setError("비밀번호 설정을 불러오지 못했습니다.");
+      const verified = await verifyPassword(pw);
+      if (!verified) {
+        setError("비밀번호가 올바르지 않습니다.");
         return;
       }
-      if (entered === (cfg.admin_password ?? "").trim()) {
-        setAuthRole("admin");
-      } else if (entered === (cfg.user_password ?? "").trim()) {
-        setAuthRole("user");
-      } else {
-        setError("비밀번호가 올바르지 않습니다.");
+      // Establish an anonymous Supabase session so RLS treats us as authenticated.
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        const { error: signErr } = await supabase.auth.signInAnonymously();
+        if (signErr) {
+          setError("세션 생성에 실패했습니다: " + signErr.message);
+          return;
+        }
       }
+      setAuthRole(verified);
     } catch (err: any) {
       setError(err?.message ?? "오류가 발생했습니다.");
     } finally {

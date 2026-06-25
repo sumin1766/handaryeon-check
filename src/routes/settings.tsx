@@ -23,7 +23,7 @@ import { Plus, Star, Calendar, Building2, Bath, Maximize2, Trash2, FileText, Loc
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { krw } from "@/lib/format";
 import { useAuthRole } from "@/lib/use-auth-role";
-import { useAuthConfig, useUpdateAuthConfig } from "@/lib/auth-config";
+import { useChangePasswords } from "@/lib/auth-config";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "설정 — 한다련 캠프" }] }),
@@ -597,48 +597,42 @@ function ReceiptLayoutSection() {
 // ----- Password change (admin only) -----
 
 function PasswordSummary() {
-  const { data } = useAuthConfig();
   return (
     <div>
-      {data ? (
-        <div>
-          마지막 변경: <b className="text-foreground">{new Date(data.updated_at).toLocaleString("ko-KR")}</b>
-        </div>
-      ) : (
-        <div>비밀번호 설정 불러오는 중...</div>
-      )}
-      <div className="text-xs mt-1">관리자 / 일반 사용자 비밀번호를 변경합니다.</div>
+      <div>관리자 / 일반 사용자 비밀번호를 변경합니다.</div>
+      <div className="text-xs mt-1 text-muted-foreground">
+        보안을 위해 비밀번호는 해시로만 저장됩니다. 변경하려면 현재 관리자 비밀번호가 필요합니다.
+      </div>
     </div>
   );
 }
 
 function PasswordSection() {
-  const { data, isLoading } = useAuthConfig();
-  const update = useUpdateAuthConfig();
+  const change = useChangePasswords();
+  const [current, setCurrent] = useState("");
   const [admin, setAdmin] = useState("");
   const [user, setUser] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showUser, setShowUser] = useState(false);
 
-  // initialise from DB when loaded
-  const [initialised, setInitialised] = useState(false);
-  if (data && !initialised) {
-    setAdmin(data.admin_password ?? "");
-    setUser(data.user_password ?? "");
-    setInitialised(true);
-  }
-
+  const cTrim = current.trim();
   const aTrim = admin.trim();
   const uTrim = user.trim();
   const sameAsEach = aTrim !== "" && aTrim === uTrim;
-  const empty = !aTrim || !uTrim;
-  const disabled = update.isPending || isLoading || empty || sameAsEach;
+  const empty = !cTrim || !aTrim || !uTrim;
+  const disabled = change.isPending || empty || sameAsEach;
 
   const onSave = () => {
-    update.mutate(
-      { admin_password: admin, user_password: user },
+    change.mutate(
+      { current_admin: current, new_admin: admin, new_user: user },
       {
-        onSuccess: () => toast.success("비밀번호가 변경되었습니다."),
+        onSuccess: () => {
+          toast.success("비밀번호가 변경되었습니다.");
+          setCurrent("");
+          setAdmin("");
+          setUser("");
+        },
         onError: (e: any) => toast.error(e?.message ?? "저장 실패"),
       },
     );
@@ -647,14 +641,31 @@ function PasswordSection() {
   return (
     <div className="space-y-4 max-w-md">
       <div className="space-y-1.5">
-        <Label htmlFor="admin-pw">전체관리자 비밀번호</Label>
+        <Label htmlFor="current-pw">현재 관리자 비밀번호</Label>
+        <div className="flex gap-2">
+          <Input
+            id="current-pw"
+            type={showCurrent ? "text" : "password"}
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+            placeholder="현재 관리자 비밀번호 확인"
+            autoComplete="current-password"
+          />
+          <Button type="button" variant="outline" size="sm" onClick={() => setShowCurrent((v) => !v)}>
+            {showCurrent ? "숨김" : "표시"}
+          </Button>
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="admin-pw">새 전체관리자 비밀번호</Label>
         <div className="flex gap-2">
           <Input
             id="admin-pw"
             type={showAdmin ? "text" : "password"}
             value={admin}
             onChange={(e) => setAdmin(e.target.value)}
-            placeholder="전체관리자 비밀번호"
+            placeholder="새 전체관리자 비밀번호"
+            autoComplete="new-password"
           />
           <Button type="button" variant="outline" size="sm" onClick={() => setShowAdmin((v) => !v)}>
             {showAdmin ? "숨김" : "표시"}
@@ -662,14 +673,15 @@ function PasswordSection() {
         </div>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="user-pw">일반 사용자 비밀번호</Label>
+        <Label htmlFor="user-pw">새 일반 사용자 비밀번호</Label>
         <div className="flex gap-2">
           <Input
             id="user-pw"
             type={showUser ? "text" : "password"}
             value={user}
             onChange={(e) => setUser(e.target.value)}
-            placeholder="일반 사용자 비밀번호"
+            placeholder="새 일반 사용자 비밀번호"
+            autoComplete="new-password"
           />
           <Button type="button" variant="outline" size="sm" onClick={() => setShowUser((v) => !v)}>
             {showUser ? "숨김" : "표시"}
@@ -677,7 +689,7 @@ function PasswordSection() {
         </div>
       </div>
       {empty && (
-        <div className="text-xs text-destructive">비밀번호는 비워둘 수 없습니다.</div>
+        <div className="text-xs text-destructive">모든 비밀번호 칸을 채워주세요.</div>
       )}
       {sameAsEach && (
         <div className="text-xs text-destructive">
@@ -686,7 +698,7 @@ function PasswordSection() {
       )}
       <div className="flex items-center gap-2">
         <Button onClick={onSave} disabled={disabled}>
-          {update.isPending ? "저장 중..." : "저장"}
+          {change.isPending ? "저장 중..." : "저장"}
         </Button>
         <span className="text-xs text-muted-foreground">
           저장 즉시 적용되며, 다음 잠금 해제부터 새 비밀번호가 사용됩니다.
