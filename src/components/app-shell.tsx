@@ -168,15 +168,17 @@ function SlidingTabs({
       const container = containerRef.current;
       const el = itemRefs.current[activeIndex];
       if (!container || !el) return;
-      setIndicator({ left: el.offsetLeft, width: el.offsetWidth });
+      const left = el.offsetLeft;
+      const width = el.offsetWidth;
+      setIndicator((prev) =>
+        prev && prev.left === left && prev.width === width ? prev : { left, width },
+      );
     };
     measure();
-    // Re-measure once fonts have loaded (prevents first-paint jump)
     const fonts = (document as any).fonts;
     if (fonts?.ready) fonts.ready.then(measure).catch(() => {});
     const ro = new ResizeObserver(measure);
     if (containerRef.current) ro.observe(containerRef.current);
-    itemRefs.current.forEach((el) => el && ro.observe(el));
     window.addEventListener("resize", measure);
     return () => {
       ro.disconnect();
