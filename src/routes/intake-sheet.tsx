@@ -143,6 +143,11 @@ function IntakeSheetPage() {
                       {c.name}
                       {c.denomination && <span className="ml-1 text-[11px] text-muted-foreground">({c.denomination})</span>}
                       {c.source === "onsite" && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">현장</span>}
+                      {trimmed && !c.name?.includes(trimmed) && (
+                        <div className="text-[11px] text-emerald-600 mt-0.5">
+                          매칭: {ps.filter((p: any) => p.name?.includes(trimmed)).map((p: any) => p.name).slice(0, 4).join(", ")}
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-xs">
                       <div>{c.contact_name ?? "-"}</div>
