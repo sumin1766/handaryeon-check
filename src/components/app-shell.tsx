@@ -35,15 +35,25 @@ const TABS = [
   { to: "/settings", label: "설정", icon: Settings, allowEnded: true, adminOnly: true },
 ] as const;
 
+/**
+ * AppShell is now a thin pass-through kept for backwards compatibility with
+ * existing route files. The real chrome (header, tabs) lives in AppLayout
+ * mounted once at the root, so it survives route navigations and the
+ * sliding tab indicator can animate smoothly between any tabs.
+ */
 export function AppShell({ children }: { children: ReactNode }) {
+  return <>{children}</>;
+}
+
+export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <PasswordGate>
-      <AppShellInner>{children}</AppShellInner>
+      <AppLayoutInner>{children}</AppLayoutInner>
     </PasswordGate>
   );
 }
 
-function AppShellInner({ children }: { children: ReactNode }) {
+function AppLayoutInner({ children }: { children: ReactNode }) {
   const { season, isEnded } = useActiveSeason();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const role = useAuthRole();
@@ -158,15 +168,17 @@ function SlidingTabs({
       const container = containerRef.current;
       const el = itemRefs.current[activeIndex];
       if (!container || !el) return;
-      setIndicator({ left: el.offsetLeft, width: el.offsetWidth });
+      const left = el.offsetLeft;
+      const width = el.offsetWidth;
+      setIndicator((prev) =>
+        prev && prev.left === left && prev.width === width ? prev : { left, width },
+      );
     };
     measure();
-    // Re-measure once fonts have loaded (prevents first-paint jump)
     const fonts = (document as any).fonts;
     if (fonts?.ready) fonts.ready.then(measure).catch(() => {});
     const ro = new ResizeObserver(measure);
     if (containerRef.current) ro.observe(containerRef.current);
-    itemRefs.current.forEach((el) => el && ro.observe(el));
     window.addEventListener("resize", measure);
     return () => {
       ro.disconnect();
