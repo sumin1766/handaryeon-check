@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery } from "@tanstack/react-query";
@@ -77,27 +77,19 @@ function DashboardPage() {
     <AppShell>
       <div className="lumina-scope -mx-6 -my-6 min-h-[calc(100vh-130px)]">
         <div className="mx-auto max-w-[1200px] px-10 py-12 space-y-12">
-          <header className="flex items-end justify-between gap-4">
-            <div>
-              <h1
-                className="font-bold"
-                style={{ fontSize: "40px", fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.1 }}
-              >
-                대시보드
-              </h1>
-              <p
-                className="lumina-muted mt-2"
-                style={{ fontSize: "22px", fontWeight: 600, letterSpacing: "-0.01em" }}
-              >
-                {season.name} 현황
-              </p>
-            </div>
-            <Link
-              to="/pre-registration"
-              className="lumina-btn-primary inline-flex items-center px-5 py-2.5 text-sm font-semibold"
+          <header>
+            <h1
+              className="font-bold"
+              style={{ fontSize: "40px", fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.1 }}
             >
-              사전접수 →
-            </Link>
+              대시보드
+            </h1>
+            <p
+              className="lumina-muted mt-2"
+              style={{ fontSize: "22px", fontWeight: 600, letterSpacing: "-0.01em" }}
+            >
+              {season.name} 현황
+            </p>
           </header>
 
           <section>
@@ -105,46 +97,43 @@ function DashboardPage() {
               사전접수 현황
             </h2>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-              <Kpi label="접수 교회" value={preChurchCount} unit="교회" accent />
-              <Kpi label="전체 사전접수" value={preTotal} unit="명" accent />
+              <Kpi label="접수 교회" value={preChurchCount} unit="교회" />
+              <Kpi label="전체 사전접수" value={preTotal} unit="명" />
               <Kpi label="숙박 인원" value={people.filter((p: any) => p.lodging).length} unit="명" />
               <Kpi label="비숙박 인원" value={people.filter((p: any) => !p.lodging).length} unit="명" />
             </div>
-            <div className="lumina-glass overflow-hidden p-2">
-              <table className="w-full text-base tabular-nums">
-                <thead style={{ background: "var(--lumina-surface-high)" }}>
-                  <tr className="text-xs uppercase tracking-wider lumina-muted">
-                    <th className="text-left px-5 py-4 w-28 font-semibold">구분</th>
-                    {CAT_COLS.map((c) => (
-                      <th key={c.key} className="text-right px-5 py-4 font-semibold">{c.label}</th>
-                    ))}
-                    <th
-                      className="text-right px-5 py-4 font-semibold lumina-sum-cell"
-                    >
-                      합계
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {CAT_ROWS.map((r) => {
-                    const m = matrix(r.lodging);
-                    const sum = Object.values(m).reduce((a, b) => a + b, 0);
-                    return (
-                      <tr key={r.key} style={{ borderTop: "1px solid var(--lumina-border)" }}>
-                        <td className="px-5 py-5 font-medium text-base">{r.label}</td>
-                        {CAT_COLS.map((c) => (
-                          <td key={c.key} className="text-right px-5 py-5 text-base">{num(m[c.key])}</td>
-                        ))}
-                        <td
-                          className="text-right px-5 py-5 font-semibold text-base lumina-sum-cell"
-                        >
-                          {num(sum)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="lumina-glass p-3">
+              <div className="overflow-hidden rounded-[1.15rem]">
+                <table className="w-full text-base tabular-nums border-separate border-spacing-0">
+                  <thead style={{ background: "var(--lumina-surface-high)" }}>
+                    <tr className="text-xs uppercase tracking-wider lumina-muted">
+                      <th className="text-left px-5 py-4 w-28 font-semibold">구분</th>
+                      {CAT_COLS.map((c) => (
+                        <th key={c.key} className="text-right px-5 py-4 font-semibold">{c.label}</th>
+                      ))}
+                      <th className="text-right px-5 py-4 font-semibold lumina-sum-cell">합계</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {CAT_ROWS.map((r, idx) => {
+                      const m = matrix(r.lodging);
+                      const sum = Object.values(m).reduce((a, b) => a + b, 0);
+                      const topBorder = idx === 0 ? "none" : "1px solid var(--lumina-border)";
+                      return (
+                        <tr key={r.key}>
+                          <td className="px-5 py-5 font-medium text-base" style={{ borderTop: topBorder }}>{r.label}</td>
+                          {CAT_COLS.map((c) => (
+                            <td key={c.key} className="text-right px-5 py-5 text-base" style={{ borderTop: topBorder }}>{num(m[c.key])}</td>
+                          ))}
+                          <td className="text-right px-5 py-5 font-semibold text-base lumina-sum-cell" style={{ borderTop: topBorder }}>
+                            {num(sum)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </section>
 
@@ -184,9 +173,9 @@ function CompareCard({ label, actual, pre, diff, pct, unit }: any) {
   const Icon = diff > 0 ? ArrowUp : diff < 0 ? ArrowDown : Minus;
   const trend =
     diff > 0
-      ? { color: "#0d8a5a", bg: "rgba(13,138,90,0.12)" }
+      ? { color: "#ffffff", bg: "#0d8a5a" }
       : diff < 0
-        ? { color: "#ba1a1a", bg: "rgba(186,26,26,0.12)" }
+        ? { color: "#ffffff", bg: "#ba1a1a" }
         : { color: "var(--lumina-fg-muted)", bg: "var(--lumina-surface-high)" };
   return (
     <div className="lumina-glass p-7">
@@ -205,7 +194,7 @@ function CompareCard({ label, actual, pre, diff, pct, unit }: any) {
         className="mt-5 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold"
         style={{ color: trend.color, background: trend.bg }}
       >
-        <Icon className="h-4 w-4" />
+        <Icon className="h-4 w-4" style={{ color: trend.color }} />
         {diff > 0 ? "+" : ""}{num(diff)} {unit} ({pct >= 0 ? "+" : ""}{pct.toFixed(1)}%)
       </div>
     </div>

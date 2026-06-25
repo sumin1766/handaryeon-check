@@ -52,8 +52,8 @@ function AppShellInner({ children }: { children: ReactNode }) {
   const visibleTabs = TABS.filter((t) => !t.adminOnly || isAdmin);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-30 border-b bg-card/80 backdrop-blur-xl">
+    <div className="min-h-screen text-foreground">
+      <header className="sticky top-0 z-30 border-b border-border/40 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-6 py-3">
           <Link
             to="/"
@@ -199,9 +199,9 @@ function SlidingTabs({
                 aria-disabled={disabled}
                 onClick={(e) => disabled && e.preventDefault()}
                 className={cn(
-                  "flex w-full items-center justify-center gap-2 px-3 py-4 text-base font-medium transition-colors",
+                  "flex w-full items-center justify-center gap-2 px-3 py-4 text-base font-medium transition-[color,background-color] duration-200 ease-out hover:bg-foreground/[0.04]",
                   isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-                  disabled && "cursor-not-allowed opacity-40 hover:text-muted-foreground",
+                  disabled && "cursor-not-allowed opacity-40 hover:text-muted-foreground hover:bg-transparent",
                 )}
               >
                 <Icon className="h-[18px] w-[18px]" />

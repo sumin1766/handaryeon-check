@@ -48,39 +48,39 @@
 
 :root {
   --radius: 0.5rem;
-  /* Neutral admin palette — slate ink on near-white */
-  --background: oklch(0.985 0.003 240);
-  --foreground: oklch(0.18 0.025 255);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.025 255);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.025 255);
-  --primary: oklch(0.42 0.13 250); /* deep indigo-blue */
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.95 0.008 250);
-  --secondary-foreground: oklch(0.25 0.03 255);
-  --muted: oklch(0.96 0.005 250);
-  --muted-foreground: oklch(0.48 0.018 255);
-  --accent: oklch(0.94 0.02 250);
-  --accent-foreground: oklch(0.25 0.04 255);
+  /* Lumina-aligned palette — soft lavender white */
+  --background: #fdf7ff;
+  --foreground: #1d1b20;
+  --card: #ffffff;
+  --card-foreground: #1d1b20;
+  --popover: #ffffff;
+  --popover-foreground: #1d1b20;
+  --primary: #4f378a;
+  --primary-foreground: #ffffff;
+  --secondary: #f2ecf4;
+  --secondary-foreground: #1d1b20;
+  --muted: #f2ecf4;
+  --muted-foreground: #494551;
+  --accent: #e9ddff;
+  --accent-foreground: #1d1b20;
   --destructive: oklch(0.58 0.22 27);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.91 0.01 250);
-  --input: oklch(0.92 0.01 250);
-  --ring: oklch(0.55 0.12 250);
+  --border: #e6dfea;
+  --input: #e6dfea;
+  --ring: #6750a4;
   --chart-1: oklch(0.6 0.15 250);
   --chart-2: oklch(0.65 0.17 160);
   --chart-3: oklch(0.7 0.18 60);
   --chart-4: oklch(0.6 0.2 0);
   --chart-5: oklch(0.55 0.2 300);
-  --sidebar: oklch(0.98 0.005 250);
-  --sidebar-foreground: oklch(0.18 0.025 255);
-  --sidebar-primary: oklch(0.42 0.13 250);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.94 0.02 250);
-  --sidebar-accent-foreground: oklch(0.25 0.04 255);
-  --sidebar-border: oklch(0.91 0.01 250);
-  --sidebar-ring: oklch(0.55 0.12 250);
+  --sidebar: #fdf7ff;
+  --sidebar-foreground: #1d1b20;
+  --sidebar-primary: #4f378a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e9ddff;
+  --sidebar-accent-foreground: #1d1b20;
+  --sidebar-border: #e6dfea;
+  --sidebar-ring: #6750a4;
 
   /* Gender semantic tokens — shared across lodgings, intake sheet, etc. */
   --gender-male-bg: oklch(0.93 0.05 235);
@@ -95,25 +95,25 @@
 }
 
 .dark {
-  --background: oklch(0.16 0.02 255);
-  --foreground: oklch(0.97 0.005 250);
-  --card: oklch(0.21 0.03 255);
-  --card-foreground: oklch(0.97 0.005 250);
-  --popover: oklch(0.21 0.03 255);
-  --popover-foreground: oklch(0.97 0.005 250);
-  --primary: oklch(0.72 0.13 250);
-  --primary-foreground: oklch(0.18 0.025 255);
-  --secondary: oklch(0.26 0.03 255);
-  --secondary-foreground: oklch(0.97 0.005 250);
-  --muted: oklch(0.26 0.03 255);
-  --muted-foreground: oklch(0.7 0.02 250);
-  --accent: oklch(0.3 0.04 255);
-  --accent-foreground: oklch(0.97 0.005 250);
+  --background: #0c0a0f;
+  --foreground: #f5eff7;
+  --card: #18141f;
+  --card-foreground: #f5eff7;
+  --popover: #18141f;
+  --popover-foreground: #f5eff7;
+  --primary: #cfbcff;
+  --primary-foreground: #1d1b20;
+  --secondary: #201a2b;
+  --secondary-foreground: #f5eff7;
+  --muted: #201a2b;
+  --muted-foreground: #b8aecb;
+  --accent: #2a224a;
+  --accent-foreground: #f5eff7;
   --destructive: oklch(0.65 0.2 25);
   --destructive-foreground: oklch(0.97 0.005 250);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.6 0.12 250);
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: #cfbcff;
 }
 
 @layer base {
@@ -125,9 +125,14 @@
     -webkit-font-smoothing: antialiased;
   }
   body {
-    background-color: var(--color-background);
     color: var(--color-foreground);
     font-feature-settings: "ss01", "ss02", "cv01", "tnum";
+    min-height: 100vh;
+    background-color: var(--color-background);
+    background-image:
+      radial-gradient(60% 50% at 12% 0%, color-mix(in oklab, var(--primary) 14%, transparent), transparent 60%),
+      radial-gradient(50% 40% at 100% 10%, color-mix(in oklab, var(--primary) 10%, transparent), transparent 60%);
+    background-attachment: fixed;
   }
   /* Tabular numerics globally for tables & stats */
   table, .tabular-nums, .stat, [class*="font-mono"] {
@@ -167,7 +172,7 @@
    Used by the dashboard only. Other pages keep the base theme.
    ===================================================== */
 .lumina-scope {
-  --lumina-bg: #fdf7ff;
+  --lumina-bg: transparent;
   --lumina-fg: #1d1b20;
   --lumina-fg-muted: #494551;
   --lumina-primary: #4f378a;
@@ -175,8 +180,6 @@
   --lumina-primary-container: #e9ddff;
   --lumina-secondary: #63597c;
   --lumina-secondary-container: #e1d4fd;
-  --lumina-tertiary-container: #c9a74d;
-  --lumina-tertiary-fg: #765b00;
   --lumina-border: #cbc4d2;
   --lumina-surface-low: #f8f2fa;
   --lumina-surface: #f2ecf4;
@@ -187,15 +190,11 @@
   --lumina-glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
   --lumina-primary-btn-bg: var(--lumina-primary);
   --lumina-primary-btn-shadow: 0 6px 20px rgba(103, 80, 164, 0.18);
-  background:
-    radial-gradient(60% 50% at 12% 0%, rgba(103, 80, 164, 0.10), transparent 60%),
-    radial-gradient(50% 40% at 100% 10%, rgba(201, 167, 77, 0.10), transparent 60%),
-    var(--lumina-bg);
   color: var(--lumina-fg);
   font-family: "Inter", "Pretendard", "Pretendard Variable", sans-serif;
 }
 .dark .lumina-scope {
-  --lumina-bg: #0c0a0f;
+  --lumina-bg: transparent;
   --lumina-fg: #f5eff7;
   --lumina-fg-muted: #b8aecb;
   --lumina-primary: #cfbcff;
@@ -212,10 +211,6 @@
   --lumina-glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
   --lumina-primary-btn-bg: linear-gradient(135deg, #6750a4, #4f378a);
   --lumina-primary-btn-shadow: 0 0 20px rgba(103, 80, 164, 0.35);
-  background:
-    radial-gradient(60% 50% at 12% 0%, rgba(103, 80, 164, 0.18), transparent 60%),
-    radial-gradient(50% 40% at 100% 10%, rgba(207, 188, 255, 0.08), transparent 60%),
-    var(--lumina-bg);
   color: var(--lumina-fg);
 }
 .lumina-scope .lumina-glass {
@@ -238,8 +233,8 @@
 .lumina-scope .lumina-muted { color: var(--lumina-fg-muted); }
 .lumina-scope .lumina-num { color: #1d1b20; }
 .dark .lumina-scope .lumina-num { color: #f5eff7; }
-.lumina-scope .lumina-accent { color: var(--lumina-tertiary-fg); }
-.dark .lumina-scope .lumina-accent { color: #cfbcff; }
+.lumina-scope .lumina-accent { color: #1d1b20; }
+.dark .lumina-scope .lumina-accent { color: #f5eff7; }
 .lumina-scope .lumina-sum-cell {
   background: #e9ddff;
   color: var(--lumina-primary);
