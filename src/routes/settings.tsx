@@ -31,6 +31,22 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsPage() {
+  const role = useAuthRole();
+  if (role && role !== "admin") {
+    return (
+      <AppShell>
+        <div className="max-w-md mx-auto mt-16">
+          <Card className="p-6 text-center">
+            <Lock className="h-8 w-8 mx-auto text-muted-foreground" />
+            <h1 className="mt-3 text-lg font-semibold">접근 권한 없음</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              설정 페이지는 전체관리자만 접근할 수 있습니다.
+            </p>
+          </Card>
+        </div>
+      </AppShell>
+    );
+  }
   return (
     <AppShell>
       <div className="space-y-6">
@@ -66,6 +82,13 @@ function SettingsPage() {
             summary={<ReceiptLayoutSummary />}
           >
             <ReceiptLayoutSection />
+          </SettingsCard>
+          <SettingsCard
+            icon={<Lock className="h-5 w-5" />}
+            title="비밀번호 변경"
+            summary={<PasswordSummary />}
+          >
+            <PasswordSection />
           </SettingsCard>
         </div>
       </div>
