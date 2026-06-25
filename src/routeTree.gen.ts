@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as RegistryRouteImport } from './routes/registry'
 import { Route as ReceiptRouteImport } from './routes/receipt'
 import { Route as PreRegistrationRouteImport } from './routes/pre-registration'
 import { Route as OnsiteRouteImport } from './routes/onsite'
@@ -22,6 +23,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegistryRoute = RegistryRouteImport.update({
+  id: '/registry',
+  path: '/registry',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReceiptRoute = ReceiptRouteImport.update({
@@ -74,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/onsite': typeof OnsiteRoute
   '/pre-registration': typeof PreRegistrationRoute
   '/receipt': typeof ReceiptRoute
+  '/registry': typeof RegistryRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesByTo {
@@ -85,6 +92,7 @@ export interface FileRoutesByTo {
   '/onsite': typeof OnsiteRoute
   '/pre-registration': typeof PreRegistrationRoute
   '/receipt': typeof ReceiptRoute
+  '/registry': typeof RegistryRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesById {
@@ -97,6 +105,7 @@ export interface FileRoutesById {
   '/onsite': typeof OnsiteRoute
   '/pre-registration': typeof PreRegistrationRoute
   '/receipt': typeof ReceiptRoute
+  '/registry': typeof RegistryRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
@@ -110,6 +119,7 @@ export interface FileRouteTypes {
     | '/onsite'
     | '/pre-registration'
     | '/receipt'
+    | '/registry'
     | '/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
     | '/onsite'
     | '/pre-registration'
     | '/receipt'
+    | '/registry'
     | '/settings'
   id:
     | '__root__'
@@ -132,6 +143,7 @@ export interface FileRouteTypes {
     | '/onsite'
     | '/pre-registration'
     | '/receipt'
+    | '/registry'
     | '/settings'
   fileRoutesById: FileRoutesById
 }
@@ -144,6 +156,7 @@ export interface RootRouteChildren {
   OnsiteRoute: typeof OnsiteRoute
   PreRegistrationRoute: typeof PreRegistrationRoute
   ReceiptRoute: typeof ReceiptRoute
+  RegistryRoute: typeof RegistryRoute
   SettingsRoute: typeof SettingsRoute
 }
 
@@ -154,6 +167,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/registry': {
+      id: '/registry'
+      path: '/registry'
+      fullPath: '/registry'
+      preLoaderRoute: typeof RegistryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/receipt': {
@@ -224,6 +244,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnsiteRoute: OnsiteRoute,
   PreRegistrationRoute: PreRegistrationRoute,
   ReceiptRoute: ReceiptRoute,
+  RegistryRoute: RegistryRoute,
   SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport

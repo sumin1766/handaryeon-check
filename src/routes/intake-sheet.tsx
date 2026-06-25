@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell, GenderBadge } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -6,8 +6,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
+import { useAuthRole } from "@/lib/use-auth-role";
 import { num, formatTime } from "@/lib/format";
+import { Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { useMemo, useState } from "react";
 
 export const Route = createFileRoute("/intake-sheet")({
@@ -18,6 +22,8 @@ export const Route = createFileRoute("/intake-sheet")({
 function IntakeSheetPage() {
   const { season } = useActiveSeason();
   const qc = useQueryClient();
+  const role = useAuthRole();
+  const isAdmin = role === "admin";
   useRealtimeInvalidate(["churches", "people", "lodgings"], [["intake", season?.id]]);
   const [filter, setFilter] = useState("");
 
