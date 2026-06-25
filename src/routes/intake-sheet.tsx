@@ -194,11 +194,32 @@ function IntakeSheetPage() {
                         className="h-12 w-24 text-right tabular-nums text-lg font-semibold"
                       />
                     </td>
+                    {isAdmin && (
+                      <td className="px-2 py-1">
+                        <div className="flex gap-1 justify-end">
+                          <Link to="/registry" className="inline-flex h-8 w-8 items-center justify-center rounded border hover:bg-muted" title="접수명단에서 수정">
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`'${c.name}' 교회를 삭제하시겠습니까? (연결된 명단도 함께 삭제됩니다)`)) {
+                                removeChurch.mutate(c.id);
+                              }
+                            }}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded border text-destructive hover:bg-destructive/10"
+                            title="삭제"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
               {filtered.length === 0 && (
-                <tr><td colSpan={9} className="text-center py-10 text-sm text-muted-foreground">등록된 교회가 없습니다.</td></tr>
+                <tr><td colSpan={isAdmin ? 10 : 9} className="text-center py-10 text-sm text-muted-foreground">등록된 교회가 없습니다.</td></tr>
               )}
             </tbody>
           </table>
