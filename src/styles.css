@@ -158,18 +158,27 @@
   }
 }
 
-/* Lodging gender card surfaces */
+/* Lodging gender card surfaces — light pastel backgrounds.
+   Force dark text in BOTH light & dark mode so content stays readable. */
 .lodging-male {
   background: var(--gender-male-bg);
   border-color: var(--gender-male-border);
+  color: #1d1b20;
 }
 .lodging-female {
   background: var(--gender-female-bg);
   border-color: var(--gender-female-border);
+  color: #1d1b20;
 }
 .lodging-none {
   background: var(--gender-none-bg);
   border-color: var(--gender-none-border);
+}
+/* Override muted utility classes inside pastel cards so secondary text
+   (e.g. "명" units) stays legible on the light background in dark mode. */
+.lodging-male .text-muted-foreground,
+.lodging-female .text-muted-foreground {
+  color: #5a5266 !important;
 }
 
 /* Print: only show .printable */
