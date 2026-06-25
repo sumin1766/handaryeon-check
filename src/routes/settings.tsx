@@ -19,9 +19,11 @@ import {
 } from "@/lib/receipt-layout";
 import { ReceiptLayoutEditor, type ReceiptData, type ReceiptMode } from "@/components/receipt-document";
 import { toast } from "sonner";
-import { Plus, Star, Calendar, Building2, Bath, Maximize2, Trash2, FileText } from "lucide-react";
+import { Plus, Star, Calendar, Building2, Bath, Maximize2, Trash2, FileText, Lock } from "lucide-react";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { krw } from "@/lib/format";
+import { useAuthRole } from "@/lib/use-auth-role";
+import { useAuthConfig, useUpdateAuthConfig } from "@/lib/auth-config";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "설정 — 한다련 캠프" }] }),
@@ -29,6 +31,22 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsPage() {
+  const role = useAuthRole();
+  if (role && role !== "admin") {
+    return (
+      <AppShell>
+        <div className="max-w-md mx-auto mt-16">
+          <Card className="p-6 text-center">
+            <Lock className="h-8 w-8 mx-auto text-muted-foreground" />
+            <h1 className="mt-3 text-lg font-semibold">접근 권한 없음</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              설정 페이지는 전체관리자만 접근할 수 있습니다.
+            </p>
+          </Card>
+        </div>
+      </AppShell>
+    );
+  }
   return (
     <AppShell>
       <div className="space-y-6">
@@ -64,6 +82,13 @@ function SettingsPage() {
             summary={<ReceiptLayoutSummary />}
           >
             <ReceiptLayoutSection />
+          </SettingsCard>
+          <SettingsCard
+            icon={<Lock className="h-5 w-5" />}
+            title="비밀번호 변경"
+            summary={<PasswordSummary />}
+          >
+            <PasswordSection />
           </SettingsCard>
         </div>
       </div>
@@ -564,6 +589,108 @@ function ReceiptLayoutSection() {
       </div>
       <div className="overflow-auto">
         <ReceiptLayoutEditor mode={mode} f={sample} total={15} layout={layout} onChange={setLayout} />
+      </div>
+    </div>
+  );
+}
+
+// ----- Password change (admin only) -----
+
+function PasswordSummary() {
+  const { data } = useAuthConfig();
+  return (
+    <div>
+      {data ? (
+        <div>
+          마지막 변경: <b className="text-foreground">{new Date(data.updated_at).toLocaleString("ko-KR")}</b>
+        </div>
+      ) : (
+        <div>비밀번호 설정 불러오는 중...</div>
+      )}
+      <div className="text-xs mt-1">관리자 / 일반 사용자 비밀번호를 변경합니다.</div>
+    </div>
+  );
+}
+
+function PasswordSection() {
+  const { data, isLoading } = useAuthConfig();
+  const update = useUpdateAuthConfig();
+  const [admin, setAdmin] = useState("");
+  const [user, setUser] = useState("");
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [showUser, setShowUser] = useState(false);
+
+  // initialise from DB when loaded
+  const [initialised, setInitialised] = useState(false);
+  if (data && !initialised) {
+    setAdmin(data.admin_password ?? "");
+    setUser(data.user_password ?? "");
+    setInitialised(true);
+  }
+
+  const aTrim = admin.trim();
+  const uTrim = user.trim();
+  const sameAsEach = aTrim !== "" && aTrim === uTrim;
+  const empty = !aTrim || !uTrim;
+  const disabled = update.isPending || isLoading || empty || sameAsEach;
+
+  const onSave = () => {
+    update.mutate(
+      { admin_password: admin, user_password: user },
+      {
+        onSuccess: () => toast.success("비밀번호가 변경되었습니다."),
+        onError: (e: any) => toast.error(e?.message ?? "저장 실패"),
+      },
+    );
+  };
+
+  return (
+    <div className="space-y-4 max-w-md">
+      <div className="space-y-1.5">
+        <Label htmlFor="admin-pw">전체관리자 비밀번호</Label>
+        <div className="flex gap-2">
+          <Input
+            id="admin-pw"
+            type={showAdmin ? "text" : "password"}
+            value={admin}
+            onChange={(e) => setAdmin(e.target.value)}
+            placeholder="전체관리자 비밀번호"
+          />
+          <Button type="button" variant="outline" size="sm" onClick={() => setShowAdmin((v) => !v)}>
+            {showAdmin ? "숨김" : "표시"}
+          </Button>
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="user-pw">일반 사용자 비밀번호</Label>
+        <div className="flex gap-2">
+          <Input
+            id="user-pw"
+            type={showUser ? "text" : "password"}
+            value={user}
+            onChange={(e) => setUser(e.target.value)}
+            placeholder="일반 사용자 비밀번호"
+          />
+          <Button type="button" variant="outline" size="sm" onClick={() => setShowUser((v) => !v)}>
+            {showUser ? "숨김" : "표시"}
+          </Button>
+        </div>
+      </div>
+      {empty && (
+        <div className="text-xs text-destructive">비밀번호는 비워둘 수 없습니다.</div>
+      )}
+      {sameAsEach && (
+        <div className="text-xs text-destructive">
+          관리자와 일반 사용자 비밀번호가 같을 수 없습니다 (권한 구분 불가).
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <Button onClick={onSave} disabled={disabled}>
+          {update.isPending ? "저장 중..." : "저장"}
+        </Button>
+        <span className="text-xs text-muted-foreground">
+          저장 즉시 적용되며, 다음 잠금 해제부터 새 비밀번호가 사용됩니다.
+        </span>
       </div>
     </div>
   );
