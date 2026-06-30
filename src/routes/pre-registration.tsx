@@ -219,9 +219,14 @@ function PreRegistrationPage() {
               </div>
             </div>
             {!editingId && (
-              <OcrUploader
-                onText={(t) => setText((prev) => (prev ? prev + "\n\n" : "") + t)}
-              />
+              <>
+                <OcrUploader
+                  onText={(t) => setText((prev) => (prev ? prev + "\n\n" : "") + t)}
+                />
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 px-1">
+                  ※ 손글씨는 인식 정확도가 낮을 수 있습니다. 결과를 반드시 확인·수정한 후 파싱하세요.
+                </p>
+              </>
             )}
             <Textarea
               value={text}
