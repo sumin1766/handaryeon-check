@@ -87,7 +87,13 @@ async function ocrOne(dataUrl: string, apiKey: string): Promise<string> {
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({ input: [{ type: "image_url", url: dataUrl }] }),
+    body: JSON.stringify({
+      input: [{ type: "image_url", url: dataUrl }],
+      // 줄/문단 단위 병합 — 모델이 지원하면 읽기 순서 품질이 올라가고, 무시되면 그대로 진행됨
+      aggregation_level: "paragraph",
+      merge_level: "paragraph",
+      output_format: "text",
+    }),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
