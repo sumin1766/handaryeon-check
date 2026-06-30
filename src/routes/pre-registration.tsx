@@ -486,16 +486,40 @@ const MAX_W = 2000;
 
 async function fileToDataUrl(file: File): Promise<string> {
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, MAX_W / bitmap.width);
+  // 가독성 유지를 위해 너무 작은 이미지는 1.5배 업스케일, 큰 이미지는 2000px 제한
+  const minW = 1200;
+  let scale = Math.min(1, MAX_W / bitmap.width);
+  if (bitmap.width * scale < minW) scale = Math.min(MAX_W / bitmap.width, minW / bitmap.width);
   const w = Math.round(bitmap.width * scale);
   const h = Math.round(bitmap.height * scale);
   const canvas = document.createElement("canvas");
   canvas.width = w; canvas.height = h;
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
   ctx.drawImage(bitmap, 0, 0, w, h);
   bitmap.close?.();
-  const mime = file.type === "image/jpeg" ? "image/jpeg" : "image/png";
-  return canvas.toDataURL(mime, mime === "image/jpeg" ? 0.9 : undefined);
+
+  // 그레이스케일 + 대비 강화 (contrast factor ≈ 1.35)
+  try {
+    const img = ctx.getImageData(0, 0, w, h);
+    const d = img.data;
+    const c = 1.35;
+    const intercept = 128 - 128 * c;
+    for (let i = 0; i < d.length; i += 4) {
+      // luma (BT.601)
+      const y = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      let v = c * y + intercept;
+      if (v < 0) v = 0; else if (v > 255) v = 255;
+      d[i] = d[i + 1] = d[i + 2] = v;
+    }
+    ctx.putImageData(img, 0, 0);
+  } catch {
+    // CORS-tainted 등 예외 시 전처리 생략하고 원본 사용
+  }
+
+  // 텍스트 인식에는 PNG가 일반적으로 더 안정적이므로 PNG 고정
+  return canvas.toDataURL("image/png");
 }
 
 function OcrUploader({ onText }: { onText: (text: string) => void }) {
