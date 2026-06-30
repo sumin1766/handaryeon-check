@@ -218,11 +218,16 @@ function PreRegistrationPage() {
                 <Button size="sm" onClick={onParse} disabled={!!editingId}>파싱 →</Button>
               </div>
             </div>
+            {!editingId && (
+              <OcrUploader
+                onText={(t) => setText((prev) => (prev ? prev + "\n\n" : "") + t)}
+              />
+            )}
             <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={editingId ? "수정 모드에서는 텍스트 파싱이 비활성화됩니다" : "여기에 사전접수 양식 텍스트를 붙여넣으세요…"}
-              className="min-h-[600px] font-mono text-xs"
+              placeholder={editingId ? "수정 모드에서는 텍스트 파싱이 비활성화됩니다" : "여기에 사전접수 양식 텍스트를 붙여넣거나, 위의 이미지 OCR을 사용하세요…"}
+              className="min-h-[480px] font-mono text-xs"
               disabled={!!editingId}
             />
           </Card>
