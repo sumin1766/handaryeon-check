@@ -13,8 +13,14 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 function inferUrl(): string {
-  return (Deno.env.get("NVIDIA_OCR_BASE_URL") ||
+  // Multilingual Nemotron-OCR-v2 (한국어 지원). v2_english는 영어 전용이므로 사용 금지.
+  const raw = (Deno.env.get("NVIDIA_OCR_BASE_URL") ||
     "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2").replace(/\/+$/, "");
+  // 영어 전용 엔드포인트가 설정된 경우 multilingual로 강제 교체
+  if (/nemotron-ocr-v2[_-]?english/i.test(raw)) {
+    return "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2";
+  }
+  return raw;
 }
 
 // Recursively collect plausible text fields and bbox-like info
