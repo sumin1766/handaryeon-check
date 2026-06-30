@@ -13,9 +13,8 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 function inferUrl(): string {
-  const raw = (Deno.env.get("NVIDIA_OCR_BASE_URL") ||
+  return (Deno.env.get("NVIDIA_OCR_BASE_URL") ||
     "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2").replace(/\/+$/, "");
-  return raw.endsWith("/v1/infer") ? raw : `${raw}/v1/infer`;
 }
 
 // Recursively collect plausible text fields and bbox-like info
