@@ -19,7 +19,7 @@ import {
 } from "@/lib/receipt-layout";
 import { ReceiptLayoutEditor, type ReceiptData, type ReceiptMode } from "@/components/receipt-document";
 import { toast } from "sonner";
-import { Plus, Star, Calendar, Building2, Bath, Maximize2, Trash2, FileText, Lock } from "lucide-react";
+import { Plus, Star, Calendar, Building2, Bath, Maximize2, Trash2, FileText, Lock, ScanText, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { krw } from "@/lib/format";
 import { useAuthRole } from "@/lib/use-auth-role";
@@ -89,6 +89,13 @@ function SettingsPage() {
             summary={<PasswordSummary />}
           >
             <PasswordSection />
+          </SettingsCard>
+          <SettingsCard
+            icon={<ScanText className="h-5 w-5" />}
+            title="OCR / API 키 설정"
+            summary={<OcrSummary />}
+          >
+            <OcrSection />
           </SettingsCard>
         </div>
       </div>
