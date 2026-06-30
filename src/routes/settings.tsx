@@ -19,7 +19,7 @@ import {
 } from "@/lib/receipt-layout";
 import { ReceiptLayoutEditor, type ReceiptData, type ReceiptMode } from "@/components/receipt-document";
 import { toast } from "sonner";
-import { Plus, Star, Calendar, Building2, Bath, Maximize2, Trash2, FileText, Lock } from "lucide-react";
+import { Plus, Star, Calendar, Building2, Bath, Maximize2, Trash2, FileText, Lock, ScanText, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { krw } from "@/lib/format";
 import { useAuthRole } from "@/lib/use-auth-role";
@@ -89,6 +89,13 @@ function SettingsPage() {
             summary={<PasswordSummary />}
           >
             <PasswordSection />
+          </SettingsCard>
+          <SettingsCard
+            icon={<ScanText className="h-5 w-5" />}
+            title="OCR / API 키 설정"
+            summary={<OcrSummary />}
+          >
+            <OcrSection />
           </SettingsCard>
         </div>
       </div>
@@ -673,6 +680,76 @@ function PasswordSection() {
         • <b>admin</b> — 전 메뉴 + 설정 + 모든 수정/삭제<br />
         • <b>staff</b> — 설정 제외 전 메뉴(접수명단 포함), 접수시트 수정/삭제 불가<br />
         • <b>user</b> — 대시보드 · 접수시트 · 현장접수 (수정/삭제 불가)
+      </div>
+    </div>
+  );
+}
+
+// ----- OCR / API key (admin only) -----
+
+function OcrSummary() {
+  return (
+    <div>
+      <div>NVIDIA Nemotron-OCR-v2 연동 상태</div>
+      <div className="text-xs mt-1 text-muted-foreground">서버에 API 키가 안전하게 저장되어 있습니다.</div>
+    </div>
+  );
+}
+
+function OcrSection() {
+  const [testing, setTesting] = useState(false);
+  const [result, setResult] = useState<null | { ok: boolean; msg: string }>(null);
+
+  const runTest = async () => {
+    setTesting(true);
+    setResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("ocr-image", { body: { test: true } });
+      if (error) throw error;
+      if (data?.ok) setResult({ ok: true, msg: "정상적으로 OCR 서비스에 연결되었습니다." });
+      else setResult({ ok: false, msg: data?.detail ? `연결 실패 (${data.status ?? "?"}) — ${String(data.detail).slice(0, 200)}` : "연결 실패" });
+    } catch (e: any) {
+      setResult({ ok: false, msg: e?.message ?? "연결 실패" });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4 max-w-xl">
+      <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          API 키 등록됨 <span className="font-mono text-muted-foreground">●●●●●●●●0sp</span>
+        </div>
+        <div className="text-xs text-muted-foreground">
+          엔드포인트: <code className="font-mono">https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2</code>
+        </div>
+        <div className="text-xs text-muted-foreground">
+          모델: <b>NVIDIA Nemotron-OCR-v2</b> · PNG/JPEG 이미지에서 텍스트 추출
+        </div>
+      </div>
+
+      <div>
+        <Button onClick={runTest} disabled={testing} size="sm">
+          {testing ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> 테스트 중...</> : "연결 테스트"}
+        </Button>
+      </div>
+
+      {result && (
+        <div className={`rounded border px-3 py-2 text-sm flex items-start gap-2 ${
+          result.ok ? "border-emerald-300 bg-emerald-50 text-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-100" :
+                     "border-red-300 bg-red-50 text-red-900 dark:bg-red-900/20 dark:text-red-100"
+        }`}>
+          {result.ok ? <CheckCircle2 className="h-4 w-4 mt-0.5" /> : <XCircle className="h-4 w-4 mt-0.5" />}
+          <div className="break-all">{result.msg}</div>
+        </div>
+      )}
+
+      <div className="text-xs text-muted-foreground border-t pt-3 space-y-1">
+        <div>• API 키와 엔드포인트는 서버 시크릿(<code>NVIDIA_OCR_API_KEY</code>, <code>NVIDIA_OCR_BASE_URL</code>)으로 안전하게 보관됩니다.</div>
+        <div>• 키를 새 값으로 교체하려면 채팅에서 새 키를 보내 주세요. 클라이언트로 키 전체를 노출하지 않습니다.</div>
+        <div>• 사용처: 사전접수 페이지의 이미지 첨부 → 자동 텍스트 추출 → 기존 파서로 명단 추출.</div>
       </div>
     </div>
   );

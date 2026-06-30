@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Save, Trash2, Plus, Pencil, X } from "lucide-react";
+import { AlertTriangle, Save, Trash2, Plus, Pencil, X, Image as ImageIcon, Loader2, ScanText } from "lucide-react";
 import { num } from "@/lib/format";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 
@@ -218,11 +218,16 @@ function PreRegistrationPage() {
                 <Button size="sm" onClick={onParse} disabled={!!editingId}>파싱 →</Button>
               </div>
             </div>
+            {!editingId && (
+              <OcrUploader
+                onText={(t) => setText((prev) => (prev ? prev + "\n\n" : "") + t)}
+              />
+            )}
             <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={editingId ? "수정 모드에서는 텍스트 파싱이 비활성화됩니다" : "여기에 사전접수 양식 텍스트를 붙여넣으세요…"}
-              className="min-h-[600px] font-mono text-xs"
+              placeholder={editingId ? "수정 모드에서는 텍스트 파싱이 비활성화됩니다" : "여기에 사전접수 양식 텍스트를 붙여넣거나, 위의 이미지 OCR을 사용하세요…"}
+              className="min-h-[480px] font-mono text-xs"
               disabled={!!editingId}
             />
           </Card>
@@ -471,6 +476,171 @@ function NameEditor({ title, names, onChange }: { title: string; names: { name: 
           <Plus className="h-3 w-3" /> 추가
         </button>
       </div>
+    </div>
+  );
+}
+
+// ----- OCR Uploader -----
+
+const MAX_W = 2000;
+
+async function fileToDataUrl(file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, MAX_W / bitmap.width);
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close?.();
+  const mime = file.type === "image/jpeg" ? "image/jpeg" : "image/png";
+  return canvas.toDataURL(mime, mime === "image/jpeg" ? 0.9 : undefined);
+}
+
+function OcrUploader({ onText }: { onText: (text: string) => void }) {
+  const [items, setItems] = useState<{ id: string; preview: string; status: "pending" | "running" | "done" | "error"; msg?: string }[]>([]);
+  const [running, setRunning] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const addFiles = async (files: FileList | File[]) => {
+    const list = Array.from(files).filter((f) => /^image\/(png|jpe?g)$/i.test(f.type));
+    if (list.length === 0) {
+      toast.error("PNG/JPEG 이미지만 첨부할 수 있습니다.");
+      return;
+    }
+    const newItems = await Promise.all(list.map(async (f) => ({
+      id: crypto.randomUUID(),
+      preview: await fileToDataUrl(f),
+      status: "pending" as const,
+    })));
+    setItems((prev) => [...prev, ...newItems]);
+  };
+
+  const onPaste = (e: React.ClipboardEvent) => {
+    const files: File[] = [];
+    for (const it of Array.from(e.clipboardData.items)) {
+      if (it.kind === "file") {
+        const f = it.getAsFile();
+        if (f) files.push(f);
+      }
+    }
+    if (files.length) {
+      e.preventDefault();
+      addFiles(files);
+    }
+  };
+
+  const runOcr = async () => {
+    const pending = items.filter((i) => i.status === "pending" || i.status === "error");
+    if (pending.length === 0) return;
+    setRunning(true);
+    const collected: string[] = [];
+    for (const it of pending) {
+      setItems((prev) => prev.map((p) => p.id === it.id ? { ...p, status: "running", msg: undefined } : p));
+      try {
+        const { data, error } = await supabase.functions.invoke("ocr-image", { body: { imageBase64: it.preview } });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        const txt: string = (data?.text ?? "").trim();
+        if (!txt) {
+          setItems((prev) => prev.map((p) => p.id === it.id ? { ...p, status: "error", msg: "텍스트를 인식하지 못했습니다." } : p));
+        } else {
+          collected.push(txt);
+          setItems((prev) => prev.map((p) => p.id === it.id ? { ...p, status: "done" } : p));
+        }
+      } catch (e: any) {
+        setItems((prev) => prev.map((p) => p.id === it.id ? { ...p, status: "error", msg: e?.message ?? "OCR 실패" } : p));
+      }
+    }
+    setRunning(false);
+    if (collected.length) {
+      onText(collected.join("\n\n"));
+      toast.success(`${collected.length}장의 이미지에서 텍스트를 추출했습니다.`);
+    } else {
+      toast.error("이미지 인식에 실패했습니다. 텍스트를 직접 붙여넣어 주세요.");
+    }
+  };
+
+  return (
+    <div className="rounded-lg border bg-muted/20 p-3 space-y-2"
+      onPaste={onPaste}
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault(); setDragOver(false);
+        if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
+      }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <ScanText className="h-4 w-4 text-primary" /> 이미지에서 자동 텍스트 추출 (OCR)
+        </div>
+        <div className="flex gap-2">
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/png,image/jpeg"
+            multiple
+            className="hidden"
+            onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }}
+          />
+          <Button size="sm" variant="outline" onClick={() => inputRef.current?.click()} disabled={running}>
+            <ImageIcon className="h-3 w-3 mr-1" /> 이미지 선택
+          </Button>
+          <Button size="sm" onClick={runOcr} disabled={running || items.every((i) => i.status === "done")}>
+            {running ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> 인식 중...</> : "OCR 실행"}
+          </Button>
+        </div>
+      </div>
+
+      <div
+        className={`min-h-[80px] rounded border border-dashed px-3 py-2 text-xs transition ${
+          dragOver ? "border-primary bg-primary/5" : "border-border text-muted-foreground"
+        }`}
+      >
+        {items.length === 0 ? (
+          <div className="flex items-center justify-center h-full py-4 text-center">
+            파일 선택 · 드래그앤드롭 · 클립보드 붙여넣기(Ctrl+V) · 다중 이미지 지원 (PNG/JPEG)
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {items.map((it) => (
+              <div key={it.id} className="relative w-24 h-24 rounded overflow-hidden border bg-background">
+                <img src={it.preview} alt="" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setItems((prev) => prev.filter((p) => p.id !== it.id))}
+                  className="absolute top-0.5 right-0.5 h-5 w-5 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80"
+                  aria-label="삭제"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+                <div className="absolute bottom-0 inset-x-0 text-[10px] px-1 py-0.5 text-center text-white"
+                  style={{
+                    background:
+                      it.status === "done" ? "rgba(16,185,129,0.85)" :
+                      it.status === "running" ? "rgba(59,130,246,0.85)" :
+                      it.status === "error" ? "rgba(220,38,38,0.85)" : "rgba(0,0,0,0.55)",
+                  }}
+                  title={it.msg}
+                >
+                  {it.status === "done" ? "완료" :
+                   it.status === "running" ? "인식 중..." :
+                   it.status === "error" ? "실패" : "대기"}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {items.some((i) => i.status === "error") && (
+        <div className="text-xs text-destructive">
+          일부 이미지 인식에 실패했습니다. 다시 시도하거나 텍스트를 직접 입력해 주세요.
+        </div>
+      )}
     </div>
   );
 }
