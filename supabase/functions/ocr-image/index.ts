@@ -127,16 +127,14 @@ async function ocrOne(dataUrl: string, apiKey: string, url: string): Promise<str
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
-    const apiKey = Deno.env.get("NVIDIA_OCR_API_KEY");
-    if (!apiKey) return jsonResponse({ error: "NVIDIA_OCR_API_KEY가 설정되지 않았습니다." }, 500);
+    const { apiKey, url } = await loadConfig();
+    if (!apiKey) return jsonResponse({ error: "OCR API 키가 설정되지 않았습니다." }, 500);
     const body = await req.json().catch(() => ({}));
 
-    // Connection test mode
     if (body?.test === true) {
-      // 1x1 white PNG
       const px = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
       try {
-        await ocrOne(px, apiKey);
+        await ocrOne(px, apiKey, url);
         return jsonResponse({ ok: true });
       } catch (e) {
         if (e instanceof Response) {
@@ -155,7 +153,7 @@ Deno.serve(async (req) => {
     const parts: string[] = [];
     for (const img of images) {
       try {
-        const t = await ocrOne(img, apiKey);
+        const t = await ocrOne(img, apiKey, url);
         if (t) parts.push(t);
       } catch (e) {
         if (e instanceof Response) {
