@@ -218,7 +218,7 @@ function PreRegistrationPage() {
                 <Button size="sm" onClick={onParse} disabled={!!editingId}>파싱 →</Button>
               </div>
             </div>
-            {!editingId && (
+            {!editingId && ocrEnabled && (
               <>
                 <OcrUploader
                   onText={(t) => setText((prev) => (prev ? prev + "\n\n" : "") + t)}
