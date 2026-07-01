@@ -91,11 +91,11 @@ function joinItems(items: Item[]): string {
   return lines.map((ln) => ln.sort((a, b) => a.x - b.x).map((i) => i.text).join(" ")).join("\n");
 }
 
-async function ocrOne(dataUrl: string, apiKey: string): Promise<string> {
+async function ocrOne(dataUrl: string, apiKey: string, url: string): Promise<string> {
   if (!/^data:image\/(png|jpe?g);base64,/i.test(dataUrl)) {
     throw new Response("PNG/JPEG data URL만 지원됩니다.", { status: 422 });
   }
-  const res = await fetch(inferUrl(), {
+  const res = await fetch(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -104,7 +104,6 @@ async function ocrOne(dataUrl: string, apiKey: string): Promise<string> {
     },
     body: JSON.stringify({
       input: [{ type: "image_url", url: dataUrl }],
-      // 줄/문단 단위 병합 — 모델이 지원하면 읽기 순서 품질이 올라가고, 무시되면 그대로 진행됨
       aggregation_level: "paragraph",
       merge_level: "paragraph",
       output_format: "text",
