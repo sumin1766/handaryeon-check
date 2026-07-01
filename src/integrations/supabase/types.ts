@@ -18,16 +18,19 @@ export type Database = {
         Row: {
           bath_unit_price: number
           created_at: string
+          ocr_enabled: boolean
           season_id: string
         }
         Insert: {
           bath_unit_price?: number
           created_at?: string
+          ocr_enabled?: boolean
           season_id: string
         }
         Update: {
           bath_unit_price?: number
           created_at?: string
+          ocr_enabled?: boolean
           season_id?: string
         }
         Relationships: [
@@ -217,6 +220,27 @@ export type Database = {
           },
         ]
       }
+      ocr_config: {
+        Row: {
+          api_key: string | null
+          base_url: string | null
+          id: number
+          updated_at: string
+        }
+        Insert: {
+          api_key?: string | null
+          base_url?: string | null
+          id: number
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string | null
+          base_url?: string | null
+          id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       people: {
         Row: {
           age_group: string
@@ -327,6 +351,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      ocr_config_update: {
+        Args: {
+          current_admin: string
+          new_api_key: string
+          new_base_url: string
+        }
+        Returns: Json
+      }
+      ocr_status: { Args: never; Returns: Json }
       verify_password: { Args: { p: string }; Returns: string }
     }
     Enums: {

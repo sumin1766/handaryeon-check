@@ -90,7 +90,16 @@ function PreRegistrationPage() {
   const [edited, setEdited] = useState<ParsedRegistration | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  useRealtimeInvalidate(["churches", "people"], [["pre-list"]]);
+  useRealtimeInvalidate(["churches", "people", "app_settings"], [["pre-list"], ["pre_ocr_enabled"]]);
+
+  const { data: ocrEnabled = false } = useQuery({
+    queryKey: ["pre_ocr_enabled", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data } = await supabase.from("app_settings").select("*").eq("season_id", season!.id).maybeSingle();
+      return !!(data as any)?.ocr_enabled;
+    },
+  });
 
   const current = edited ?? parsedFromText;
   const totals = totalCounts(current);
@@ -218,7 +227,7 @@ function PreRegistrationPage() {
                 <Button size="sm" onClick={onParse} disabled={!!editingId}>파싱 →</Button>
               </div>
             </div>
-            {!editingId && (
+            {!editingId && ocrEnabled && (
               <>
                 <OcrUploader
                   onText={(t) => setText((prev) => (prev ? prev + "\n\n" : "") + t)}

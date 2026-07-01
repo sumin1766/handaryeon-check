@@ -687,18 +687,59 @@ function PasswordSection() {
 
 // ----- OCR / API key (admin only) -----
 
+function useOcrStatus() {
+  return useQuery({
+    queryKey: ["ocr_status"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("ocr_status" as any);
+      if (error) throw error;
+      return data as { has_key: boolean; key_last4: string | null; base_url: string };
+    },
+  });
+}
+
+function useOcrEnabled() {
+  const { season } = useActiveSeason();
+  return useQuery({
+    queryKey: ["app_settings_ocr", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data } = await supabase.from("app_settings").select("*").eq("season_id", season!.id).maybeSingle();
+      return { enabled: !!(data as any)?.ocr_enabled, seasonId: season!.id };
+    },
+  });
+}
+
 function OcrSummary() {
+  const { data: status } = useOcrStatus();
+  const { data: en } = useOcrEnabled();
   return (
     <div>
-      <div>NVIDIA Nemotron-OCR-v2 연동 상태</div>
-      <div className="text-xs mt-1 text-muted-foreground">서버에 API 키가 안전하게 저장되어 있습니다.</div>
+      <div>
+        {en?.enabled ? <span className="text-emerald-600 font-medium">사용 중</span> : <span className="text-muted-foreground">꺼짐</span>}
+        {" · "}
+        {status?.has_key
+          ? <>키 등록됨 <span className="font-mono">●●●●{status.key_last4}</span></>
+          : <span className="text-red-600">키 미등록</span>}
+      </div>
+      <div className="text-xs mt-1 text-muted-foreground">NVIDIA Nemotron-OCR-v2</div>
     </div>
   );
 }
 
 function OcrSection() {
+  const qc = useQueryClient();
+  const { data: status, refetch: refetchStatus } = useOcrStatus();
+  const { data: en } = useOcrEnabled();
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<null | { ok: boolean; msg: string }>(null);
+  const [editing, setEditing] = useState(false);
+  const [pwd, setPwd] = useState("");
+  const [newKey, setNewKey] = useState("");
+  const [newUrl, setNewUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const hasKey = !!status?.has_key;
 
   const runTest = async () => {
     setTesting(true);
@@ -715,26 +756,107 @@ function OcrSection() {
     }
   };
 
+  const toggle = async (next: boolean) => {
+    if (!en?.seasonId) return;
+    if (next && !hasKey) {
+      toast.error("API 키가 등록되지 않았습니다. 먼저 키를 등록하세요.");
+      return;
+    }
+    const { error } = await supabase.from("app_settings").upsert({ season_id: en.seasonId, ocr_enabled: next } as any);
+    if (error) { toast.error(error.message); return; }
+    qc.invalidateQueries({ queryKey: ["app_settings"] });
+    qc.invalidateQueries({ queryKey: ["app_settings_ocr"] });
+    qc.invalidateQueries({ queryKey: ["ocr_enabled"] });
+    toast.success(next ? "OCR 기능이 켜졌습니다" : "OCR 기능이 꺼졌습니다");
+  };
+
+  const saveConfig = async () => {
+    if (!pwd.trim()) { toast.error("관리자 비밀번호를 입력하세요."); return; }
+    if (!newKey.trim() && !newUrl.trim()) { toast.error("변경할 값을 입력하세요."); return; }
+    setSaving(true);
+    try {
+      const { error } = await supabase.rpc("ocr_config_update" as any, {
+        current_admin: pwd, new_api_key: newKey || null, new_base_url: newUrl || null,
+      });
+      if (error) throw error;
+      toast.success("저장되었습니다");
+      setPwd(""); setNewKey(""); setNewUrl(""); setEditing(false);
+      await refetchStatus();
+    } catch (e: any) {
+      toast.error(e?.message ?? "저장 실패");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-4 max-w-xl">
+      {/* Toggle */}
+      <div className="rounded-lg border p-4 flex items-start justify-between gap-4">
+        <div>
+          <div className="text-sm font-medium">OCR 기능 사용</div>
+          <div className="text-xs text-muted-foreground mt-1">
+            끄면 사전접수 화면에서 이미지 첨부/OCR 입력이 숨겨집니다.
+          </div>
+          {!hasKey && (
+            <div className="text-xs text-red-600 mt-1">API 키가 등록되어 있지 않아 켤 수 없습니다.</div>
+          )}
+        </div>
+        <Switch checked={!!en?.enabled} onCheckedChange={toggle} disabled={!hasKey} />
+      </div>
+
+      {/* Status */}
       <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
         <div className="flex items-center gap-2 text-sm font-medium">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-          API 키 등록됨 <span className="font-mono text-muted-foreground">●●●●●●●●0sp</span>
+          {hasKey ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <XCircle className="h-4 w-4 text-red-600" />}
+          {hasKey
+            ? <>API 키 등록됨 <span className="font-mono text-muted-foreground">●●●●{status?.key_last4}</span></>
+            : <>API 키 미등록</>}
         </div>
-        <div className="text-xs text-muted-foreground">
-          엔드포인트: <code className="font-mono">https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2</code>
+        <div className="text-xs text-muted-foreground break-all">
+          엔드포인트: <code className="font-mono">{status?.base_url || "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2"}</code>
         </div>
         <div className="text-xs text-muted-foreground">
           모델: <b>NVIDIA Nemotron-OCR-v2</b> · PNG/JPEG 이미지에서 텍스트 추출
         </div>
       </div>
 
-      <div>
+      {/* Actions */}
+      <div className="flex gap-2 flex-wrap">
         <Button onClick={runTest} disabled={testing} size="sm">
           {testing ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> 테스트 중...</> : "연결 테스트"}
         </Button>
+        <Button size="sm" variant={editing ? "secondary" : "outline"} onClick={() => setEditing((v) => !v)}>
+          {editing ? "취소" : "키 변경 / 수정"}
+        </Button>
       </div>
+
+      {/* Edit form */}
+      {editing && (
+        <div className="rounded-lg border p-4 space-y-3 bg-background">
+          <div>
+            <Label className="text-xs">관리자 비밀번호 (확인)</Label>
+            <Input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} placeholder="현재 관리자 비밀번호" />
+          </div>
+          <div>
+            <Label className="text-xs">새 API 키 (비워두면 유지)</Label>
+            <Input type="password" value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="nvapi-..." className="font-mono" />
+          </div>
+          <div>
+            <Label className="text-xs">새 엔드포인트 URL (비워두면 유지)</Label>
+            <Input value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder="https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2" className="font-mono text-xs" />
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={saveConfig} disabled={saving} size="sm">
+              {saving ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> 저장 중...</> : "저장"}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { setEditing(false); setPwd(""); setNewKey(""); setNewUrl(""); }}>취소</Button>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            빈 값은 저장되지 않으며 기존 값이 유지됩니다. 저장된 키는 서버에만 보관되고 마지막 4자리만 표시됩니다.
+          </div>
+        </div>
+      )}
 
       {result && (
         <div className={`rounded border px-3 py-2 text-sm flex items-start gap-2 ${
@@ -747,11 +869,11 @@ function OcrSection() {
       )}
 
       <div className="text-xs text-muted-foreground border-t pt-3 space-y-1">
-        <div>• API 키와 엔드포인트는 서버 시크릿(<code>NVIDIA_OCR_API_KEY</code>, <code>NVIDIA_OCR_BASE_URL</code>)으로 안전하게 보관됩니다.</div>
-        <div>• 키를 새 값으로 교체하려면 채팅에서 새 키를 보내 주세요. 클라이언트로 키 전체를 노출하지 않습니다.</div>
+        <div>• API 키/엔드포인트는 서버에만 저장되며, 화면에는 마지막 4자리만 노출됩니다.</div>
         <div>• 사용처: 사전접수 페이지의 이미지 첨부 → 자동 텍스트 추출 → 기존 파서로 명단 추출.</div>
       </div>
     </div>
   );
 }
+
 

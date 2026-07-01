@@ -1,4 +1,6 @@
 // OCR image edge function — calls NVIDIA Nemotron-OCR-v2
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -12,15 +14,28 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-function inferUrl(): string {
-  // Multilingual Nemotron-OCR-v2 (한국어 지원). v2_english는 영어 전용이므로 사용 금지.
-  const raw = (Deno.env.get("NVIDIA_OCR_BASE_URL") ||
-    "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2").replace(/\/+$/, "");
-  // 영어 전용 엔드포인트가 설정된 경우 multilingual로 강제 교체
-  if (/nemotron-ocr-v2[_-]?english/i.test(raw)) {
+function normalizeUrl(raw: string): string {
+  const u = (raw || "").replace(/\/+$/, "");
+  if (/nemotron-ocr-v2[_-]?english/i.test(u)) {
     return "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2";
   }
-  return raw;
+  return u || "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2";
+}
+
+async function loadConfig(): Promise<{ apiKey: string; url: string }> {
+  let apiKey = Deno.env.get("NVIDIA_OCR_API_KEY") || "";
+  let url = Deno.env.get("NVIDIA_OCR_BASE_URL") || "";
+  try {
+    const sbUrl = Deno.env.get("SUPABASE_URL");
+    const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (sbUrl && svc) {
+      const admin = createClient(sbUrl, svc, { auth: { persistSession: false } });
+      const { data } = await admin.from("ocr_config").select("api_key, base_url").eq("id", 1).maybeSingle();
+      if (data?.api_key && String(data.api_key).trim()) apiKey = String(data.api_key).trim();
+      if (data?.base_url && String(data.base_url).trim()) url = String(data.base_url).trim();
+    }
+  } catch { /* fall back to env */ }
+  return { apiKey, url: normalizeUrl(url) };
 }
 
 // Recursively collect plausible text fields and bbox-like info
@@ -76,11 +91,11 @@ function joinItems(items: Item[]): string {
   return lines.map((ln) => ln.sort((a, b) => a.x - b.x).map((i) => i.text).join(" ")).join("\n");
 }
 
-async function ocrOne(dataUrl: string, apiKey: string): Promise<string> {
+async function ocrOne(dataUrl: string, apiKey: string, url: string): Promise<string> {
   if (!/^data:image\/(png|jpe?g);base64,/i.test(dataUrl)) {
     throw new Response("PNG/JPEG data URL만 지원됩니다.", { status: 422 });
   }
-  const res = await fetch(inferUrl(), {
+  const res = await fetch(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -89,7 +104,6 @@ async function ocrOne(dataUrl: string, apiKey: string): Promise<string> {
     },
     body: JSON.stringify({
       input: [{ type: "image_url", url: dataUrl }],
-      // 줄/문단 단위 병합 — 모델이 지원하면 읽기 순서 품질이 올라가고, 무시되면 그대로 진행됨
       aggregation_level: "paragraph",
       merge_level: "paragraph",
       output_format: "text",
@@ -113,16 +127,14 @@ async function ocrOne(dataUrl: string, apiKey: string): Promise<string> {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
-    const apiKey = Deno.env.get("NVIDIA_OCR_API_KEY");
-    if (!apiKey) return jsonResponse({ error: "NVIDIA_OCR_API_KEY가 설정되지 않았습니다." }, 500);
+    const { apiKey, url } = await loadConfig();
+    if (!apiKey) return jsonResponse({ error: "OCR API 키가 설정되지 않았습니다." }, 500);
     const body = await req.json().catch(() => ({}));
 
-    // Connection test mode
     if (body?.test === true) {
-      // 1x1 white PNG
       const px = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
       try {
-        await ocrOne(px, apiKey);
+        await ocrOne(px, apiKey, url);
         return jsonResponse({ ok: true });
       } catch (e) {
         if (e instanceof Response) {
@@ -141,7 +153,7 @@ Deno.serve(async (req) => {
     const parts: string[] = [];
     for (const img of images) {
       try {
-        const t = await ocrOne(img, apiKey);
+        const t = await ocrOne(img, apiKey, url);
         if (t) parts.push(t);
       } catch (e) {
         if (e instanceof Response) {
