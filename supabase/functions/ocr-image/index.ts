@@ -1,4 +1,6 @@
 // OCR image edge function — calls NVIDIA Nemotron-OCR-v2
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -12,15 +14,28 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-function inferUrl(): string {
-  // Multilingual Nemotron-OCR-v2 (한국어 지원). v2_english는 영어 전용이므로 사용 금지.
-  const raw = (Deno.env.get("NVIDIA_OCR_BASE_URL") ||
-    "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2").replace(/\/+$/, "");
-  // 영어 전용 엔드포인트가 설정된 경우 multilingual로 강제 교체
-  if (/nemotron-ocr-v2[_-]?english/i.test(raw)) {
+function normalizeUrl(raw: string): string {
+  const u = (raw || "").replace(/\/+$/, "");
+  if (/nemotron-ocr-v2[_-]?english/i.test(u)) {
     return "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2";
   }
-  return raw;
+  return u || "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2";
+}
+
+async function loadConfig(): Promise<{ apiKey: string; url: string }> {
+  let apiKey = Deno.env.get("NVIDIA_OCR_API_KEY") || "";
+  let url = Deno.env.get("NVIDIA_OCR_BASE_URL") || "";
+  try {
+    const sbUrl = Deno.env.get("SUPABASE_URL");
+    const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (sbUrl && svc) {
+      const admin = createClient(sbUrl, svc, { auth: { persistSession: false } });
+      const { data } = await admin.from("ocr_config").select("api_key, base_url").eq("id", 1).maybeSingle();
+      if (data?.api_key && String(data.api_key).trim()) apiKey = String(data.api_key).trim();
+      if (data?.base_url && String(data.base_url).trim()) url = String(data.base_url).trim();
+    }
+  } catch { /* fall back to env */ }
+  return { apiKey, url: normalizeUrl(url) };
 }
 
 // Recursively collect plausible text fields and bbox-like info
