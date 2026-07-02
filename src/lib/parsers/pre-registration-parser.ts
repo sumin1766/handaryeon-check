@@ -190,7 +190,8 @@ function tokenize(text: string): string[] {
       // 이름(2-4 한글) + 공백 + 다음 이름(2-4 한글) → 다른 사람으로 분리
       // 결정: 이미 buf에 이름 형태가 있고, 뒤의 다음 토큰이 title/grade가 아니면 분리
       const trimmed = buf.trim();
-      const isNameOnly = /^[가-힣]{2,4}$/.test(trimmed);
+      // 이름 단독, 또는 "이름(부가정보)" 형태면 다음이 사람일 가능성 검사
+      const isNameOnly = /^[가-힣]{2,4}(\s*\([^)]*\))?$/.test(trimmed);
       if (isNameOnly) {
         // peek 다음 단어
         let j = i + 1;
