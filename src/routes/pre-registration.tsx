@@ -72,6 +72,7 @@ function emptyParsed(): ParsedRegistration {
       female_adult: emptyBucket(),
     },
     warnings: [],
+    excluded: [],
   };
 }
 
