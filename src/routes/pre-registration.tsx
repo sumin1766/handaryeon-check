@@ -291,6 +291,20 @@ function PreRegistrationPage() {
               </div>
             )}
 
+            {current.excluded.length > 0 && (
+              <details className="rounded border bg-muted/30 px-3 py-2 text-xs">
+                <summary className="cursor-pointer font-semibold text-muted-foreground">
+                  제외됨 ({current.excluded.length}) — 사람이 아니라고 판단된 텍스트
+                </summary>
+                <ul className="list-disc pl-4 mt-1 space-y-0.5 text-muted-foreground">
+                  {current.excluded.map((x, i) => <li key={i} className="break-all">{x}</li>)}
+                </ul>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  잘못 제외되었다면 아래 카테고리에서 "추가"로 수동 입력하세요.
+                </p>
+              </details>
+            )}
+
             <div className="space-y-3">
               {KEYS.map((k) => {
                 const b = current.categories[k];
