@@ -264,10 +264,6 @@ function PreRegistrationPage() {
                 AI 파서로 처리됨 — 결과를 반드시 검토·수정 후 저장하세요.
               </div>
             )}
-            <div className="hidden">
-              <Button size="sm">_</Button>
-              </div>
-            </div>
             {!editingId && ocrEnabled && (
               <>
                 <OcrUploader
