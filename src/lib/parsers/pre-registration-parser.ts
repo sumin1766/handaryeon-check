@@ -335,8 +335,22 @@ export function parsePreRegistration(input: string): ParsedRegistration {
     let s = contactBlock.replace(/(0\d{1,2})[\s\-.]?(\d{3,4})[\s\-.]?(\d{4})/g, " ");
     s = s.replace(/[\/,]/g, " ").replace(/\s+/g, " ").trim();
     // 첫 한글 2~4자를 이름으로 채택하되, 뒤에 붙은 직분 제거
-    const mName = s.match(/([가-힣]{2,4})(?:\s*(?:전도사|목사|사모|교사|집사|권사|장로|교역자|본인))?/);
-    if (mName) result.contact_name = mName[1];
+    // 이름 뒤에 붙는 직분을 최소 매칭으로 먼저 시도 (예: "최애정전도사" → "최애정")
+    const TITLE_RX = /(전도사|목사|사모|교역자|교사|집사|권사|장로|본인)/;
+    let picked: string | null = null;
+    for (let len = 2; len <= 4; len++) {
+      const rx = new RegExp(`([가-힣]{${len}})(?:${TITLE_RX.source}|\\s|$)`);
+      const m = s.match(rx);
+      if (m && /전도사|목사|사모|교역자|교사|집사|권사|장로|본인/.test(s.slice(m.index! + len, m.index! + len + 4))) {
+        picked = m[1];
+        break;
+      }
+    }
+    if (!picked) {
+      const mName = s.match(/([가-힣]{2,4})/);
+      if (mName) picked = mName[1];
+    }
+    if (picked) result.contact_name = picked;
   }
   // fallback: 전화 없으면 전체 텍스트에서 첫 번호
   if (!result.phone) {
