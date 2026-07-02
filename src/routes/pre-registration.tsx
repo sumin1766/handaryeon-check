@@ -16,10 +16,11 @@ import {
   type CategoryBucket,
   type ParsedRegistration,
 } from "@/lib/parsers/pre-registration-parser";
+import { parseWithLlmOrFallback, type ParseSource } from "@/lib/parsers/llm-parser";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Save, Trash2, Plus, Pencil, X, Image as ImageIcon, Loader2, ScanText } from "lucide-react";
+import { AlertTriangle, Save, Trash2, Plus, Pencil, X, Image as ImageIcon, Loader2, ScanText, Sparkles } from "lucide-react";
 import { num } from "@/lib/format";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 
