@@ -248,7 +248,24 @@ function PreRegistrationPage() {
                 <Button size="sm" variant="outline" onClick={() => { setText(""); if (!editingId) setEdited(null); }}>
                   <Trash2 className="h-3 w-3 mr-1" />지우기
                 </Button>
-                <Button size="sm" onClick={onParse} disabled={!!editingId}>파싱 →</Button>
+                <Button size="sm" onClick={onParse} disabled={!!editingId || parsing || !text.trim()}>
+                  {parsing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                  {parsing ? "AI 파싱 중…" : "AI 파싱 →"}
+                </Button>
+              </div>
+            </div>
+            {parseSource === "rule" && parseNotice && (
+              <div className="rounded border border-amber-400/50 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-900 dark:bg-amber-900/20 dark:text-amber-100">
+                {parseNotice}
+              </div>
+            )}
+            {parseSource === "llm" && !parsing && (
+              <div className="rounded border border-emerald-400/40 bg-emerald-50 px-3 py-1.5 text-[11px] text-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-100">
+                AI 파서로 처리됨 — 결과를 반드시 검토·수정 후 저장하세요.
+              </div>
+            )}
+            <div className="hidden">
+              <Button size="sm">_</Button>
               </div>
             </div>
             {!editingId && ocrEnabled && (
