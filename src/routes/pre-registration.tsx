@@ -16,10 +16,11 @@ import {
   type CategoryBucket,
   type ParsedRegistration,
 } from "@/lib/parsers/pre-registration-parser";
+import { parseWithLlmOrFallback, type ParseSource } from "@/lib/parsers/llm-parser";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Save, Trash2, Plus, Pencil, X, Image as ImageIcon, Loader2, ScanText } from "lucide-react";
+import { AlertTriangle, Save, Trash2, Plus, Pencil, X, Image as ImageIcon, Loader2, ScanText, Sparkles } from "lucide-react";
 import { num } from "@/lib/format";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 
@@ -90,6 +91,9 @@ function PreRegistrationPage() {
   const parsedFromText = useMemo(() => parsePreRegistration(text), [text]);
   const [edited, setEdited] = useState<ParsedRegistration | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [parsing, setParsing] = useState(false);
+  const [parseSource, setParseSource] = useState<ParseSource | null>(null);
+  const [parseNotice, setParseNotice] = useState<string | null>(null);
 
   useRealtimeInvalidate(["churches", "people", "app_settings"], [["pre-list"], ["pre_ocr_enabled"]]);
 
@@ -105,12 +109,31 @@ function PreRegistrationPage() {
   const current = edited ?? parsedFromText;
   const totals = totalCounts(current);
 
-  const onParse = () => setEdited(parsePreRegistration(text));
+  const onParse = async () => {
+    if (!text.trim() || parsing) return;
+    setParsing(true);
+    setParseNotice(null);
+    try {
+      const outcome = await parseWithLlmOrFallback(text);
+      setEdited(outcome.parsed);
+      setParseSource(outcome.source);
+      if (outcome.source === "llm") {
+        toast.success("AI 파싱 완료 — 결과를 검토·수정 후 저장하세요.");
+      } else {
+        setParseNotice(outcome.error ? `규칙 파서로 처리됨 — ${outcome.error}` : "규칙 파서로 처리됨 — 확인 필요");
+        toast.warning("AI 파싱 실패 — 규칙 파서 결과를 확인하세요.");
+      }
+    } finally {
+      setParsing(false);
+    }
+  };
 
   const resetForm = () => {
     setText("");
     setEdited(null);
     setEditingId(null);
+    setParseSource(null);
+    setParseNotice(null);
   };
 
   const save = useMutation({
@@ -225,9 +248,22 @@ function PreRegistrationPage() {
                 <Button size="sm" variant="outline" onClick={() => { setText(""); if (!editingId) setEdited(null); }}>
                   <Trash2 className="h-3 w-3 mr-1" />지우기
                 </Button>
-                <Button size="sm" onClick={onParse} disabled={!!editingId}>파싱 →</Button>
+                <Button size="sm" onClick={onParse} disabled={!!editingId || parsing || !text.trim()}>
+                  {parsing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                  {parsing ? "AI 파싱 중…" : "AI 파싱 →"}
+                </Button>
               </div>
             </div>
+            {parseSource === "rule" && parseNotice && (
+              <div className="rounded border border-amber-400/50 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-900 dark:bg-amber-900/20 dark:text-amber-100">
+                {parseNotice}
+              </div>
+            )}
+            {parseSource === "llm" && !parsing && (
+              <div className="rounded border border-emerald-400/40 bg-emerald-50 px-3 py-1.5 text-[11px] text-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-100">
+                AI 파서로 처리됨 — 결과를 반드시 검토·수정 후 저장하세요.
+              </div>
+            )}
             {!editingId && ocrEnabled && (
               <>
                 <OcrUploader
