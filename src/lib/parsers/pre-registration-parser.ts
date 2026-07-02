@@ -338,7 +338,7 @@ export function parsePreRegistration(input: string): ParsedRegistration {
     // 이름 뒤에 붙는 직분을 최소 매칭으로 먼저 시도 (예: "최애정전도사" → "최애정")
     const TITLE_RX = /(전도사|목사|사모|교역자|교사|집사|권사|장로|본인)/;
     let picked: string | null = null;
-    for (let len = 2; len <= 4; len++) {
+    for (let len = 4; len >= 2; len--) {
       const rx = new RegExp(`([가-힣]{${len}})(?:${TITLE_RX.source}|\\s|$)`);
       const m = s.match(rx);
       if (m && /전도사|목사|사모|교역자|교사|집사|권사|장로|본인/.test(s.slice(m.index! + len, m.index! + len + 4))) {
