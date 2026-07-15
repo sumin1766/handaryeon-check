@@ -241,9 +241,9 @@ function PreRegistrationPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-semibold">입력 텍스트</h2>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="ghost" onClick={() => setText(SAMPLE)} disabled={!!editingId}>샘플</Button>
                 <Button size="sm" variant="outline" onClick={() => { setText(""); if (!editingId) setEdited(null); }}>
                   <Trash2 className="h-3 w-3 mr-1" />지우기
