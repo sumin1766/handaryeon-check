@@ -224,6 +224,7 @@ function IntakeSheetPage() {
               )}
             </tbody>
           </table>
+          </div>
         </Card>
       </div>
     </AppShell>
