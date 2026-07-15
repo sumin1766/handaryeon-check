@@ -346,8 +346,7 @@ function NumericKeypad({
     </div>
   );
 }
-  );
-}
+
 
 function Stat({ label, v, unit }: { label: string; v: number; unit: string }) {
   return (
