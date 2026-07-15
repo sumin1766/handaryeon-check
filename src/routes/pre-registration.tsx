@@ -225,15 +225,15 @@ function PreRegistrationPage() {
   return (
     <AppShell>
       <div className="space-y-4">
-        <header className="flex items-center justify-between">
-          <div>
+        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold">사전접수 등록</h1>
             <p className="text-sm text-muted-foreground">
               {editingId ? "수정 모드 — 변경 후 저장하세요." : "좌측에 양식을 붙여넣고 파싱 후 우측에서 검토/수정·저장"}
             </p>
           </div>
           {editingId && (
-            <Button size="sm" variant="outline" onClick={resetForm}>
+            <Button size="sm" variant="outline" onClick={resetForm} className="self-start sm:self-auto">
               <X className="h-3 w-3 mr-1" /> 수정 취소
             </Button>
           )}
@@ -241,9 +241,9 @@ function PreRegistrationPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-semibold">입력 텍스트</h2>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="ghost" onClick={() => setText(SAMPLE)} disabled={!!editingId}>샘플</Button>
                 <Button size="sm" variant="outline" onClick={() => { setText(""); if (!editingId) setEdited(null); }}>
                   <Trash2 className="h-3 w-3 mr-1" />지우기
@@ -284,14 +284,14 @@ function PreRegistrationPage() {
           </Card>
 
           <Card className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-semibold">{editingId ? "편집" : "미리보기 / 수정"}</h2>
               <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending || !current.church_name}>
                 <Save className="h-3 w-3 mr-1" />{editingId ? "수정 저장" : "저장"}
               </Button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <Label className="text-xs">교회명</Label>
                 <Input value={current.church_name} onChange={(e) => setEdited({ ...current, church_name: e.target.value })} />
@@ -310,10 +310,10 @@ function PreRegistrationPage() {
               </div>
             </div>
 
-            <div className="rounded border bg-muted/40 px-3 py-2 text-xs flex gap-4 tabular-nums">
+            <div className="rounded border bg-muted/40 px-3 py-2 text-xs flex flex-wrap gap-x-4 gap-y-1 tabular-nums">
               <span>숙박 <b>{num(totals.lodging)}</b></span>
               <span>비숙박 <b>{num(totals.nonLodging)}</b></span>
-              <span className="ml-auto">합계 <b className="text-base">{num(totals.total)}</b></span>
+              <span className="sm:ml-auto">합계 <b className="text-base">{num(totals.total)}</b></span>
             </div>
 
             {current.warnings.length > 0 && (
@@ -346,9 +346,9 @@ function PreRegistrationPage() {
                 const b = current.categories[k];
                 return (
                   <div key={k} className="rounded border p-2">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
                       <div className="font-semibold text-sm">{CATEGORY_LABELS[k]}</div>
-                      <div className="flex gap-3 text-xs tabular-nums">
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs tabular-nums">
                         <span>숙박 입력 <b>{b.lodging_count}</b> · 명단 <b>{b.lodging_names.length}</b></span>
                         <span>비숙박 입력 <b>{b.non_lodging_count}</b> · 명단 <b>{b.non_lodging_names.length}</b></span>
                       </div>
@@ -662,11 +662,11 @@ function OcrUploader({ onText }: { onText: (text: string) => void }) {
         if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
       }}
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm font-medium">
           <ScanText className="h-4 w-4 text-primary" /> 이미지에서 자동 텍스트 추출 (OCR)
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <input
             ref={inputRef}
             type="file"
