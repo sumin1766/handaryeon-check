@@ -127,13 +127,13 @@ function SettingsCard({
         </Card>
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-0">
-          <DialogHeader className="px-6 pt-6 pb-3 border-b">
+        <DialogContent className="w-full sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-4 sm:px-6 pt-5 sm:pt-6 pb-3 border-b">
             <DialogTitle className="flex items-center gap-2">
               {icon} {title}
             </DialogTitle>
           </DialogHeader>
-          <div className="overflow-y-auto px-6 py-4">{children}</div>
+          <div className="overflow-y-auto px-4 sm:px-6 py-4">{children}</div>
         </DialogContent>
       </Dialog>
     </>
