@@ -428,3 +428,52 @@ main select {
 /* Intake sheet — bump church name + summary KPI numbers. */
 main .intake-church-name { font-size: 1.125rem !important; font-weight: 600; }
 main .kpi-num { font-size: 2.75rem !important; line-height: 1.05; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* =====================================================
+   Mobile typography — scale down one step on ≤640px so long
+   Korean labels (대시보드, 접수시트 등) stay on one line and
+   tables/buttons don't wrap vertically. Desktop sizes unchanged.
+   ===================================================== */
+@media (max-width: 640px) {
+  main :is(h1).text-2xl,
+  main :is(h1).text-xl {
+    font-size: 1.5rem; /* 24px */
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  main h2.text-base,
+  main h2.text-lg,
+  main h2.text-xl {
+    font-size: 1.0625rem; /* 17px */
+  }
+  main p.text-sm,
+  main .text-sm:not(.tab-indicator) {
+    font-size: 0.875rem; /* 14px */
+  }
+  main .text-xs {
+    font-size: 0.75rem; /* 12px */
+  }
+  main table th {
+    font-size: 0.8125rem !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+    white-space: nowrap;
+  }
+  main table td {
+    font-size: 0.9375rem;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+    white-space: nowrap;
+  }
+  main input,
+  main textarea,
+  main select,
+  main button {
+    font-size: 0.9375rem;
+  }
+  main .kpi-num { font-size: 2rem !important; }
+  main .intake-church-name { font-size: 1rem !important; }
+  /* Dashboard title too */
+  .lumina-scope h1 { font-size: 1.75rem !important; line-height: 1.15; white-space: nowrap; }
+  .lumina-scope h2 { font-size: 1rem !important; }
+}

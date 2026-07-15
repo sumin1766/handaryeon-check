@@ -116,7 +116,8 @@ function IntakeSheetPage() {
         </div>
 
         <Card className="p-0 overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px] text-sm whitespace-nowrap">
             <thead className="bg-muted/50 text-xs uppercase">
               <tr>
                 <th className="text-left px-3 py-2">교회명</th>
@@ -223,6 +224,7 @@ function IntakeSheetPage() {
               )}
             </tbody>
           </table>
+          </div>
         </Card>
       </div>
     </AppShell>
