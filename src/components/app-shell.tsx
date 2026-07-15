@@ -119,6 +119,15 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
             </div>
           </Link>
           <div className="flex items-center gap-2 text-xs">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((v) => !v)}
+              className="inline-flex lg:hidden h-9 w-9 items-center justify-center rounded-full border text-foreground hover:bg-muted/60"
+              aria-label="메뉴 열기"
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </button>
             {season && (
               <div className="hidden md:flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 tabular-nums">
                 <span className="text-muted-foreground">접수기간</span>
