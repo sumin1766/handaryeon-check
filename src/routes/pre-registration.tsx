@@ -225,15 +225,15 @@ function PreRegistrationPage() {
   return (
     <AppShell>
       <div className="space-y-4">
-        <header className="flex items-center justify-between">
-          <div>
+        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold">사전접수 등록</h1>
             <p className="text-sm text-muted-foreground">
               {editingId ? "수정 모드 — 변경 후 저장하세요." : "좌측에 양식을 붙여넣고 파싱 후 우측에서 검토/수정·저장"}
             </p>
           </div>
           {editingId && (
-            <Button size="sm" variant="outline" onClick={resetForm}>
+            <Button size="sm" variant="outline" onClick={resetForm} className="self-start sm:self-auto">
               <X className="h-3 w-3 mr-1" /> 수정 취소
             </Button>
           )}
