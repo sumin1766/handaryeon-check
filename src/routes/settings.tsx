@@ -116,24 +116,24 @@ function SettingsCard({
       >
         <Card className="p-4 transition hover:shadow-md hover:border-primary/50 cursor-pointer h-full">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">{icon}</div>
-              <h2 className="text-base font-semibold">{title}</h2>
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">{icon}</div>
+              <h2 className="text-base font-semibold truncate">{title}</h2>
             </div>
-            <Maximize2 className="h-4 w-4 text-muted-foreground" />
+            <Maximize2 className="h-4 w-4 shrink-0 text-muted-foreground" />
           </div>
           <div className="mt-3 text-sm text-muted-foreground">{summary}</div>
           <div className="mt-3 text-xs text-primary font-medium">클릭하여 열기 →</div>
         </Card>
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-0">
-          <DialogHeader className="px-6 pt-6 pb-3 border-b">
+        <DialogContent className="w-full sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-4 sm:px-6 pt-5 sm:pt-6 pb-3 border-b">
             <DialogTitle className="flex items-center gap-2">
               {icon} {title}
             </DialogTitle>
           </DialogHeader>
-          <div className="overflow-y-auto px-6 py-4">{children}</div>
+          <div className="overflow-y-auto px-4 sm:px-6 py-4">{children}</div>
         </DialogContent>
       </Dialog>
     </>
@@ -529,8 +529,8 @@ function BathPriceSection() {
   const [price, setPrice] = useState<number>(settings?.bath_unit_price ?? 5000);
   if (!season) return <div className="text-sm text-muted-foreground">시즌이 없습니다.</div>;
   return (
-    <div className="flex items-end gap-3">
-      <div className="w-48">
+    <div className="flex flex-wrap items-end gap-3">
+      <div className="w-full sm:w-48">
         <Label className="text-xs">단가 (원/매)</Label>
         <Input type="number" value={price} onChange={(e) => setPrice(parseInt(e.target.value) || 0)} className="tabular-nums" />
       </div>
@@ -655,7 +655,7 @@ function PasswordSection() {
   );
 
   return (
-    <div className="space-y-4 max-w-md">
+    <div className="space-y-4 w-full max-w-md">
       <Field id="current-pw" label="현재 관리자 비밀번호" value={current} set={setCurrent} placeholder="현재 관리자 비밀번호 확인" auto="current-password" />
       <Field id="admin-pw" label="새 전체관리자 비밀번호 (admin)" value={admin} set={setAdmin} placeholder="예: 031213" auto="new-password" />
       <Field id="staff-pw" label="새 접수담당자 비밀번호 (staff)" value={staff} set={setStaff} placeholder="예: 007123" auto="new-password" />
@@ -667,7 +667,7 @@ function PasswordSection() {
       </div>
       {empty && <div className="text-xs text-destructive">모든 비밀번호 칸을 채워주세요.</div>}
       {dup && <div className="text-xs text-destructive">세 비밀번호는 모두 달라야 합니다.</div>}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button onClick={onSave} disabled={disabled}>
           {change.isPending ? "저장 중..." : "저장"}
         </Button>
@@ -790,10 +790,10 @@ function OcrSection() {
   };
 
   return (
-    <div className="space-y-4 max-w-xl">
+    <div className="space-y-4 w-full max-w-xl">
       {/* Toggle */}
-      <div className="rounded-lg border p-4 flex items-start justify-between gap-4">
-        <div>
+      <div className="rounded-lg border p-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="min-w-0">
           <div className="text-sm font-medium">OCR 기능 사용</div>
           <div className="text-xs text-muted-foreground mt-1">
             끄면 사전접수 화면에서 이미지 첨부/OCR 입력이 숨겨집니다.
@@ -802,13 +802,13 @@ function OcrSection() {
             <div className="text-xs text-red-600 mt-1">API 키가 등록되어 있지 않아 켤 수 없습니다.</div>
           )}
         </div>
-        <Switch checked={!!en?.enabled} onCheckedChange={toggle} disabled={!hasKey} />
+        <Switch checked={!!en?.enabled} onCheckedChange={toggle} disabled={!hasKey} className="shrink-0" />
       </div>
 
       {/* Status */}
       <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          {hasKey ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <XCircle className="h-4 w-4 text-red-600" />}
+        <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+          {hasKey ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" /> : <XCircle className="h-4 w-4 shrink-0 text-red-600" />}
           {hasKey
             ? <>API 키 등록됨 <span className="font-mono text-muted-foreground">●●●●{status?.key_last4}</span></>
             : <>API 키 미등록</>}
@@ -834,19 +834,19 @@ function OcrSection() {
       {/* Edit form */}
       {editing && (
         <div className="rounded-lg border p-4 space-y-3 bg-background">
-          <div>
+          <div className="w-full">
             <Label className="text-xs">관리자 비밀번호 (확인)</Label>
-            <Input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} placeholder="현재 관리자 비밀번호" />
+            <Input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} placeholder="현재 관리자 비밀번호" className="w-full" />
           </div>
-          <div>
+          <div className="w-full">
             <Label className="text-xs">새 API 키 (비워두면 유지)</Label>
-            <Input type="password" value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="nvapi-..." className="font-mono" />
+            <Input type="password" value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="nvapi-..." className="w-full font-mono" />
           </div>
-          <div>
+          <div className="w-full">
             <Label className="text-xs">새 엔드포인트 URL (비워두면 유지)</Label>
-            <Input value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder="https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2" className="font-mono text-xs" />
+            <Input value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder="https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2" className="w-full font-mono text-xs" />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button onClick={saveConfig} disabled={saving} size="sm">
               {saving ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> 저장 중...</> : "저장"}
             </Button>
