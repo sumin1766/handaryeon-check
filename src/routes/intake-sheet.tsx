@@ -205,7 +205,13 @@ function IntakeSheetPage() {
                       <label className={`flex items-center justify-center h-12 w-full rounded-md cursor-pointer border-2 transition ${c.is_checked_in ? "bg-emerald-500 border-emerald-600" : "bg-background border-input hover:border-emerald-400"}`}>
                         <Checkbox
                           checked={c.is_checked_in}
-                          onCheckedChange={(v) => updateCheck.mutate({ id: c.id, checked: !!v })}
+                          onCheckedChange={(v) => {
+                            if (!v && c.is_checked_in) {
+                              setUncheckConfirm({ id: c.id, name: c.name ?? "" });
+                            } else {
+                              updateCheck.mutate({ id: c.id, checked: !!v });
+                            }
+                          }}
                           className="h-7 w-7 data-[state=checked]:bg-white data-[state=checked]:text-emerald-600 data-[state=checked]:border-white border-2"
                         />
                       </label>
