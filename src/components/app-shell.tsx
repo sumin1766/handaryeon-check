@@ -81,6 +81,12 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useTheme();
   const isAdmin = role === "admin";
   const visibleTabs = TABS.filter((t) => role !== null && (t.roles as readonly AuthRole[]).includes(role));
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   // Role-based URL guard: redirect to dashboard if user opens a forbidden path.
   useEffect(() => {
