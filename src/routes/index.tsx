@@ -103,8 +103,8 @@ function DashboardPage() {
               <Kpi label="비숙박 인원" value={people.filter((p: any) => !p.lodging).length} unit="명" />
             </div>
             <div className="lumina-glass p-3">
-              <div className="overflow-hidden rounded-[1.15rem]">
-                <table className="w-full tabular-nums border-separate border-spacing-0">
+              <div className="overflow-x-auto rounded-[1.15rem]">
+                <table className="w-full min-w-[640px] tabular-nums border-separate border-spacing-0 whitespace-nowrap">
                   <thead style={{ background: "var(--lumina-surface-high)" }}>
                     <tr className="lumina-muted">
                       <th className="text-center px-5 py-4 w-32" style={{ fontSize: "16px", fontWeight: 600 }}>구분</th>
