@@ -296,3 +296,125 @@ export function GenderBadge({ gender }: { gender: string | null }) {
     </span>
   );
 }
+
+function MobileArrowNav({
+  tabs,
+  pathname,
+  isEnded,
+  open,
+  setOpen,
+}: {
+  tabs: ReadonlyArray<(typeof TABS)[number]>;
+  pathname: string;
+  isEnded: boolean;
+  open: boolean;
+  setOpen: (v: boolean) => void;
+}) {
+  const router = useRouter();
+  const idx = tabs.findIndex((t) => t.to === pathname);
+  const current = idx >= 0 ? tabs[idx] : tabs[0];
+  const prev = idx > 0 ? tabs[idx - 1] : null;
+  const next = idx >= 0 && idx < tabs.length - 1 ? tabs[idx + 1] : null;
+  const CurrentIcon = current?.icon;
+
+  const isDisabled = (t: (typeof TABS)[number] | null) =>
+    !t || (isEnded && !("allowEnded" in t && t.allowEnded));
+
+  const go = (t: (typeof TABS)[number] | null) => {
+    if (!t || isDisabled(t)) return;
+    router.navigate({ to: t.to });
+  };
+
+  return (
+    <div className="lg:hidden border-t border-border/40">
+      <div className="mx-auto max-w-[1600px] px-3 py-2 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => go(prev)}
+          disabled={isDisabled(prev)}
+          aria-label="이전 메뉴"
+          className={cn(
+            "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border",
+            isDisabled(prev)
+              ? "opacity-30 cursor-not-allowed text-muted-foreground"
+              : "text-foreground hover:bg-muted/60",
+          )}
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          aria-expanded={open}
+          className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full border bg-muted/40 px-4 py-2 text-base font-semibold text-foreground hover:bg-muted/60"
+        >
+          {CurrentIcon && <CurrentIcon className="h-4 w-4 shrink-0" />}
+          <span className="truncate">{current?.label ?? "메뉴"}</span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 shrink-0 transition-transform duration-200",
+              open && "rotate-180",
+            )}
+          />
+        </button>
+        <button
+          type="button"
+          onClick={() => go(next)}
+          disabled={isDisabled(next)}
+          aria-label="다음 메뉴"
+          className={cn(
+            "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border",
+            isDisabled(next)
+              ? "opacity-30 cursor-not-allowed text-muted-foreground"
+              : "text-foreground hover:bg-muted/60",
+          )}
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      </div>
+      <div
+        className={cn(
+          "grid overflow-hidden border-t border-border/40 bg-background/95 backdrop-blur-xl transition-[grid-template-rows] duration-300 ease-out",
+          open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+        )}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <ul className="mx-auto max-w-[1600px] px-3 py-2 flex flex-col gap-1">
+            {tabs.map((t) => {
+              const Icon = t.icon;
+              const isActive = pathname === t.to;
+              const disabled = isEnded && !("allowEnded" in t && t.allowEnded);
+              return (
+                <li key={t.to}>
+                  <Link
+                    to={t.to}
+                    disabled={disabled}
+                    aria-disabled={disabled}
+                    onClick={(e) => {
+                      if (disabled) {
+                        e.preventDefault();
+                        return;
+                      }
+                      setOpen(false);
+                    }}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-colors",
+                      isActive
+                        ? "bg-foreground/10 text-foreground"
+                        : "text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground",
+                      disabled &&
+                        "cursor-not-allowed opacity-40 hover:bg-transparent hover:text-muted-foreground",
+                    )}
+                  >
+                    <Icon className="h-5 w-5 shrink-0" />
+                    <span className="truncate">{t.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
