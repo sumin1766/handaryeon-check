@@ -4,6 +4,16 @@ import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -41,6 +51,7 @@ function IntakeSheetPage() {
   const [filter, setFilter] = useState("");
   const isTouch = useIsTouchDevice();
   const [keypad, setKeypad] = useState<{ id: string; name: string; value: string } | null>(null);
+  const [uncheckConfirm, setUncheckConfirm] = useState<{ id: string; name: string } | null>(null);
 
   const { data } = useQuery({
     queryKey: ["intake", season?.id],
@@ -194,7 +205,13 @@ function IntakeSheetPage() {
                       <label className={`flex items-center justify-center h-12 w-full rounded-md cursor-pointer border-2 transition ${c.is_checked_in ? "bg-emerald-500 border-emerald-600" : "bg-background border-input hover:border-emerald-400"}`}>
                         <Checkbox
                           checked={c.is_checked_in}
-                          onCheckedChange={(v) => updateCheck.mutate({ id: c.id, checked: !!v })}
+                          onCheckedChange={(v) => {
+                            if (!v && c.is_checked_in) {
+                              setUncheckConfirm({ id: c.id, name: c.name ?? "" });
+                            } else {
+                              updateCheck.mutate({ id: c.id, checked: !!v });
+                            }
+                          }}
                           className="h-7 w-7 data-[state=checked]:bg-white data-[state=checked]:text-emerald-600 data-[state=checked]:border-white border-2"
                         />
                       </label>
@@ -260,6 +277,31 @@ function IntakeSheetPage() {
           </div>
         </Card>
       </div>
+      <AlertDialog open={!!uncheckConfirm} onOpenChange={(o) => { if (!o) setUncheckConfirm(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>접수 체크 해제</AlertDialogTitle>
+            <AlertDialogDescription>
+              접수 체크를 해제하시겠습니까? 입력한 실접수 인원도 함께 초기화됩니다.
+              {uncheckConfirm?.name ? ` (${uncheckConfirm.name})` : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>아니오</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!uncheckConfirm) return;
+                const id = uncheckConfirm.id;
+                updateCheck.mutate({ id, checked: false });
+                updateActual.mutate({ id, count: null });
+                setUncheckConfirm(null);
+              }}
+            >
+              예
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {keypad && (
         <NumericKeypad
           label={`${keypad.name} · 실접수인원`}
