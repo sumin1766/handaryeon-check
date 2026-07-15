@@ -662,11 +662,11 @@ function OcrUploader({ onText }: { onText: (text: string) => void }) {
         if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
       }}
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm font-medium">
           <ScanText className="h-4 w-4 text-primary" /> 이미지에서 자동 텍스트 추출 (OCR)
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <input
             ref={inputRef}
             type="file"
