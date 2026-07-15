@@ -12,7 +12,20 @@ import { useAuthRole } from "@/lib/use-auth-role";
 import { num, formatTime } from "@/lib/format";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+function useIsTouchDevice() {
+  const [touch, setTouch] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(pointer: coarse)");
+    const update = () => setTouch(mq.matches);
+    update();
+    mq.addEventListener?.("change", update);
+    return () => mq.removeEventListener?.("change", update);
+  }, []);
+  return touch;
+}
 
 export const Route = createFileRoute("/intake-sheet")({
   head: () => ({ meta: [{ title: "접수시트 — 한다련 캠프" }] }),
