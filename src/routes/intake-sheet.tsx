@@ -205,7 +205,7 @@ function IntakeSheetPage() {
                           type="text"
                           inputMode="none"
                           readOnly
-                          value={keypad?.id === c.id ? keypad.value : (c.actual_count ?? "")}
+                          value={keypad && keypad.id === c.id ? keypad.value : (c.actual_count ?? "")}
                           onFocus={(e) => e.currentTarget.blur()}
                           onClick={() =>
                             setKeypad({
