@@ -200,15 +200,33 @@ function IntakeSheetPage() {
                       </label>
                     </td>
                     <td className="text-right px-2 py-1">
-                      <Input
-                        type="number"
-                        defaultValue={c.actual_count ?? ""}
-                        onBlur={(e) => {
-                          const v = e.target.value === "" ? null : parseInt(e.target.value);
-                          updateActual.mutate({ id: c.id, count: v });
-                        }}
-                        className="h-12 w-24 text-right tabular-nums text-lg font-semibold"
-                      />
+                      {isTouch ? (
+                        <Input
+                          type="text"
+                          inputMode="none"
+                          readOnly
+                          value={keypad?.id === c.id ? keypad.value : (c.actual_count ?? "")}
+                          onFocus={(e) => e.currentTarget.blur()}
+                          onClick={() =>
+                            setKeypad({
+                              id: c.id,
+                              name: c.name ?? "",
+                              value: c.actual_count != null ? String(c.actual_count) : "",
+                            })
+                          }
+                          className={`h-12 w-24 text-right tabular-nums text-lg font-semibold cursor-pointer ${keypad?.id === c.id ? "ring-2 ring-primary border-primary" : ""}`}
+                        />
+                      ) : (
+                        <Input
+                          type="number"
+                          defaultValue={c.actual_count ?? ""}
+                          onBlur={(e) => {
+                            const v = e.target.value === "" ? null : parseInt(e.target.value);
+                            updateActual.mutate({ id: c.id, count: v });
+                          }}
+                          className="h-12 w-24 text-right tabular-nums text-lg font-semibold"
+                        />
+                      )}
                     </td>
                     {isAdmin && (
                       <td className="px-2 py-1">
