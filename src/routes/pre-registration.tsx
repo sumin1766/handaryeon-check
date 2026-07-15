@@ -346,9 +346,9 @@ function PreRegistrationPage() {
                 const b = current.categories[k];
                 return (
                   <div key={k} className="rounded border p-2">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
                       <div className="font-semibold text-sm">{CATEGORY_LABELS[k]}</div>
-                      <div className="flex gap-3 text-xs tabular-nums">
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs tabular-nums">
                         <span>숙박 입력 <b>{b.lodging_count}</b> · 명단 <b>{b.lodging_names.length}</b></span>
                         <span>비숙박 입력 <b>{b.non_lodging_count}</b> · 명단 <b>{b.non_lodging_names.length}</b></span>
                       </div>
