@@ -655,7 +655,7 @@ function PasswordSection() {
   );
 
   return (
-    <div className="space-y-4 max-w-md">
+    <div className="space-y-4 w-full max-w-md">
       <Field id="current-pw" label="현재 관리자 비밀번호" value={current} set={setCurrent} placeholder="현재 관리자 비밀번호 확인" auto="current-password" />
       <Field id="admin-pw" label="새 전체관리자 비밀번호 (admin)" value={admin} set={setAdmin} placeholder="예: 031213" auto="new-password" />
       <Field id="staff-pw" label="새 접수담당자 비밀번호 (staff)" value={staff} set={setStaff} placeholder="예: 007123" auto="new-password" />
@@ -667,7 +667,7 @@ function PasswordSection() {
       </div>
       {empty && <div className="text-xs text-destructive">모든 비밀번호 칸을 채워주세요.</div>}
       {dup && <div className="text-xs text-destructive">세 비밀번호는 모두 달라야 합니다.</div>}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button onClick={onSave} disabled={disabled}>
           {change.isPending ? "저장 중..." : "저장"}
         </Button>
