@@ -39,6 +39,8 @@ function IntakeSheetPage() {
   const isAdmin = role === "admin";
   useRealtimeInvalidate(["churches", "people", "lodgings"], [["intake", season?.id]]);
   const [filter, setFilter] = useState("");
+  const isTouch = useIsTouchDevice();
+  const [keypad, setKeypad] = useState<{ id: string; name: string; value: string } | null>(null);
 
   const { data } = useQuery({
     queryKey: ["intake", season?.id],
