@@ -164,9 +164,46 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
             </button>
           </div>
         </div>
-        <div className="mx-auto max-w-[1600px] px-6">
+        <div className="mx-auto hidden max-w-[1600px] px-6 lg:block">
           <SlidingTabs tabs={visibleTabs} pathname={pathname} isEnded={isEnded} />
         </div>
+        {mobileMenuOpen && (
+          <div className="lg:hidden border-t border-border/40 bg-background/95 backdrop-blur-xl">
+            <ul className="mx-auto max-w-[1600px] px-4 py-2 flex flex-col gap-1">
+              {visibleTabs.map((t) => {
+                const Icon = t.icon;
+                const isActive = pathname === t.to;
+                const disabled = isEnded && !("allowEnded" in t && t.allowEnded);
+                return (
+                  <li key={t.to}>
+                    <Link
+                      to={t.to}
+                      disabled={disabled}
+                      aria-disabled={disabled}
+                      onClick={(e) => {
+                        if (disabled) {
+                          e.preventDefault();
+                          return;
+                        }
+                        setMobileMenuOpen(false);
+                      }}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-4 py-3 text-base font-medium transition-colors",
+                        isActive
+                          ? "bg-foreground/10 text-foreground"
+                          : "text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground",
+                        disabled && "cursor-not-allowed opacity-40 hover:bg-transparent hover:text-muted-foreground",
+                      )}
+                    >
+                      <Icon className="h-5 w-5 shrink-0" />
+                      <span className="truncate">{t.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
       </header>
 
       {!season && (
