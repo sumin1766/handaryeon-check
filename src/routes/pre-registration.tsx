@@ -284,14 +284,14 @@ function PreRegistrationPage() {
           </Card>
 
           <Card className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-semibold">{editingId ? "편집" : "미리보기 / 수정"}</h2>
               <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending || !current.church_name}>
                 <Save className="h-3 w-3 mr-1" />{editingId ? "수정 저장" : "저장"}
               </Button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <Label className="text-xs">교회명</Label>
                 <Input value={current.church_name} onChange={(e) => setEdited({ ...current, church_name: e.target.value })} />
@@ -310,10 +310,10 @@ function PreRegistrationPage() {
               </div>
             </div>
 
-            <div className="rounded border bg-muted/40 px-3 py-2 text-xs flex gap-4 tabular-nums">
+            <div className="rounded border bg-muted/40 px-3 py-2 text-xs flex flex-wrap gap-x-4 gap-y-1 tabular-nums">
               <span>숙박 <b>{num(totals.lodging)}</b></span>
               <span>비숙박 <b>{num(totals.nonLodging)}</b></span>
-              <span className="ml-auto">합계 <b className="text-base">{num(totals.total)}</b></span>
+              <span className="sm:ml-auto">합계 <b className="text-base">{num(totals.total)}</b></span>
             </div>
 
             {current.warnings.length > 0 && (
