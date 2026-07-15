@@ -12,7 +12,20 @@ import { useAuthRole } from "@/lib/use-auth-role";
 import { num, formatTime } from "@/lib/format";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+function useIsTouchDevice() {
+  const [touch, setTouch] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(pointer: coarse)");
+    const update = () => setTouch(mq.matches);
+    update();
+    mq.addEventListener?.("change", update);
+    return () => mq.removeEventListener?.("change", update);
+  }, []);
+  return touch;
+}
 
 export const Route = createFileRoute("/intake-sheet")({
   head: () => ({ meta: [{ title: "접수시트 — 한다련 캠프" }] }),
@@ -26,6 +39,8 @@ function IntakeSheetPage() {
   const isAdmin = role === "admin";
   useRealtimeInvalidate(["churches", "people", "lodgings"], [["intake", season?.id]]);
   const [filter, setFilter] = useState("");
+  const isTouch = useIsTouchDevice();
+  const [keypad, setKeypad] = useState<{ id: string; name: string; value: string } | null>(null);
 
   const { data } = useQuery({
     queryKey: ["intake", season?.id],
@@ -185,15 +200,33 @@ function IntakeSheetPage() {
                       </label>
                     </td>
                     <td className="text-right px-2 py-1">
-                      <Input
-                        type="number"
-                        defaultValue={c.actual_count ?? ""}
-                        onBlur={(e) => {
-                          const v = e.target.value === "" ? null : parseInt(e.target.value);
-                          updateActual.mutate({ id: c.id, count: v });
-                        }}
-                        className="h-12 w-24 text-right tabular-nums text-lg font-semibold"
-                      />
+                      {isTouch ? (
+                        <Input
+                          type="text"
+                          inputMode="none"
+                          readOnly
+                          value={keypad && keypad.id === c.id ? keypad.value : (c.actual_count ?? "")}
+                          onFocus={(e) => e.currentTarget.blur()}
+                          onClick={() =>
+                            setKeypad({
+                              id: c.id,
+                              name: c.name ?? "",
+                              value: c.actual_count != null ? String(c.actual_count) : "",
+                            })
+                          }
+                          className={`h-12 w-24 text-right tabular-nums text-lg font-semibold cursor-pointer ${keypad?.id === c.id ? "ring-2 ring-primary border-primary" : ""}`}
+                        />
+                      ) : (
+                        <Input
+                          type="number"
+                          defaultValue={c.actual_count ?? ""}
+                          onBlur={(e) => {
+                            const v = e.target.value === "" ? null : parseInt(e.target.value);
+                            updateActual.mutate({ id: c.id, count: v });
+                          }}
+                          className="h-12 w-24 text-right tabular-nums text-lg font-semibold"
+                        />
+                      )}
                     </td>
                     {isAdmin && (
                       <td className="px-2 py-1">
@@ -227,9 +260,93 @@ function IntakeSheetPage() {
           </div>
         </Card>
       </div>
+      {keypad && (
+        <NumericKeypad
+          label={`${keypad.name} · 실접수인원`}
+          value={keypad.value}
+          onChange={(v) => setKeypad((k) => (k ? { ...k, value: v } : k))}
+          onClose={() => setKeypad(null)}
+          onSubmit={() => {
+            const parsed = keypad.value === "" ? null : parseInt(keypad.value, 10);
+            updateActual.mutate({ id: keypad.id, count: parsed });
+            setKeypad(null);
+          }}
+        />
+      )}
     </AppShell>
   );
 }
+
+function NumericKeypad({
+  label, value, onChange, onSubmit, onClose,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  onSubmit: () => void;
+  onClose: () => void;
+}) {
+  const press = (d: string) => {
+    if (value.length >= 5) return;
+    if (value === "0") onChange(d);
+    else onChange(value + d);
+  };
+  const back = () => onChange(value.slice(0, -1));
+  const keys = ["1","2","3","4","5","6","7","8","9"];
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end" role="dialog" aria-modal="true">
+      <button
+        type="button"
+        aria-label="닫기"
+        onClick={onClose}
+        className="flex-1 bg-black/30 backdrop-blur-[1px]"
+      />
+      <div
+        className="bg-background border-t shadow-2xl animate-in slide-in-from-bottom duration-200 px-3 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-2 px-1">
+          <div className="text-sm font-semibold truncate">{label}</div>
+          <div className="text-2xl font-bold tabular-nums min-w-16 text-right">{value || "0"}</div>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {keys.map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => press(k)}
+              className="h-14 min-h-11 rounded-lg border bg-card hover:bg-muted active:bg-muted/70 text-2xl font-semibold tabular-nums"
+            >
+              {k}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={back}
+            className="h-14 min-h-11 rounded-lg border bg-card hover:bg-muted active:bg-muted/70 text-lg font-medium"
+          >
+            ←
+          </button>
+          <button
+            type="button"
+            onClick={() => press("0")}
+            className="h-14 min-h-11 rounded-lg border bg-card hover:bg-muted active:bg-muted/70 text-2xl font-semibold tabular-nums"
+          >
+            0
+          </button>
+          <button
+            type="button"
+            onClick={onSubmit}
+            className="h-14 min-h-11 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 text-lg font-semibold"
+          >
+            입력
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function Stat({ label, v, unit }: { label: string; v: number; unit: string }) {
   return (
