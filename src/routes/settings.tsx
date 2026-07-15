@@ -790,10 +790,10 @@ function OcrSection() {
   };
 
   return (
-    <div className="space-y-4 max-w-xl">
+    <div className="space-y-4 w-full max-w-xl">
       {/* Toggle */}
-      <div className="rounded-lg border p-4 flex items-start justify-between gap-4">
-        <div>
+      <div className="rounded-lg border p-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="min-w-0">
           <div className="text-sm font-medium">OCR 기능 사용</div>
           <div className="text-xs text-muted-foreground mt-1">
             끄면 사전접수 화면에서 이미지 첨부/OCR 입력이 숨겨집니다.
@@ -802,13 +802,13 @@ function OcrSection() {
             <div className="text-xs text-red-600 mt-1">API 키가 등록되어 있지 않아 켤 수 없습니다.</div>
           )}
         </div>
-        <Switch checked={!!en?.enabled} onCheckedChange={toggle} disabled={!hasKey} />
+        <Switch checked={!!en?.enabled} onCheckedChange={toggle} disabled={!hasKey} className="shrink-0" />
       </div>
 
       {/* Status */}
       <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          {hasKey ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <XCircle className="h-4 w-4 text-red-600" />}
+        <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+          {hasKey ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" /> : <XCircle className="h-4 w-4 shrink-0 text-red-600" />}
           {hasKey
             ? <>API 키 등록됨 <span className="font-mono text-muted-foreground">●●●●{status?.key_last4}</span></>
             : <>API 키 미등록</>}
@@ -834,19 +834,19 @@ function OcrSection() {
       {/* Edit form */}
       {editing && (
         <div className="rounded-lg border p-4 space-y-3 bg-background">
-          <div>
+          <div className="w-full">
             <Label className="text-xs">관리자 비밀번호 (확인)</Label>
-            <Input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} placeholder="현재 관리자 비밀번호" />
+            <Input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} placeholder="현재 관리자 비밀번호" className="w-full" />
           </div>
-          <div>
+          <div className="w-full">
             <Label className="text-xs">새 API 키 (비워두면 유지)</Label>
-            <Input type="password" value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="nvapi-..." className="font-mono" />
+            <Input type="password" value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="nvapi-..." className="w-full font-mono" />
           </div>
-          <div>
+          <div className="w-full">
             <Label className="text-xs">새 엔드포인트 URL (비워두면 유지)</Label>
-            <Input value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder="https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2" className="font-mono text-xs" />
+            <Input value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder="https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2" className="w-full font-mono text-xs" />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button onClick={saveConfig} disabled={saving} size="sm">
               {saving ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> 저장 중...</> : "저장"}
             </Button>
