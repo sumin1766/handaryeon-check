@@ -277,6 +277,31 @@ function IntakeSheetPage() {
           </div>
         </Card>
       </div>
+      <AlertDialog open={!!uncheckConfirm} onOpenChange={(o) => { if (!o) setUncheckConfirm(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>접수 체크 해제</AlertDialogTitle>
+            <AlertDialogDescription>
+              접수 체크를 해제하시겠습니까? 입력한 실접수 인원도 함께 초기화됩니다.
+              {uncheckConfirm?.name ? ` (${uncheckConfirm.name})` : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>아니오</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!uncheckConfirm) return;
+                const id = uncheckConfirm.id;
+                updateCheck.mutate({ id, checked: false });
+                updateActual.mutate({ id, count: null });
+                setUncheckConfirm(null);
+              }}
+            >
+              예
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {keypad && (
         <NumericKeypad
           label={`${keypad.name} · 실접수인원`}
