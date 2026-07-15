@@ -529,8 +529,8 @@ function BathPriceSection() {
   const [price, setPrice] = useState<number>(settings?.bath_unit_price ?? 5000);
   if (!season) return <div className="text-sm text-muted-foreground">시즌이 없습니다.</div>;
   return (
-    <div className="flex items-end gap-3">
-      <div className="w-48">
+    <div className="flex flex-wrap items-end gap-3">
+      <div className="w-full sm:w-48">
         <Label className="text-xs">단가 (원/매)</Label>
         <Input type="number" value={price} onChange={(e) => setPrice(parseInt(e.target.value) || 0)} className="tabular-nums" />
       </div>
