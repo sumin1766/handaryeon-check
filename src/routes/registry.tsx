@@ -348,19 +348,46 @@ function ChurchDialog({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-          {CATS.map((c) => (
-            <div key={c.key} className="rounded border p-2">
-              <div className="flex items-center justify-between mb-2">
-                <div className="font-semibold text-sm">{c.label}</div>
-                <span className="text-xs text-muted-foreground tabular-nums">{cats[c.key].filter((p) => p.name.trim()).length}명</span>
+          {CATS.map((c) => {
+            const oppositeKey = CATS.find((x) => x.gender === c.gender && x.age === c.age && x.lodging !== c.lodging)!.key;
+            const count = cats[c.key].filter((p) => p.name.trim()).length;
+            const canMove = canEdit && count > 0;
+            const moveLabel = c.lodging ? "→ 비숙박" : "→ 숙박";
+            return (
+              <div key={c.key} className="rounded border p-2">
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  <div className="font-semibold text-sm">{c.label}</div>
+                  <div className="flex items-center gap-2">
+                    {canEdit && (
+                      <button
+                        type="button"
+                        disabled={!canMove}
+                        onClick={() => {
+                          const moving = cats[c.key].filter((p) => p.name.trim());
+                          if (moving.length === 0) return;
+                          setCats({
+                            ...cats,
+                            [c.key]: [],
+                            [oppositeKey]: [...cats[oppositeKey], ...moving],
+                          });
+                        }}
+                        className="rounded border px-2 py-0.5 text-[11px] font-medium hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={`${c.label} 전체를 ${moveLabel.replace("→ ", "")}으로 이동`}
+                      >
+                        {moveLabel}
+                      </button>
+                    )}
+                    <span className="text-xs text-muted-foreground tabular-nums">{count}명</span>
+                  </div>
+                </div>
+                <NameEditor
+                  names={cats[c.key]}
+                  canEdit={canEdit}
+                  onChange={(ns) => setCats({ ...cats, [c.key]: ns })}
+                />
               </div>
-              <NameEditor
-                names={cats[c.key]}
-                canEdit={canEdit}
-                onChange={(ns) => setCats({ ...cats, [c.key]: ns })}
-              />
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <DialogFooter className="gap-2 mt-3">
