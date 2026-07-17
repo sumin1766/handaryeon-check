@@ -235,6 +235,7 @@ function IntakeSheetPage() {
                         />
                       ) : (
                         <Input
+                          key={`actual-${c.id}-${c.actual_count ?? "empty"}`}
                           type="number"
                           defaultValue={c.actual_count ?? ""}
                           onBlur={(e) => {
@@ -243,6 +244,7 @@ function IntakeSheetPage() {
                           }}
                           className="h-12 w-24 text-right tabular-nums text-lg font-semibold"
                         />
+
                       )}
                     </td>
                     {isAdmin && (
