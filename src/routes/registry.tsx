@@ -55,6 +55,22 @@ function RegistryPage() {
   const canEdit = role === "admin" || role === "staff";
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [compareGroup, setCompareGroup] = useState<DuplicateGroup | null>(null);
+  const qc = useQueryClient();
+
+  const deleteChurch = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("churches").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("삭제 완료");
+      qc.invalidateQueries({ queryKey: ["registry"] });
+      qc.invalidateQueries({ queryKey: ["pre-list"] });
+      qc.invalidateQueries({ queryKey: ["intake"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "삭제 실패"),
+  });
 
   useRealtimeInvalidate(["churches", "people"], [["registry", season?.id]]);
 
