@@ -334,7 +334,7 @@ function PreRegistrationPage() {
           <Card className="p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-semibold">{editingId ? "편집" : "미리보기 / 수정"}</h2>
-              <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending || !current.church_name}>
+              <Button size="sm" onClick={attemptSave} disabled={save.isPending || !current.church_name}>
                 <Save className="h-3 w-3 mr-1" />{editingId ? "수정 저장" : "저장"}
               </Button>
             </div>
