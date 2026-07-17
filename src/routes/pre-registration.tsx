@@ -97,7 +97,7 @@ function PreRegistrationPage() {
   const [parseSource, setParseSource] = useState<ParseSource | null>(null);
   const [parseNotice, setParseNotice] = useState<string | null>(null);
 
-  useRealtimeInvalidate(["churches", "people", "app_settings"], [["pre-list"], ["pre_ocr_enabled"]]);
+  useRealtimeInvalidate(["churches", "people", "app_settings"], [["pre-list"], ["pre-all"], ["pre_ocr_enabled"]]);
 
   const { data: ocrEnabled = false } = useQuery({
     queryKey: ["pre_ocr_enabled", season?.id],
