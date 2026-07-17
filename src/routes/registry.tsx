@@ -54,6 +54,7 @@ function RegistryPage() {
   const role = useAuthRole();
   const canEdit = role === "admin" || role === "staff";
   const [search, setSearch] = useState("");
+  const [segueOnly, setSegueOnly] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [compareGroup, setCompareGroup] = useState<DuplicateGroup | null>(null);
   const qc = useQueryClient();
@@ -131,7 +132,7 @@ function RegistryPage() {
         />
 
         <Card className="p-4 space-y-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="이름 또는 교회명으로 검색"
@@ -139,6 +140,25 @@ function RegistryPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="max-w-sm"
             />
+            <Button
+              type="button"
+              variant={segueOnly ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSegueOnly((v) => !v)}
+              className="whitespace-nowrap"
+            >
+              {segueOnly ? (
+                <>
+                  <span className="hidden sm:inline">전체 교회 보기</span>
+                  <span className="sm:hidden">전체 보기</span>
+                </>
+              ) : (
+                <>
+                  <span className="hidden sm:inline">세계로교회만 보기</span>
+                  <span className="sm:hidden">세계로만</span>
+                </>
+              )}
+            </Button>
             {trimmed && (
               <button onClick={() => setSearch("")} className="text-xs text-muted-foreground hover:text-foreground">초기화</button>
             )}
@@ -188,10 +208,11 @@ function RegistryPage() {
             <tbody>
               {churches
                 .filter((c: any) => {
-                  if (!trimmed) return true;
-                  if (c.name && c.name.includes(trimmed)) return true;
-                  // include if any person matches
-                  return (peopleByChurch.get(c.id) ?? []).some((p: any) => p.name?.includes(trimmed));
+                  const matchesSearch = !trimmed
+                    || (c.name && c.name.includes(trimmed))
+                    || (peopleByChurch.get(c.id) ?? []).some((p: any) => p.name?.includes(trimmed));
+                  const matchesSegue = !segueOnly || (c.name && c.name.includes("세계로"));
+                  return matchesSearch && matchesSegue;
                 })
                 .map((c: any) => {
                   const ps = peopleByChurch.get(c.id) ?? [];
