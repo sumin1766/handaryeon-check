@@ -109,7 +109,7 @@ function PreRegistrationPage() {
   });
 
   const { data: allData } = useQuery({
-    queryKey: ["pre-list", season?.id],
+    queryKey: ["pre-all", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
       const { data: churches } = await supabase
