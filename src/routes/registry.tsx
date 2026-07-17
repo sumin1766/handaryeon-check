@@ -21,6 +21,8 @@ import { num } from "@/lib/format";
 import { Plus, Trash2, Pencil, X, Save, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { findDuplicateGroups } from "@/lib/duplicate-check";
+import { DuplicateBanner } from "@/components/duplicate-banner";
 
 export const Route = createFileRoute("/registry")({
   head: () => ({ meta: [{ title: "접수 명단 — 한다련 캠프" }] }),
@@ -84,6 +86,11 @@ function RegistryPage() {
 
   const churchById = useMemo(() => new Map(churches.map((c: any) => [c.id, c])), [churches]);
 
+  const duplicateGroups = useMemo(
+    () => findDuplicateGroups(churches as any, people as any),
+    [churches, people],
+  );
+
   // Name search results
   const trimmed = search.trim();
   const nameMatches = trimmed
@@ -99,6 +106,8 @@ function RegistryPage() {
             사전접수 · 현장접수 통합 명단 · 이름 검색으로 소속 교회/담당자 확인
           </p>
         </header>
+
+        <DuplicateBanner groups={duplicateGroups} onSelect={(id) => setOpenId(id)} />
 
         <Card className="p-4 space-y-3">
           <div className="flex items-center gap-2">

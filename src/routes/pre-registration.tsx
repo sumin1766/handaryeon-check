@@ -23,6 +23,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Save, Trash2, Plus, Pencil, X, Image as ImageIcon, Loader2, ScanText, Sparkles } from "lucide-react";
 import { num } from "@/lib/format";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
+import { findDuplicateGroups, findDuplicateForInput } from "@/lib/duplicate-check";
+import { DuplicateBanner } from "@/components/duplicate-banner";
 
 export const Route = createFileRoute("/pre-registration")({
   head: () => ({ meta: [{ title: "사전접수 — 한다련 캠프" }] }),
@@ -95,7 +97,7 @@ function PreRegistrationPage() {
   const [parseSource, setParseSource] = useState<ParseSource | null>(null);
   const [parseNotice, setParseNotice] = useState<string | null>(null);
 
-  useRealtimeInvalidate(["churches", "people", "app_settings"], [["pre-list"], ["pre_ocr_enabled"]]);
+  useRealtimeInvalidate(["churches", "people", "app_settings"], [["pre-list"], ["pre-all"], ["pre_ocr_enabled"]]);
 
   const { data: ocrEnabled = false } = useQuery({
     queryKey: ["pre_ocr_enabled", season?.id],
@@ -106,8 +108,54 @@ function PreRegistrationPage() {
     },
   });
 
+  const { data: allData } = useQuery({
+    queryKey: ["pre-all", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data: churches } = await supabase
+        .from("churches").select("*").eq("season_id", season!.id).order("created_at", { ascending: true });
+      const ids = (churches ?? []).map((c: any) => c.id);
+      const { data: people } = ids.length
+        ? await supabase.from("people").select("church_id, name").in("church_id", ids)
+        : { data: [] };
+      return { churches: churches ?? [], people: people ?? [] };
+    },
+  });
+
   const current = edited ?? parsedFromText;
   const totals = totalCounts(current);
+
+  const duplicateGroups = useMemo(
+    () => findDuplicateGroups(allData?.churches ?? [], allData?.people ?? []),
+    [allData],
+  );
+
+  const attemptSave = () => {
+    const names: string[] = [];
+    for (const k of KEYS) {
+      const b = current.categories[k];
+      for (const p of b.lodging_names) if (p.name?.trim()) names.push(p.name);
+      for (const p of b.non_lodging_names) if (p.name?.trim()) names.push(p.name);
+    }
+    const dup = findDuplicateForInput({
+      editingId,
+      formName: current.church_name,
+      formDenomination: current.denomination,
+      formPersonNames: names,
+      churches: allData?.churches ?? [],
+      people: allData?.people ?? [],
+    });
+    if (dup) {
+      toast.warning(
+        `이미 등록된 교회일 수 있습니다 (${dup.church.name}${dup.church.denomination ? " · " + dup.church.denomination : ""}, 겹치는 명단 ${dup.overlapCount}명)`,
+        { duration: 6000 },
+      );
+    }
+    save.mutate();
+  };
+
+
+
 
   const onParse = async () => {
     if (!text.trim() || parsing) return;
@@ -187,7 +235,7 @@ function PreRegistrationPage() {
     onSuccess: () => {
       toast.success(editingId ? "수정 완료" : "저장 완료");
       resetForm();
-      qc.invalidateQueries({ queryKey: ["pre-list"] });
+      qc.invalidateQueries({ queryKey: ["pre-list"] }); qc.invalidateQueries({ queryKey: ["pre-all"] });
     },
     onError: (e: any) => toast.error(e.message ?? "저장 실패"),
   });
@@ -286,7 +334,7 @@ function PreRegistrationPage() {
           <Card className="p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-semibold">{editingId ? "편집" : "미리보기 / 수정"}</h2>
-              <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending || !current.church_name}>
+              <Button size="sm" onClick={attemptSave} disabled={save.isPending || !current.church_name}>
                 <Save className="h-3 w-3 mr-1" />{editingId ? "수정 저장" : "저장"}
               </Button>
             </div>
@@ -376,7 +424,9 @@ function PreRegistrationPage() {
           </Card>
         </div>
 
+        <DuplicateBanner groups={duplicateGroups} onSelect={(id) => loadForEdit(id)} />
         <PreRegistrationList seasonId={season.id} onEdit={loadForEdit} editingId={editingId} />
+
       </div>
     </AppShell>
   );
@@ -412,7 +462,7 @@ function PreRegistrationList({
     },
     onSuccess: () => {
       toast.success("삭제 완료");
-      qc.invalidateQueries({ queryKey: ["pre-list"] });
+      qc.invalidateQueries({ queryKey: ["pre-list"] }); qc.invalidateQueries({ queryKey: ["pre-all"] });
     },
     onError: (e: any) => toast.error(e.message ?? "삭제 실패"),
   });
