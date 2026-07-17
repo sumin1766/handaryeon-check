@@ -242,6 +242,20 @@ function PreRegistrationPage() {
     onError: (e: any) => toast.error(e.message ?? "저장 실패"),
   });
 
+  const deleteChurch = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("churches").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("삭제 완료");
+      qc.invalidateQueries({ queryKey: ["pre-list"] });
+      qc.invalidateQueries({ queryKey: ["pre-all"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "삭제 실패"),
+  });
+  });
+
   const loadForEdit = async (churchId: string) => {
     const { data: church } = await supabase.from("churches").select("*").eq("id", churchId).single();
     const { data: people } = await supabase.from("people").select("*").eq("church_id", churchId);
