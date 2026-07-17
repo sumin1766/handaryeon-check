@@ -23,8 +23,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Save, Trash2, Plus, Pencil, X, Image as ImageIcon, Loader2, ScanText, Sparkles } from "lucide-react";
 import { num } from "@/lib/format";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
-import { findDuplicateGroups, findDuplicateForInput } from "@/lib/duplicate-check";
+import { findDuplicateGroups, findDuplicateForInput, type DuplicateGroup } from "@/lib/duplicate-check";
 import { DuplicateBanner } from "@/components/duplicate-banner";
+import { DuplicateCompareDialog } from "@/components/duplicate-compare-dialog";
 
 export const Route = createFileRoute("/pre-registration")({
   head: () => ({ meta: [{ title: "사전접수 — 한다련 캠프" }] }),
