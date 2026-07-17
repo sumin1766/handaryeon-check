@@ -254,7 +254,6 @@ function PreRegistrationPage() {
     },
     onError: (e: any) => toast.error(e.message ?? "삭제 실패"),
   });
-  });
 
   const loadForEdit = async (churchId: string) => {
     const { data: church } = await supabase.from("churches").select("*").eq("id", churchId).single();
