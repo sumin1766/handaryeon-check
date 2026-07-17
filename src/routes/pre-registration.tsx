@@ -23,8 +23,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Save, Trash2, Plus, Pencil, X, Image as ImageIcon, Loader2, ScanText, Sparkles } from "lucide-react";
 import { num } from "@/lib/format";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
-import { findDuplicateGroups, findDuplicateForInput } from "@/lib/duplicate-check";
+import { findDuplicateGroups, findDuplicateForInput, type DuplicateGroup } from "@/lib/duplicate-check";
 import { DuplicateBanner } from "@/components/duplicate-banner";
+import { DuplicateCompareDialog } from "@/components/duplicate-compare-dialog";
 
 export const Route = createFileRoute("/pre-registration")({
   head: () => ({ meta: [{ title: "사전접수 — 한다련 캠프" }] }),
@@ -96,6 +97,7 @@ function PreRegistrationPage() {
   const [parsing, setParsing] = useState(false);
   const [parseSource, setParseSource] = useState<ParseSource | null>(null);
   const [parseNotice, setParseNotice] = useState<string | null>(null);
+  const [compareGroup, setCompareGroup] = useState<DuplicateGroup | null>(null);
 
   useRealtimeInvalidate(["churches", "people", "app_settings"], [["pre-list"], ["pre-all"], ["pre_ocr_enabled"]]);
 
@@ -238,6 +240,19 @@ function PreRegistrationPage() {
       qc.invalidateQueries({ queryKey: ["pre-list"] }); qc.invalidateQueries({ queryKey: ["pre-all"] });
     },
     onError: (e: any) => toast.error(e.message ?? "저장 실패"),
+  });
+
+  const deleteChurch = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("churches").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("삭제 완료");
+      qc.invalidateQueries({ queryKey: ["pre-list"] });
+      qc.invalidateQueries({ queryKey: ["pre-all"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "삭제 실패"),
   });
 
   const loadForEdit = async (churchId: string) => {
@@ -424,8 +439,21 @@ function PreRegistrationPage() {
           </Card>
         </div>
 
-        <DuplicateBanner groups={duplicateGroups} onSelect={(id) => loadForEdit(id)} />
+        <DuplicateBanner
+          groups={duplicateGroups}
+          onCompareGroup={(g) => setCompareGroup(g)}
+          onDelete={(id) => deleteChurch.mutate(id)}
+        />
         <PreRegistrationList seasonId={season.id} onEdit={loadForEdit} editingId={editingId} />
+
+        <DuplicateCompareDialog
+          group={compareGroup}
+          people={allData?.people ?? []}
+          onClose={() => setCompareGroup(null)}
+          onEdit={(id) => { setCompareGroup(null); loadForEdit(id); }}
+          onDelete={(id) => deleteChurch.mutate(id)}
+          editLabel="편집"
+        />
 
       </div>
     </AppShell>

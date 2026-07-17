@@ -21,8 +21,9 @@ import { num } from "@/lib/format";
 import { Plus, Trash2, Pencil, X, Save, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { findDuplicateGroups } from "@/lib/duplicate-check";
+import { findDuplicateGroups, type DuplicateGroup } from "@/lib/duplicate-check";
 import { DuplicateBanner } from "@/components/duplicate-banner";
+import { DuplicateCompareDialog } from "@/components/duplicate-compare-dialog";
 
 export const Route = createFileRoute("/registry")({
   head: () => ({ meta: [{ title: "접수 명단 — 한다련 캠프" }] }),
@@ -54,6 +55,22 @@ function RegistryPage() {
   const canEdit = role === "admin" || role === "staff";
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [compareGroup, setCompareGroup] = useState<DuplicateGroup | null>(null);
+  const qc = useQueryClient();
+
+  const deleteChurch = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("churches").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("삭제 완료");
+      qc.invalidateQueries({ queryKey: ["registry"] });
+      qc.invalidateQueries({ queryKey: ["pre-list"] });
+      qc.invalidateQueries({ queryKey: ["intake"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "삭제 실패"),
+  });
 
   useRealtimeInvalidate(["churches", "people"], [["registry", season?.id]]);
 
@@ -107,7 +124,11 @@ function RegistryPage() {
           </p>
         </header>
 
-        <DuplicateBanner groups={duplicateGroups} onSelect={(id) => setOpenId(id)} />
+        <DuplicateBanner
+          groups={duplicateGroups}
+          onCompareGroup={(g) => setCompareGroup(g)}
+          onDelete={canEdit ? (id) => deleteChurch.mutate(id) : undefined}
+        />
 
         <Card className="p-4 space-y-3">
           <div className="flex items-center gap-2">
@@ -240,6 +261,15 @@ function RegistryPage() {
           onClose={() => setOpenId(null)}
         />
       )}
+
+      <DuplicateCompareDialog
+        group={compareGroup}
+        people={people as any}
+        onClose={() => setCompareGroup(null)}
+        onEdit={(id) => { setCompareGroup(null); setOpenId(id); }}
+        onDelete={canEdit ? (id) => deleteChurch.mutate(id) : undefined}
+        editLabel="상세"
+      />
     </AppShell>
   );
 }
