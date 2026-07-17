@@ -439,8 +439,21 @@ function PreRegistrationPage() {
           </Card>
         </div>
 
-        <DuplicateBanner groups={duplicateGroups} onSelect={(id) => loadForEdit(id)} />
+        <DuplicateBanner
+          groups={duplicateGroups}
+          onCompareGroup={(g) => setCompareGroup(g)}
+          onDelete={(id) => deleteChurch.mutate(id)}
+        />
         <PreRegistrationList seasonId={season.id} onEdit={loadForEdit} editingId={editingId} />
+
+        <DuplicateCompareDialog
+          group={compareGroup}
+          people={allData?.people ?? []}
+          onClose={() => setCompareGroup(null)}
+          onEdit={(id) => { setCompareGroup(null); loadForEdit(id); }}
+          onDelete={(id) => deleteChurch.mutate(id)}
+          editLabel="편집"
+        />
 
       </div>
     </AppShell>
