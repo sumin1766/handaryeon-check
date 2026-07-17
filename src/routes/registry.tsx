@@ -124,7 +124,11 @@ function RegistryPage() {
           </p>
         </header>
 
-        <DuplicateBanner groups={duplicateGroups} onSelect={(id) => setOpenId(id)} />
+        <DuplicateBanner
+          groups={duplicateGroups}
+          onCompareGroup={(g) => setCompareGroup(g)}
+          onDelete={canEdit ? (id) => deleteChurch.mutate(id) : undefined}
+        />
 
         <Card className="p-4 space-y-3">
           <div className="flex items-center gap-2">
