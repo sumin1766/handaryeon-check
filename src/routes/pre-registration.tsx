@@ -130,6 +130,32 @@ function PreRegistrationPage() {
     [allData],
   );
 
+  const attemptSave = () => {
+    const names: string[] = [];
+    for (const k of KEYS) {
+      const b = current.categories[k];
+      for (const p of b.lodging_names) if (p.name?.trim()) names.push(p.name);
+      for (const p of b.non_lodging_names) if (p.name?.trim()) names.push(p.name);
+    }
+    const dup = findDuplicateForInput({
+      editingId,
+      formName: current.church_name,
+      formDenomination: current.denomination,
+      formPersonNames: names,
+      churches: allData?.churches ?? [],
+      people: allData?.people ?? [],
+    });
+    if (dup) {
+      toast.warning(
+        `이미 등록된 교회일 수 있습니다 (${dup.church.name}${dup.church.denomination ? " · " + dup.church.denomination : ""}, 겹치는 명단 ${dup.overlapCount}명)`,
+        { duration: 6000 },
+      );
+    }
+    save.mutate();
+  };
+
+
+
 
   const onParse = async () => {
     if (!text.trim() || parsing) return;
