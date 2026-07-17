@@ -209,7 +209,7 @@ function PreRegistrationPage() {
     onSuccess: () => {
       toast.success(editingId ? "수정 완료" : "저장 완료");
       resetForm();
-      qc.invalidateQueries({ queryKey: ["pre-list"] });
+      qc.invalidateQueries({ queryKey: ["pre-list"] }); qc.invalidateQueries({ queryKey: ["pre-all"] });
     },
     onError: (e: any) => toast.error(e.message ?? "저장 실패"),
   });
@@ -434,7 +434,7 @@ function PreRegistrationList({
     },
     onSuccess: () => {
       toast.success("삭제 완료");
-      qc.invalidateQueries({ queryKey: ["pre-list"] });
+      qc.invalidateQueries({ queryKey: ["pre-list"] }); qc.invalidateQueries({ queryKey: ["pre-all"] });
     },
     onError: (e: any) => toast.error(e.message ?? "삭제 실패"),
   });
