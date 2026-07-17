@@ -424,7 +424,9 @@ function PreRegistrationPage() {
           </Card>
         </div>
 
+        <DuplicateBanner groups={duplicateGroups} onSelect={(id) => loadForEdit(id)} />
         <PreRegistrationList seasonId={season.id} onEdit={loadForEdit} editingId={editingId} />
+
       </div>
     </AppShell>
   );
