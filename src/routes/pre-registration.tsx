@@ -97,6 +97,7 @@ function PreRegistrationPage() {
   const [parsing, setParsing] = useState(false);
   const [parseSource, setParseSource] = useState<ParseSource | null>(null);
   const [parseNotice, setParseNotice] = useState<string | null>(null);
+  const [compareGroup, setCompareGroup] = useState<DuplicateGroup | null>(null);
 
   useRealtimeInvalidate(["churches", "people", "app_settings"], [["pre-list"], ["pre-all"], ["pre_ocr_enabled"]]);
 
