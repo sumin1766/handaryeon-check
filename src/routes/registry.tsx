@@ -107,6 +107,8 @@ function RegistryPage() {
           </p>
         </header>
 
+        <DuplicateBanner groups={duplicateGroups} onSelect={(id) => setOpenId(id)} />
+
         <Card className="p-4 space-y-3">
           <div className="flex items-center gap-2">
             <Search className="h-4 w-4 text-muted-foreground" />
