@@ -108,8 +108,28 @@ function PreRegistrationPage() {
     },
   });
 
+  const { data: allData } = useQuery({
+    queryKey: ["pre-list", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data: churches } = await supabase
+        .from("churches").select("*").eq("season_id", season!.id).order("created_at", { ascending: true });
+      const ids = (churches ?? []).map((c: any) => c.id);
+      const { data: people } = ids.length
+        ? await supabase.from("people").select("church_id, name").in("church_id", ids)
+        : { data: [] };
+      return { churches: churches ?? [], people: people ?? [] };
+    },
+  });
+
   const current = edited ?? parsedFromText;
   const totals = totalCounts(current);
+
+  const duplicateGroups = useMemo(
+    () => findDuplicateGroups(allData?.churches ?? [], allData?.people ?? []),
+    [allData],
+  );
+
 
   const onParse = async () => {
     if (!text.trim() || parsing) return;
