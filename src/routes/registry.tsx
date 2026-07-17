@@ -86,6 +86,11 @@ function RegistryPage() {
 
   const churchById = useMemo(() => new Map(churches.map((c: any) => [c.id, c])), [churches]);
 
+  const duplicateGroups = useMemo(
+    () => findDuplicateGroups(churches as any, people as any),
+    [churches, people],
+  );
+
   // Name search results
   const trimmed = search.trim();
   const nameMatches = trimmed
