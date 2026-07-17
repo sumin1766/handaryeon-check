@@ -261,6 +261,15 @@ function RegistryPage() {
           onClose={() => setOpenId(null)}
         />
       )}
+
+      <DuplicateCompareDialog
+        group={compareGroup}
+        people={people as any}
+        onClose={() => setCompareGroup(null)}
+        onEdit={(id) => { setCompareGroup(null); setOpenId(id); }}
+        onDelete={canEdit ? (id) => deleteChurch.mutate(id) : undefined}
+        editLabel="상세"
+      />
     </AppShell>
   );
 }
