@@ -21,8 +21,9 @@ import { num } from "@/lib/format";
 import { Plus, Trash2, Pencil, X, Save, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { findDuplicateGroups } from "@/lib/duplicate-check";
+import { findDuplicateGroups, type DuplicateGroup } from "@/lib/duplicate-check";
 import { DuplicateBanner } from "@/components/duplicate-banner";
+import { DuplicateCompareDialog } from "@/components/duplicate-compare-dialog";
 
 export const Route = createFileRoute("/registry")({
   head: () => ({ meta: [{ title: "접수 명단 — 한다련 캠프" }] }),
