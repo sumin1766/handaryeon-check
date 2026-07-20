@@ -1,4 +1,6 @@
 // LLM-based pre-registration parser via NVIDIA integrate API
+// Two-stage fallback: PRIMARY_MODEL (primary key) -> BACKUP_MODEL (backup key).
+// Rule-based parser (stage 1) lives on the client and is not touched here.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -12,6 +14,13 @@ const json = (b: unknown, status = 200) =>
     status,
     headers: { "Content-Type": "application/json", ...corsHeaders },
   });
+
+// ==== Model constants (easy to swap) =========================================
+const PRIMARY_MODEL = "nvidia/llama-3.3-nemotron-super-49b-v1";
+const BACKUP_MODEL = "nvidia/nemotron-3-ultra-550b-a55b";
+const PRIMARY_MAX_TOKENS = 8192;
+const BACKUP_MAX_TOKENS = 16384;
+// ============================================================================
 
 const SYSTEM_PROMPT = `너는 한국 교회 여름수련회 사전접수 텍스트를 구조화하는 파서다.
 입력은 사람마다 형식이 제각각이다. 맥락을 이해해서 아래 JSON 스키마로만 출력하라. 설명 금지, JSON 외 문자 금지.
@@ -40,21 +49,36 @@ const SYSTEM_PROMPT = `너는 한국 교회 여름수련회 사전접수 텍스�
   "excluded": []
 }`;
 
-const MODELS = [
-  "nvidia/llama-3.3-nemotron-super-49b-v1",
-  "meta/llama-3.3-70b-instruct",
-  "nvidia/llama-3.1-nemotron-70b-instruct",
-];
+function getAdmin() {
+  const sbUrl = Deno.env.get("SUPABASE_URL");
+  const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!sbUrl || !svc) return null;
+  return createClient(sbUrl, svc, { auth: { persistSession: false } });
+}
 
-async function loadKey(): Promise<string> {
+async function loadPrimaryKey(): Promise<string> {
   let key = Deno.env.get("NVIDIA_LLM_API_KEY") || Deno.env.get("NVIDIA_OCR_API_KEY") || "";
   try {
-    const sbUrl = Deno.env.get("SUPABASE_URL");
-    const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!key && sbUrl && svc) {
-      const admin = createClient(sbUrl, svc, { auth: { persistSession: false } });
-      const { data } = await admin.from("ocr_config").select("api_key").eq("id", 1).maybeSingle();
-      if (data?.api_key) key = String(data.api_key).trim();
+    if (!key) {
+      const admin = getAdmin();
+      if (admin) {
+        const { data } = await admin.from("ocr_config").select("api_key").eq("id", 1).maybeSingle();
+        if (data?.api_key) key = String(data.api_key).trim();
+      }
+    }
+  } catch { /* ignore */ }
+  return key;
+}
+
+async function loadBackupKey(): Promise<string> {
+  let key = Deno.env.get("NVIDIA_BACKUP_API_KEY") || "";
+  try {
+    if (!key) {
+      const admin = getAdmin();
+      if (admin) {
+        const { data } = await admin.from("ocr_config").select("backup_api_key").eq("id", 1).maybeSingle();
+        if (data && (data as any).backup_api_key) key = String((data as any).backup_api_key).trim();
+      }
     }
   } catch { /* ignore */ }
   return key;
@@ -72,7 +96,7 @@ function extractJson(s: string): any | null {
   return null;
 }
 
-async function callModel(model: string, key: string, text: string) {
+async function callModel(model: string, key: string, text: string, maxTokens: number) {
   const res = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -84,7 +108,7 @@ async function callModel(model: string, key: string, text: string) {
       model,
       temperature: 0.1,
       top_p: 0.9,
-      max_tokens: 4096,
+      max_tokens: maxTokens,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
@@ -95,49 +119,90 @@ async function callModel(model: string, key: string, text: string) {
   return res;
 }
 
+type StageResult =
+  | { ok: true; data: any; finishReason?: string }
+  | { ok: false; status: number; detail: string; reason: "http" | "json" | "truncated" | "network" };
+
+async function runStage(model: string, key: string, text: string, maxTokens: number): Promise<StageResult> {
+  let res: Response;
+  try {
+    res = await callModel(model, key, text, maxTokens);
+  } catch (e) {
+    return { ok: false, status: 0, detail: String(e).slice(0, 300), reason: "network" };
+  }
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    // Do not log key material; safe to log status + truncated body.
+    console.log(`[parse-preregistration] ${model} HTTP ${res.status}`);
+    return { ok: false, status: res.status, detail: detail.slice(0, 500), reason: "http" };
+  }
+  const data = await res.json().catch(() => null);
+  const choice = data?.choices?.[0];
+  const finishReason = String(choice?.finish_reason ?? "");
+  const raw = choice?.message?.content ?? "";
+  // Truncation is the exact bug we saw with 4096: retry on backup.
+  if (finishReason === "length") {
+    return { ok: false, status: 200, detail: "finish_reason=length (truncated)", reason: "truncated" };
+  }
+  const parsed = extractJson(typeof raw === "string" ? raw : JSON.stringify(raw));
+  if (!parsed) {
+    return { ok: false, status: 502, detail: `JSON 파싱 실패: ${String(raw).slice(0, 200)}`, reason: "json" };
+  }
+  return { ok: true, data: parsed, finishReason };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
-    const key = await loadKey();
-    if (!key) return json({ error: "LLM API 키가 설정되지 않았습니다." }, 500);
-
     const body = await req.json().catch(() => ({}));
     const text: string = String(body?.text ?? "").trim();
     if (!text) return json({ error: "텍스트를 입력해주세요." }, 400);
 
-    let lastErr: { status: number; detail: string } | null = null;
-    for (const model of MODELS) {
-      let res: Response;
-      try {
-        res = await callModel(model, key, text);
-      } catch (e) {
-        lastErr = { status: 500, detail: String(e) };
-        continue;
-      }
-      if (!res.ok) {
-        const detail = await res.text().catch(() => "");
-        lastErr = { status: res.status, detail: detail.slice(0, 500) };
-        // 429/5xx: try next model
-        if (res.status === 429 || res.status >= 500 || res.status === 404 || res.status === 400) continue;
-        // 401/403: fatal
-        break;
-      }
-      const data = await res.json().catch(() => null);
-      const raw = data?.choices?.[0]?.message?.content ?? "";
-      const parsed = extractJson(typeof raw === "string" ? raw : JSON.stringify(raw));
-      if (!parsed) {
-        lastErr = { status: 502, detail: `JSON 파싱 실패: ${String(raw).slice(0, 300)}` };
-        continue;
-      }
-      return json({ ok: true, model, data: parsed });
+    // ---- Stage 2: primary model ----
+    const primaryKey = await loadPrimaryKey();
+    if (!primaryKey) return json({ error: "LLM API 키가 설정되지 않았습니다." }, 500);
+
+    console.log(`[parse-preregistration] stage=primary model=${PRIMARY_MODEL} chars=${text.length}`);
+    const primary = await runStage(PRIMARY_MODEL, primaryKey, text, PRIMARY_MAX_TOKENS);
+    if (primary.ok) {
+      return json({ ok: true, stage: "primary", model: PRIMARY_MODEL, data: primary.data });
     }
 
-    const s = lastErr?.status ?? 500;
-    let msg = `LLM 서비스 오류 (${s})`;
-    if (s === 401 || s === 403) msg = "LLM API 키가 유효하지 않습니다.";
-    else if (s === 429) msg = "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
-    else if (s >= 500) msg = "LLM 서비스가 일시적으로 응답하지 않습니다.";
-    return json({ error: msg, detail: lastErr?.detail ?? "" }, s);
+    // Fatal auth failures on primary shouldn't cascade — stop here.
+    if (primary.reason === "http" && (primary.status === 401 || primary.status === 403)) {
+      return json({ error: "기본 LLM API 키가 유효하지 않습니다.", detail: primary.detail, stage: "primary" }, primary.status);
+    }
+
+    // ---- Stage 3: backup large model ----
+    const backupKey = await loadBackupKey();
+    if (!backupKey) {
+      return json({
+        error: "2단계 파싱 실패, 3단계 백업 키가 설정되지 않았습니다. 관리자 설정에서 대용량 파서 API 키를 등록해주세요.",
+        stage: "primary_failed_no_backup",
+        primary_reason: primary.reason,
+        primary_status: primary.status,
+        primary_detail: primary.detail,
+      }, 503);
+    }
+
+    console.log(`[parse-preregistration] stage=backup model=${BACKUP_MODEL} primary_reason=${primary.reason}`);
+    const backup = await runStage(BACKUP_MODEL, backupKey, text, BACKUP_MAX_TOKENS);
+    if (backup.ok) {
+      return json({
+        ok: true,
+        stage: "backup",
+        model: BACKUP_MODEL,
+        data: backup.data,
+        primary_reason: primary.reason,
+      });
+    }
+
+    const s = backup.status || primary.status || 500;
+    let msg = `대용량 LLM 서비스 오류 (${s})`;
+    if (backup.reason === "http" && (backup.status === 401 || backup.status === 403)) msg = "백업 LLM API 키가 유효하지 않습니다.";
+    else if (backup.status === 429) msg = "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
+    else if (backup.reason === "truncated") msg = "대용량 모델에서도 응답이 잘렸습니다. 명단을 나눠서 처리해주세요.";
+    return json({ error: msg, detail: backup.detail, stage: "backup_failed", primary_reason: primary.reason }, s);
   } catch (e) {
     return json({ error: String(e) }, 500);
   }
