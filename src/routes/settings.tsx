@@ -693,7 +693,13 @@ function useOcrStatus() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("ocr_status" as any);
       if (error) throw error;
-      return data as { has_key: boolean; key_last4: string | null; base_url: string };
+      return data as {
+        has_key: boolean;
+        key_last4: string | null;
+        base_url: string;
+        has_backup_key?: boolean;
+        backup_key_last4?: string | null;
+      };
     },
   });
 }
@@ -872,6 +878,90 @@ function OcrSection() {
         <div>• API 키/엔드포인트는 서버에만 저장되며, 화면에는 마지막 4자리만 노출됩니다.</div>
         <div>• 사용처: 사전접수 페이지의 이미지 첨부 → 자동 텍스트 추출 → 기존 파서로 명단 추출.</div>
       </div>
+
+      <BackupKeySection status={status} refetchStatus={refetchStatus} />
+    </div>
+  );
+}
+
+function BackupKeySection({
+  status,
+  refetchStatus,
+}: {
+  status: { has_backup_key?: boolean; backup_key_last4?: string | null } | undefined;
+  refetchStatus: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [pwd, setPwd] = useState("");
+  const [newKey, setNewKey] = useState("");
+  const [saving, setSaving] = useState(false);
+  const has = !!status?.has_backup_key;
+
+  const save = async (clear = false) => {
+    if (!pwd.trim()) { toast.error("관리자 비밀번호를 입력하세요."); return; }
+    if (!clear && !newKey.trim()) { toast.error("새 백업 키를 입력하세요."); return; }
+    setSaving(true);
+    try {
+      const { error } = await supabase.rpc("ocr_backup_key_update" as any, {
+        current_admin: pwd,
+        new_key: clear ? "" : newKey,
+      });
+      if (error) throw error;
+      toast.success(clear ? "백업 키를 삭제했습니다" : "백업 키를 저장했습니다");
+      setPwd(""); setNewKey(""); setEditing(false);
+      await refetchStatus();
+    } catch (e: any) {
+      toast.error(e?.message ?? "저장 실패");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border-2 border-violet-200 dark:border-violet-900/50 bg-violet-50/50 dark:bg-violet-900/10 p-4 space-y-3 mt-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-sm font-medium">
+          대용량 파서 API 키 <span className="text-xs font-normal text-muted-foreground">(3단계 백업)</span>
+        </div>
+        <div className="text-xs">
+          {has
+            ? <span className="text-emerald-700 dark:text-emerald-400">등록됨 <span className="font-mono">nvapi-...{status?.backup_key_last4}</span></span>
+            : <span className="text-red-600">미등록</span>}
+        </div>
+      </div>
+      <div className="text-xs text-muted-foreground">
+        기본 AI(2단계)가 토큰 초과·오류로 실패할 때만 대용량 모델(<span className="font-mono">nvidia/nemotron-3-ultra-550b-a55b</span>)로 자동 재시도합니다.
+        키 값은 서버에만 저장되며, 화면에는 마지막 4자리만 노출됩니다.
+      </div>
+      {!editing ? (
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+            {has ? "백업 키 변경" : "백업 키 등록"}
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div>
+            <Label className="text-xs">관리자 비밀번호</Label>
+            <Input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} placeholder="현재 관리자 비밀번호" className="w-full" />
+          </div>
+          <div>
+            <Label className="text-xs">새 백업 API 키</Label>
+            <Input type="password" value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="nvapi-..." className="w-full font-mono" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => save(false)} disabled={saving}>
+              {saving ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> 저장 중...</> : "저장"}
+            </Button>
+            {has && (
+              <Button size="sm" variant="destructive" onClick={() => save(true)} disabled={saving}>
+                삭제
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setPwd(""); setNewKey(""); }}>취소</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
