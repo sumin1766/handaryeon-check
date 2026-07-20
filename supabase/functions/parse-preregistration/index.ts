@@ -20,6 +20,8 @@ const PRIMARY_MODEL = "nvidia/llama-3.3-nemotron-super-49b-v1";
 const BACKUP_MODEL = "nvidia/nemotron-3-ultra-550b-a55b";
 const PRIMARY_MAX_TOKENS = 8192;
 const BACKUP_MAX_TOKENS = 16384;
+const PRIMARY_TIMEOUT_MS = 55_000;
+const BACKUP_TIMEOUT_MS = 85_000;
 // ============================================================================
 
 const SYSTEM_PROMPT = `너는 한국 교회 여름수련회 사전접수 텍스트를 구조화하는 파서다.
@@ -53,7 +55,19 @@ function getAdmin() {
   const sbUrl = Deno.env.get("SUPABASE_URL");
   const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!sbUrl || !svc) return null;
-  return createClient(sbUrl, svc, { auth: { persistSession: false } });
+  return createClient(sbUrl, svc, {
+    auth: { persistSession: false },
+    global: {
+      fetch: (input, init) => {
+        const headers = new Headers(init?.headers);
+        if (svc.startsWith("sb_") && headers.get("Authorization") === `Bearer ${svc}`) {
+          headers.delete("Authorization");
+        }
+        headers.set("apikey", svc);
+        return fetch(input, { ...init, headers });
+      },
+    },
+  });
 }
 
 async function loadPrimaryKey(): Promise<string> {
@@ -86,7 +100,8 @@ async function loadBackupKey(): Promise<string> {
 
 function extractJson(s: string): any | null {
   if (!s) return null;
-  const trimmed = s.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  const withoutThinking = s.replace(/<think>[\s\S]*?<\/think>/gi, "");
+  const trimmed = withoutThinking.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
   try { return JSON.parse(trimmed); } catch { /* fall through */ }
   const first = trimmed.indexOf("{");
   const last = trimmed.lastIndexOf("}");
@@ -96,26 +111,42 @@ function extractJson(s: string): any | null {
   return null;
 }
 
-async function callModel(model: string, key: string, text: string, maxTokens: number) {
+function buildRequestBody(model: string, text: string, maxTokens: number) {
+  const body: Record<string, unknown> = {
+    model,
+    temperature: model === BACKUP_MODEL ? 1 : 0.1,
+    top_p: model === BACKUP_MODEL ? 0.95 : 0.9,
+    max_tokens: maxTokens,
+    stream: false,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: text },
+    ],
+  };
+
+  if (model === BACKUP_MODEL) {
+    body.reasoning_effort = "none";
+    body.chat_template_kwargs = { enable_thinking: false };
+  } else {
+    body.response_format = { type: "json_object" };
+  }
+
+  return body;
+}
+
+async function callModel(model: string, key: string, text: string, maxTokens: number, timeoutMs: number) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort("model_timeout"), timeoutMs);
   const res = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
     method: "POST",
+    signal: controller.signal,
     headers: {
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0.1,
-      top_p: 0.9,
-      max_tokens: maxTokens,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: text },
-      ],
-    }),
-  });
+    body: JSON.stringify(buildRequestBody(model, text, maxTokens)),
+  }).finally(() => clearTimeout(timeout));
   return res;
 }
 
@@ -123,12 +154,16 @@ type StageResult =
   | { ok: true; data: any; finishReason?: string }
   | { ok: false; status: number; detail: string; reason: "http" | "json" | "truncated" | "network" };
 
-async function runStage(model: string, key: string, text: string, maxTokens: number): Promise<StageResult> {
+async function runStage(model: string, key: string, text: string, maxTokens: number, timeoutMs: number): Promise<StageResult> {
   let res: Response;
   try {
-    res = await callModel(model, key, text, maxTokens);
+    res = await callModel(model, key, text, maxTokens, timeoutMs);
   } catch (e) {
-    return { ok: false, status: 0, detail: String(e).slice(0, 300), reason: "network" };
+    const detail = e instanceof DOMException && e.name === "AbortError"
+      ? `timeout after ${Math.round(timeoutMs / 1000)}s`
+      : String(e).slice(0, 300);
+    console.log(`[parse-preregistration] ${model} network ${detail}`);
+    return { ok: false, status: 0, detail, reason: "network" };
   }
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
@@ -139,7 +174,7 @@ async function runStage(model: string, key: string, text: string, maxTokens: num
   const data = await res.json().catch(() => null);
   const choice = data?.choices?.[0];
   const finishReason = String(choice?.finish_reason ?? "");
-  const raw = choice?.message?.content ?? "";
+  const raw = choice?.message?.content ?? choice?.message?.reasoning_content ?? "";
   // Truncation is the exact bug we saw with 4096: retry on backup.
   if (finishReason === "length") {
     return { ok: false, status: 200, detail: "finish_reason=length (truncated)", reason: "truncated" };
@@ -163,7 +198,7 @@ Deno.serve(async (req) => {
     if (!primaryKey) return json({ error: "LLM API 키가 설정되지 않았습니다." }, 500);
 
     console.log(`[parse-preregistration] stage=primary model=${PRIMARY_MODEL} chars=${text.length}`);
-    const primary = await runStage(PRIMARY_MODEL, primaryKey, text, PRIMARY_MAX_TOKENS);
+    const primary = await runStage(PRIMARY_MODEL, primaryKey, text, PRIMARY_MAX_TOKENS, PRIMARY_TIMEOUT_MS);
     if (primary.ok) {
       return json({ ok: true, stage: "primary", model: PRIMARY_MODEL, data: primary.data });
     }
@@ -186,7 +221,7 @@ Deno.serve(async (req) => {
     }
 
     console.log(`[parse-preregistration] stage=backup model=${BACKUP_MODEL} primary_reason=${primary.reason}`);
-    const backup = await runStage(BACKUP_MODEL, backupKey, text, BACKUP_MAX_TOKENS);
+    const backup = await runStage(BACKUP_MODEL, backupKey, text, BACKUP_MAX_TOKENS, BACKUP_TIMEOUT_MS);
     if (backup.ok) {
       return json({
         ok: true,
