@@ -244,6 +244,42 @@ function parseNames(raw: string): { people: Person[]; rejected: string[] } {
   return { people: dedup, rejected };
 }
 
+// flat 블록 전용: 공백/줄바꿈으로만 구분된 이름 나열.
+// - 각 whitespace-separated 토큰을 사람 후보로 처리
+// - 메타/라벨/인원수 토큰은 제외
+// - "최 산"처럼 한 글자 이름은 단독 토큰으로 그대로 인식 (자동 병합 없음)
+//   → 개수 불일치 경고를 통해 관리자가 AI 파싱으로 재시도하도록 유도
+function parseFlatNames(raw: string): { people: Person[]; rejected: string[] } {
+  const people: Person[] = [];
+  const rejected: string[] = [];
+  const cleaned = raw.replace(/\u00a0/g, " ").trim();
+  if (!cleaned) return { people, rejected };
+  const tokens = cleaned.split(/\s+/);
+  for (const tok of tokens) {
+    const t = tok.trim();
+    if (!t) continue;
+    // 메타/라벨/인원수 스킵
+    if (/^(총|합계|명단|이름|숙박|비숙박)$/.test(t)) continue;
+    if (/^\d+명?$/.test(t)) continue;
+    if (/^[-–—·:>()（）]+$/.test(t)) continue;
+    // 괄호가 붙은 이름 처리 (예: "김정민B", "이광호(교사)")
+    const r = splitPerson(t);
+    if (r.person) {
+      // 한 글자 이름은 그대로 인식하되 후속 개수 검증에서 잡히도록 허용
+      // (자동 병합은 오히려 오검이 많으므로 하지 않음)
+      // splitPerson 은 최소 2자 이름을 요구하므로, 1자짜리는 별도 처리
+      people.push(r.person);
+    } else if (/^[가-힣]$/.test(t)) {
+      // 한 글자 한글 → 이름 후보로 유지 (경계 애매)
+      people.push({ name: t });
+    } else if (t) {
+      rejected.push(t);
+    }
+  }
+  // dedupe 하지 않음: 동명이인 가능
+  return { people, rejected };
+}
+
 // ─── 인원수 라인 파싱 ─────────────────────────────────────────────
 // "숙박 3명, 비숙박 0명" / "숙박: 3" / "숙박   명" (미기재)
 function extractCounts(line: string): {
@@ -361,11 +397,40 @@ export function parsePreRegistration(input: string): ParsedRegistration {
   // ── 카테고리 & 명단 ────────────────────────────────────────
   let currentCat: CategoryKey | null = null;
   let listMode: "none" | "lodging" | "non_lodging" = "none";
+  // "숙박 (남) - N명" 헤더 형식 진입 시 flat 블록 모드 (공백/줄바꿈 모두 이름 구분자)
+  let flatBlock = false;
+
+  // 헤더: "숙박 (남) - 29명" / "비숙박 (여) 41" / "숙박(남)-29" 등 변형 허용
+  const FLAT_HEADER_RX = /^\s*(숙박|비숙박)\s*[\(（]\s*(남|여)\s*[\)）]\s*[-–—]?\s*(\d+)?\s*명?\s*$/;
+  // 스킵할 메타 라인
+  const META_RX = /^(총\s*신청|총\s*인원|합계|명단|이름|참가자|참가\s*명단)/;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmed = line.trim();
     if (!trimmed) continue;
+
+    // ─── "숙박/비숙박 (남/여) - N명" 헤더 ─────────────────────
+    const mFlat = trimmed.match(FLAT_HEADER_RX);
+    if (mFlat) {
+      const isLodging = mFlat[1] === "숙박";
+      const isMale = mFlat[2] === "남";
+      // 연령 정보가 없으므로 기본 학생 카테고리로 배정 (수련회 일반)
+      currentCat = isMale ? "male_student" : "female_student";
+      listMode = isLodging ? "lodging" : "non_lodging";
+      flatBlock = true;
+      if (mFlat[3]) {
+        const n = parseInt(mFlat[3], 10);
+        if (isLodging) {
+          result.categories[currentCat].lodging_count += n;
+          specified[currentCat].lodging = true;
+        } else {
+          result.categories[currentCat].non_lodging_count += n;
+          specified[currentCat].non_lodging = true;
+        }
+      }
+      continue;
+    }
 
     const cat = detectCategory(trimmed);
     // 카테고리 헤더 + 인원수: "(1)남학생(초중고청) - 숙박 0명, 비숙박 2명"
@@ -377,18 +442,21 @@ export function parsePreRegistration(input: string): ParsedRegistration {
       if (counts.nonLodgingSpecified) specified[cat].non_lodging = true;
       currentCat = cat;
       listMode = "none";
+      flatBlock = false;
       continue;
     }
     // 명단 헤더
     if (cat && /명단/.test(trimmed)) {
       currentCat = cat;
       listMode = "none";
+      flatBlock = false;
       continue;
     }
     // 카테고리만 언급
     if (cat && !/숙박/.test(trimmed) && !/명단/.test(trimmed)) {
       currentCat = cat;
       listMode = "none";
+      flatBlock = false;
       continue;
     }
 
@@ -397,6 +465,7 @@ export function parsePreRegistration(input: string): ParsedRegistration {
       const mn = trimmed.match(/^비숙박자\s*[-:>·]?\s*(.*)$/);
       if (mn) {
         listMode = "non_lodging";
+        flatBlock = false;
         const { people, rejected } = parseNames(mn[1] ?? "");
         result.categories[currentCat].non_lodging_names.push(...people);
         result.excluded.push(...rejected);
@@ -404,14 +473,20 @@ export function parsePreRegistration(input: string): ParsedRegistration {
       }
       if (ml) {
         listMode = "lodging";
+        flatBlock = false;
         const { people, rejected } = parseNames(ml[1] ?? "");
         result.categories[currentCat].lodging_names.push(...people);
         result.excluded.push(...rejected);
         continue;
       }
+      // 메타 라인 스킵 (flat 모드에서 총 신청 인원 등)
+      if (META_RX.test(trimmed)) continue;
+
       // 이어지는 줄 (숫자 항목이 아닌 경우)
       if (listMode !== "none" && !/^\(?\d/.test(trimmed) && !/^[0-9]+\./.test(trimmed)) {
-        const { people, rejected } = parseNames(trimmed);
+        const { people, rejected } = flatBlock
+          ? parseFlatNames(trimmed)
+          : parseNames(trimmed);
         if (listMode === "lodging")
           result.categories[currentCat].lodging_names.push(...people);
         else
@@ -432,12 +507,12 @@ export function parsePreRegistration(input: string): ParsedRegistration {
     }
     if (b.lodging_names.length !== b.lodging_count) {
       result.warnings.push(
-        `${CATEGORY_LABELS[k]} 숙박: 신고 ${b.lodging_count}명 / 명단 ${b.lodging_names.length}명 — 확인 필요`,
+        `${CATEGORY_LABELS[k]} 숙박: 인식 ${b.lodging_names.length}명 / 명시 ${b.lodging_count}명 — 확인 필요 (AI 파싱 재시도 권장)`,
       );
     }
     if (b.non_lodging_names.length !== b.non_lodging_count) {
       result.warnings.push(
-        `${CATEGORY_LABELS[k]} 비숙박: 신고 ${b.non_lodging_count}명 / 명단 ${b.non_lodging_names.length}명 — 확인 필요`,
+        `${CATEGORY_LABELS[k]} 비숙박: 인식 ${b.non_lodging_names.length}명 / 명시 ${b.non_lodging_count}명 — 확인 필요 (AI 파싱 재시도 권장)`,
       );
     }
   }
