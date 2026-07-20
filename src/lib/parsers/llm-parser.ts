@@ -127,17 +127,19 @@ function applyCountCrossCheck(parsed: ParsedRegistration, sourceText: string) {
   }
 }
 
+export type ParseStage = "rule" | "primary" | "backup";
 export type ParseSource = "llm" | "rule";
 export type ParseOutcome = {
   parsed: ParsedRegistration;
   source: ParseSource;
+  stage: ParseStage;
   model?: string;
   error?: string;
 };
 
 export async function parseWithLlmOrFallback(text: string): Promise<ParseOutcome> {
   const trimmed = (text ?? "").trim();
-  if (!trimmed) return { parsed: parsePreRegistration(trimmed), source: "rule" };
+  if (!trimmed) return { parsed: parsePreRegistration(trimmed), source: "rule", stage: "rule" };
   try {
     const { data, error } = await supabase.functions.invoke("parse-preregistration", {
       body: { text: trimmed },
@@ -148,9 +150,10 @@ export async function parseWithLlmOrFallback(text: string): Promise<ParseOutcome
     }
     const parsed = mapLlmToParsed(data.data as LlmResult);
     applyCountCrossCheck(parsed, trimmed);
-    return { parsed, source: "llm", model: data.model };
+    const stage: ParseStage = data.stage === "backup" ? "backup" : "primary";
+    return { parsed, source: "llm", stage, model: data.model };
   } catch (e: any) {
     const parsed = parsePreRegistration(trimmed);
-    return { parsed, source: "rule", error: e?.message ?? String(e) };
+    return { parsed, source: "rule", stage: "rule", error: e?.message ?? String(e) };
   }
 }

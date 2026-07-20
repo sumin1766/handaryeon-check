@@ -223,18 +223,21 @@ export type Database = {
       ocr_config: {
         Row: {
           api_key: string | null
+          backup_api_key: string | null
           base_url: string | null
           id: number
           updated_at: string
         }
         Insert: {
           api_key?: string | null
+          backup_api_key?: string | null
           base_url?: string | null
           id: number
           updated_at?: string
         }
         Update: {
           api_key?: string | null
+          backup_api_key?: string | null
           base_url?: string | null
           id?: number
           updated_at?: string
@@ -350,6 +353,10 @@ export type Database = {
           new_user: string
         }
         Returns: undefined
+      }
+      ocr_backup_key_update: {
+        Args: { current_admin: string; new_key: string }
+        Returns: Json
       }
       ocr_config_update: {
         Args: {
