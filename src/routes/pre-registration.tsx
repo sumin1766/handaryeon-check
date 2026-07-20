@@ -16,7 +16,7 @@ import {
   type CategoryBucket,
   type ParsedRegistration,
 } from "@/lib/parsers/pre-registration-parser";
-import { parseWithLlmOrFallback, type ParseSource } from "@/lib/parsers/llm-parser";
+import { parseWithLlmOrFallback, type ParseStage } from "@/lib/parsers/llm-parser";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -95,7 +95,7 @@ function PreRegistrationPage() {
   const [edited, setEdited] = useState<ParsedRegistration | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
-  const [parseSource, setParseSource] = useState<ParseSource | null>(null);
+  const [parseStage, setParseStage] = useState<ParseStage | null>(null);
   const [parseNotice, setParseNotice] = useState<string | null>(null);
   const [compareGroup, setCompareGroup] = useState<DuplicateGroup | null>(null);
 
@@ -166,9 +166,11 @@ function PreRegistrationPage() {
     try {
       const outcome = await parseWithLlmOrFallback(text);
       setEdited(outcome.parsed);
-      setParseSource(outcome.source);
-      if (outcome.source === "llm") {
-        toast.success("AI 파싱 완료 — 결과를 검토·수정 후 저장하세요.");
+      setParseStage(outcome.stage);
+      if (outcome.stage === "primary") {
+        toast.success("기본 AI(2단계)로 파싱 완료 — 결과를 검토·수정 후 저장하세요.");
+      } else if (outcome.stage === "backup") {
+        toast.success("대용량 AI(3단계 백업)로 파싱 완료 — 결과를 검토·수정 후 저장하세요.");
       } else {
         setParseNotice(outcome.error ? `규칙 파서로 처리됨 — ${outcome.error}` : "규칙 파서로 처리됨 — 확인 필요");
         toast.warning("AI 파싱 실패 — 규칙 파서 결과를 확인하세요.");
@@ -182,7 +184,7 @@ function PreRegistrationPage() {
     setText("");
     setEdited(null);
     setEditingId(null);
-    setParseSource(null);
+    setParseStage(null);
     setParseNotice(null);
   };
 
@@ -317,14 +319,22 @@ function PreRegistrationPage() {
                 </Button>
               </div>
             </div>
-            {parseSource === "rule" && parseNotice && (
+            {parseStage === "rule" && parseNotice && (
               <div className="rounded border border-amber-400/50 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-900 dark:bg-amber-900/20 dark:text-amber-100">
+                <span className="inline-block rounded bg-amber-500/20 px-1.5 py-0.5 mr-1 font-semibold">1단계 · 규칙</span>
                 {parseNotice}
               </div>
             )}
-            {parseSource === "llm" && !parsing && (
+            {parseStage === "primary" && !parsing && (
               <div className="rounded border border-emerald-400/40 bg-emerald-50 px-3 py-1.5 text-[11px] text-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-100">
-                AI 파서로 처리됨 — 결과를 반드시 검토·수정 후 저장하세요.
+                <span className="inline-block rounded bg-emerald-500/20 px-1.5 py-0.5 mr-1 font-semibold">2단계 · 기본 AI</span>
+                결과를 반드시 검토·수정 후 저장하세요.
+              </div>
+            )}
+            {parseStage === "backup" && !parsing && (
+              <div className="rounded border border-violet-400/40 bg-violet-50 px-3 py-1.5 text-[11px] text-violet-900 dark:bg-violet-900/20 dark:text-violet-100">
+                <span className="inline-block rounded bg-violet-500/20 px-1.5 py-0.5 mr-1 font-semibold">3단계 · 대용량 AI</span>
+                큰 명단이라 백업 모델로 처리됐습니다. 결과를 반드시 검토·수정 후 저장하세요.
               </div>
             )}
             {!editingId && ocrEnabled && (
