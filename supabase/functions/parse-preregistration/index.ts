@@ -55,7 +55,19 @@ function getAdmin() {
   const sbUrl = Deno.env.get("SUPABASE_URL");
   const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!sbUrl || !svc) return null;
-  return createClient(sbUrl, svc, { auth: { persistSession: false } });
+  return createClient(sbUrl, svc, {
+    auth: { persistSession: false },
+    global: {
+      fetch: (input, init) => {
+        const headers = new Headers(init?.headers);
+        if (svc.startsWith("sb_") && headers.get("Authorization") === `Bearer ${svc}`) {
+          headers.delete("Authorization");
+        }
+        headers.set("apikey", svc);
+        return fetch(input, { ...init, headers });
+      },
+    },
+  });
 }
 
 async function loadPrimaryKey(): Promise<string> {
@@ -105,6 +117,7 @@ function buildRequestBody(model: string, text: string, maxTokens: number) {
     temperature: model === BACKUP_MODEL ? 1 : 0.1,
     top_p: model === BACKUP_MODEL ? 0.95 : 0.9,
     max_tokens: maxTokens,
+    stream: false,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: text },
@@ -112,10 +125,8 @@ function buildRequestBody(model: string, text: string, maxTokens: number) {
   };
 
   if (model === BACKUP_MODEL) {
-    body.extra_body = {
-      chat_template_kwargs: { enable_thinking: false },
-      reasoning_budget: 0,
-    };
+    body.reasoning_effort = "none";
+    body.chat_template_kwargs = { enable_thinking: false };
   } else {
     body.response_format = { type: "json_object" };
   }
