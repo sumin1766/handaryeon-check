@@ -163,6 +163,31 @@ type StageResult =
   | { ok: true; data: any; finishReason?: string }
   | { ok: false; status: number; detail: string; reason: "http" | "json" | "truncated" | "network" };
 
+function countPayload(data: any) {
+  const count = (bucket: any, key: "overnight" | "day") => Array.isArray(bucket?.[key]) ? bucket[key].length : 0;
+  const categories = {
+    male_student: {
+      overnight: count(data?.male_student, "overnight"),
+      day: count(data?.male_student, "day"),
+    },
+    female_student: {
+      overnight: count(data?.female_student, "overnight"),
+      day: count(data?.female_student, "day"),
+    },
+    male_adult: {
+      overnight: count(data?.male_adult, "overnight"),
+      day: count(data?.male_adult, "day"),
+    },
+    female_adult: {
+      overnight: count(data?.female_adult, "overnight"),
+      day: count(data?.female_adult, "day"),
+    },
+  };
+  const total = Object.values(categories).reduce((sum, b) => sum + b.overnight + b.day, 0);
+  const excludedCount = Array.isArray(data?.excluded) ? data.excluded.length : 0;
+  return { total, categories, excludedCount };
+}
+
 async function runStage(model: string, key: string, text: string, maxTokens: number, timeoutMs: number): Promise<StageResult> {
   let res: Response;
   try {
@@ -224,7 +249,9 @@ Deno.serve(async (req) => {
         console.log(`[parse-preregistration] stage=primary model=${PRIMARY_MODEL} chars=${text.length}`);
         primary = await safeRunStage(PRIMARY_MODEL, primaryKey, text, PRIMARY_MAX_TOKENS, PRIMARY_TIMEOUT_MS);
         if (primary.ok) {
-          return json({ ok: true, stage: "primary", model: PRIMARY_MODEL, data: primary.data });
+          const diagnostics = countPayload(primary.data);
+          console.log(`[parse-preregistration] result stage=primary total=${diagnostics.total} excluded=${diagnostics.excludedCount}`);
+          return json({ ok: true, stage: "primary", model: PRIMARY_MODEL, data: primary.data, diagnostics });
         }
         if (primary.reason === "http" && (primary.status === 401 || primary.status === 403)) {
           primaryAuthFail = true;
@@ -246,11 +273,14 @@ Deno.serve(async (req) => {
           console.log(`[parse-preregistration] stage=backup model=${BACKUP_MODEL} primary_reason=${primary?.reason}`);
           backup = await safeRunStage(BACKUP_MODEL, backupKey, text, BACKUP_MAX_TOKENS, BACKUP_TIMEOUT_MS);
           if (backup.ok) {
+            const diagnostics = countPayload(backup.data);
+            console.log(`[parse-preregistration] result stage=backup total=${diagnostics.total} excluded=${diagnostics.excludedCount}`);
             return json({
               ok: true,
               stage: "backup",
               model: BACKUP_MODEL,
               data: backup.data,
+              diagnostics,
               primary_reason: primary?.reason,
             });
           }

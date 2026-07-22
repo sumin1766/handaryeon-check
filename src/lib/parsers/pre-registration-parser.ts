@@ -282,11 +282,68 @@ function extractCounts(line: string): {
   nonLodgingSpecified: boolean;
 } {
   const out: any = { lodgingSpecified: false, nonLodgingSpecified: false };
-  const ml = line.match(/숙박[^\d비]*(\d+)\s*명?/);
   const mn = line.match(/비숙박[^\d]*(\d+)\s*명?/);
+  // "비숙박" 안의 "숙박"을 숙박 인원으로 잘못 읽지 않도록 비숙박 구간을 먼저 제거한다.
+  const lodgingOnlySource = line.replace(/비숙박[^\d]*(\d+)\s*명?/g, " ");
+  const ml = lodgingOnlySource.match(/숙박[^\d비]*(\d+)\s*명?/);
   if (ml) { out.lodging = parseInt(ml[1], 10); out.lodgingSpecified = true; }
   if (mn) { out.nonLodging = parseInt(mn[1], 10); out.nonLodgingSpecified = true; }
   return out;
+}
+
+export function countParsedNames(p: ParsedRegistration) {
+  let lodging = 0;
+  let nonLodging = 0;
+  for (const k of Object.keys(p.categories) as CategoryKey[]) {
+    const b = p.categories[k];
+    lodging += b.lodging_names.length;
+    nonLodging += b.non_lodging_names.length;
+  }
+  return { lodging, nonLodging, total: lodging + nonLodging };
+}
+
+export function parsedCategoryCounts(p: ParsedRegistration) {
+  return Object.fromEntries(
+    (Object.keys(p.categories) as CategoryKey[]).map((k) => {
+      const b = p.categories[k];
+      return [k, {
+        lodgingNames: b.lodging_names.length,
+        nonLodgingNames: b.non_lodging_names.length,
+        lodgingDeclared: b.lodging_count,
+        nonLodgingDeclared: b.non_lodging_count,
+      }];
+    }),
+  ) as Record<CategoryKey, {
+    lodgingNames: number;
+    nonLodgingNames: number;
+    lodgingDeclared: number;
+    nonLodgingDeclared: number;
+  }>;
+}
+
+export function measureSourceLines(input: string) {
+  const lines = normalizeText(input).split(/\r?\n/);
+  const isMeta = (line: string) => {
+    const s = line.trim();
+    if (!s) return true;
+    return /^(세계로\s*우남|학부모|교회\s*이?름?|교단|담당자|연락처|총\s*신청|총\s*인원|합계|명단|이름|참가자|참가\s*명단|숙박\s*\(|비숙박\s*\(|\(?\d+[-.)]|남학생|여학생|남자어른|여자어른|숙박자|비숙박자)/.test(s)
+      || /^\d+\s*명?$/.test(s)
+      || /^(숙박|비숙박)\s*[^가-힣]*\d+\s*명?$/.test(s);
+  };
+  const nonEmpty = lines.filter((line) => line.trim());
+  const nameLikeLines = nonEmpty.filter((line) => !isMeta(line) && /^[가-힣]{2,4}(?:\s|$|\(|（)/.test(line.trim()));
+  const invisibleCharLines = lines
+    .map((line, index) => ({ index: index + 1, line }))
+    .filter(({ line }) => /[\u00a0\u2000-\u200F\u2028\u2029\u3000\uFEFF\t]/.test(line))
+    .map(({ index, line }) => ({ index, length: line.length, trimmed: line.trim() }));
+
+  return {
+    totalLines: lines.length,
+    nonEmptyLines: nonEmpty.length,
+    blankLines: lines.length - nonEmpty.length,
+    nameLikeLineCount: nameLikeLines.length,
+    invisibleCharLines,
+  };
 }
 
 // ─── 메인 파서 ───────────────────────────────────────────────────
@@ -434,8 +491,14 @@ export function parsePreRegistration(input: string): ParsedRegistration {
       if (counts.lodgingSpecified) specified[cat].lodging = true;
       if (counts.nonLodgingSpecified) specified[cat].non_lodging = true;
       currentCat = cat;
-      listMode = "none";
-      flatBlock = false;
+      const hasLodgingLabel = /(?<!비)숙박/.test(trimmed);
+      const hasNonLodgingLabel = /비숙박/.test(trimmed);
+      listMode = hasNonLodgingLabel && !hasLodgingLabel
+        ? "non_lodging"
+        : hasLodgingLabel && !hasNonLodgingLabel
+          ? "lodging"
+          : "none";
+      flatBlock = listMode !== "none";
       continue;
     }
     // 명단 헤더
@@ -510,18 +573,9 @@ export function parsePreRegistration(input: string): ParsedRegistration {
     }
   }
 
-  // dedupe excluded
-  result.excluded = Array.from(new Set(result.excluded));
-
   return result;
 }
 
 export function totalCounts(p: ParsedRegistration) {
-  let lodging = 0;
-  let nonLodging = 0;
-  for (const k of Object.keys(p.categories) as CategoryKey[]) {
-    lodging += p.categories[k].lodging_count;
-    nonLodging += p.categories[k].non_lodging_count;
-  }
-  return { lodging, nonLodging, total: lodging + nonLodging };
+  return countParsedNames(p);
 }

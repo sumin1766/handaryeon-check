@@ -10,6 +10,9 @@ import { Label } from "@/components/ui/label";
 import {
   parsePreRegistration,
   totalCounts,
+  countParsedNames,
+  measureSourceLines,
+  parsedCategoryCounts,
   CATEGORY_LABELS,
   CATEGORY_META,
   type CategoryKey,
@@ -235,6 +238,17 @@ function PreRegistrationPage() {
             gender: meta.gender, age_group: meta.age_group, lodging: false });
         }
       }
+      console.info("[pre-registration:before-save]", {
+        editingId,
+        church: current.church_name,
+        denomination: current.denomination,
+        sourceLines: text ? measureSourceLines(text) : null,
+        totals: countParsedNames(current),
+        rowCount: rows.length,
+        categoryCounts: parsedCategoryCounts(current),
+        excludedCount: current.excluded.length,
+        excluded: current.excluded,
+      });
       if (rows.length) {
         const { error: e2 } = await supabase.from("people").insert(rows);
         if (e2) throw e2;
