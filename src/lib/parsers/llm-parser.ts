@@ -2,6 +2,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import {
   parsePreRegistration,
+  countParsedNames,
+  measureSourceLines,
+  parsedCategoryCounts,
   type ParsedRegistration,
   type CategoryKey,
   type Person,
@@ -81,11 +84,23 @@ export function mapLlmToParsed(llm: LlmResult): ParsedRegistration {
     parsed.categories[k].non_lodging_count = nonLodging.length;
   }
   if (Array.isArray(llm.excluded)) {
-    parsed.excluded = Array.from(
-      new Set(llm.excluded.map((x) => String(x).trim()).filter(Boolean)),
-    );
+    parsed.excluded = llm.excluded.map((x) => String(x).trim()).filter(Boolean);
   }
   return parsed;
+}
+
+function logParseDiagnostics(label: string, parsed: ParsedRegistration, sourceText: string, extra: Record<string, unknown> = {}) {
+  if (typeof console === "undefined") return;
+  const totals = countParsedNames(parsed);
+  console.info(`[pre-registration:${label}]`, {
+    ...extra,
+    sourceLines: measureSourceLines(sourceText),
+    totals,
+    categoryCounts: parsedCategoryCounts(parsed),
+    excludedCount: parsed.excluded.length,
+    excluded: parsed.excluded,
+    warnings: parsed.warnings,
+  });
 }
 
 // Merge reported counts from the raw text into LLM-parsed result and emit warnings on mismatch.
@@ -223,10 +238,20 @@ export async function parseWithLlmOrFallback(text: string): Promise<ParseOutcome
       const parsed = mapLlmToParsed(data.data as LlmResult);
       applyCountCrossCheck(parsed, trimmed);
       const stage: ParseStage = data.stage === "backup" ? "backup" : "primary";
+      logParseDiagnostics("llm-result", parsed, trimmed, {
+        stage,
+        model: data.model,
+        primaryReason: data.primary_reason ?? null,
+      });
       return { parsed, source: "llm", stage, model: data.model };
     }
     // Both LLM stages failed — fall back to rule parser and surface the edge's message.
     const parsed = parsePreRegistration(trimmed);
+    logParseDiagnostics("rule-fallback", parsed, trimmed, {
+      edgeError: data?.error ?? "LLM 응답 없음",
+      primaryReason: data?.primary_reason ?? null,
+      backupReason: data?.backup_reason ?? null,
+    });
     return {
       parsed,
       source: "rule",
@@ -235,6 +260,7 @@ export async function parseWithLlmOrFallback(text: string): Promise<ParseOutcome
     };
   } catch (e: any) {
     const parsed = parsePreRegistration(trimmed);
+    logParseDiagnostics("transport-fallback", parsed, trimmed, { error: e?.message ?? String(e) });
     return { parsed, source: "rule", stage: "rule", error: e?.message ?? String(e) };
   }
 }
