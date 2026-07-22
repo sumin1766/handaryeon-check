@@ -415,6 +415,31 @@ function PreRegistrationPage() {
               </details>
             )}
 
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 rounded border bg-muted/30 px-2 py-1.5">
+              <Input
+                value={nameFilter}
+                onChange={(e) => setNameFilter(e.target.value)}
+                placeholder="이름 검색 (부분 일치, 표시만 필터)"
+                className="h-7 text-xs flex-1"
+              />
+              <label className="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap px-1">
+                <input
+                  type="checkbox"
+                  checked={sortAsc}
+                  onChange={(e) => setSortAsc(e.target.checked)}
+                />
+                가나다순 정렬 (보기용)
+              </label>
+              {(nameFilter || sortAsc) && (
+                <button
+                  onClick={() => { setNameFilter(""); setSortAsc(false); }}
+                  className="text-[11px] text-muted-foreground hover:text-foreground underline"
+                >
+                  초기화
+                </button>
+              )}
+            </div>
+
             <div className="space-y-3">
               {KEYS.map((k) => {
                 const b = current.categories[k];
@@ -430,6 +455,8 @@ function PreRegistrationPage() {
                     <NameEditor
                       title="숙박자"
                       names={b.lodging_names}
+                      filter={nameFilter}
+                      sortAsc={sortAsc}
                       onChange={(ns) => {
                         const c = { ...current.categories, [k]: { ...b, lodging_names: ns } };
                         setEdited({ ...current, categories: c });
@@ -438,6 +465,8 @@ function PreRegistrationPage() {
                     <NameEditor
                       title="비숙박자"
                       names={b.non_lodging_names}
+                      filter={nameFilter}
+                      sortAsc={sortAsc}
                       onChange={(ns) => {
                         const c = { ...current.categories, [k]: { ...b, non_lodging_names: ns } };
                         setEdited({ ...current, categories: c });
@@ -447,6 +476,7 @@ function PreRegistrationPage() {
                 );
               })}
             </div>
+
           </Card>
         </div>
 
