@@ -99,6 +99,9 @@ function PreRegistrationPage() {
   const [parseStage, setParseStage] = useState<ParseStage | null>(null);
   const [parseNotice, setParseNotice] = useState<string | null>(null);
   const [compareGroup, setCompareGroup] = useState<DuplicateGroup | null>(null);
+  const [nameFilter, setNameFilter] = useState("");
+  const [sortAsc, setSortAsc] = useState(false);
+
 
   useRealtimeInvalidate(["churches", "people", "app_settings"], [["pre-list"], ["pre-all"], ["pre_ocr_enabled"]]);
 
