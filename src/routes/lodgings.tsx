@@ -40,10 +40,10 @@ function LodgingsPage() {
       const { data: lodgings } = await supabase.from("lodgings").select("*").eq("season_id", season!.id).order("sort_order");
       const { data: churches } = await supabase.from("churches").select("id, name, denomination").eq("season_id", season!.id);
       const ids = (churches ?? []).map((c: any) => c.id);
-      const { data: people } = ids.length
-        ? await supabase.from("people").select("*").in("church_id", ids)
-        : { data: [] };
-      return { lodgings: lodgings ?? [], churches: churches ?? [], people: people ?? [] };
+      const people = ids.length
+        ? await (await import("@/lib/fetch-all")).fetchAll<any>("people", (q) => q.select("*").in("church_id", ids))
+        : [];
+      return { lodgings: lodgings ?? [], churches: churches ?? [], people };
     },
   });
 

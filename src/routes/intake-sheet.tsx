@@ -60,12 +60,14 @@ function IntakeSheetPage() {
       const { data: churches } = await supabase
         .from("churches").select("*").eq("season_id", season!.id).order("name");
       const ids = (churches ?? []).map((c: any) => c.id);
-      const { data: people } = ids.length
-        ? await supabase.from("people").select("church_id, name, lodging, gender, age_group, lodging_id").in("church_id", ids)
-        : { data: [] };
+      const people = ids.length
+        ? await (await import("@/lib/fetch-all")).fetchAll<any>("people", (q) =>
+            q.select("church_id, name, lodging, gender, age_group, lodging_id").in("church_id", ids),
+          )
+        : [];
       const { data: lodgings } = await supabase
         .from("lodgings").select("id, name, gender").eq("season_id", season!.id);
-      return { churches: churches ?? [], people: people ?? [], lodgings: lodgings ?? [] };
+      return { churches: churches ?? [], people, lodgings: lodgings ?? [] };
     },
   });
 

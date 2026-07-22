@@ -24,10 +24,10 @@ function NametagsPage() {
       const { data: churches } = await supabase
         .from("churches").select("id, name, denomination").eq("season_id", season!.id).order("name");
       const ids = (churches ?? []).map((c: any) => c.id);
-      const { data: people } = ids.length
-        ? await supabase.from("people").select("church_id, name").in("church_id", ids)
-        : { data: [] };
-      return { churches: churches ?? [], people: people ?? [] };
+      const people = ids.length
+        ? await (await import("@/lib/fetch-all")).fetchAll<any>("people", (q) => q.select("church_id, name").in("church_id", ids))
+        : [];
+      return { churches: churches ?? [], people };
     },
   });
 

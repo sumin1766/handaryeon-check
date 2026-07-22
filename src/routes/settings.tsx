@@ -329,9 +329,12 @@ function LodgingsSection() {
     queryKey: ["lodgings-assigned-count", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data } = await supabase.from("people").select("lodging_id").not("lodging_id", "is", null);
+      const data = await (await import("@/lib/fetch-all")).fetchAll<{ lodging_id: string | null }>(
+        "people",
+        (q) => q.select("lodging_id").not("lodging_id", "is", null),
+      );
       const map: Record<string, number> = {};
-      for (const p of data ?? []) {
+      for (const p of data) {
         if (p.lodging_id) map[p.lodging_id] = (map[p.lodging_id] ?? 0) + 1;
       }
       return map;
