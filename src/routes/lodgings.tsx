@@ -71,7 +71,7 @@ function LodgingsPage() {
       if (!p.lodging || p.lodging_id) continue;
       const g = p.gender === "F" ? "F" : "M";
       const key = `${p.church_id}:${g}`;
-      const e = byKey.get(key) ?? { churchId: p.church_id, gender: g as "M" | "F", persons: [] };
+      const e = byKey.get(key) ?? { churchId: p.church_id, gender: g as "M" | "F", persons: [] as any[] };
       e.persons.push(p);
       byKey.set(key, e);
     }

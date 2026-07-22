@@ -233,15 +233,8 @@ function parseNames(raw: string): { people: Person[]; rejected: string[] } {
     if (r.person) people.push(r.person);
     else if (r.rejected && t.trim()) rejected.push(t.trim());
   }
-  // dedupe by name+note
-  const seen = new Set<string>();
-  const dedup = people.filter((p) => {
-    const k = p.name + "|" + (p.note ?? "");
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
-  return { people: dedup, rejected };
+  // dedupe 하지 않음: 동명이인 보존 (진짜 중복은 중복 교회 감지에서 처리)
+  return { people, rejected };
 }
 
 // flat 블록 전용: 공백/줄바꿈으로만 구분된 이름 나열.
