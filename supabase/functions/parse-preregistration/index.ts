@@ -121,8 +121,9 @@ function extractJson(s: string): any | null {
 function buildRequestBody(model: string, text: string, maxTokens: number) {
   const body: Record<string, unknown> = {
     model,
-    temperature: model === BACKUP_MODEL ? 1 : 0.1,
-    top_p: model === BACKUP_MODEL ? 0.95 : 0.9,
+    // 동명이인 보존을 위해 결정성을 최대한 높인다.
+    temperature: 0.1,
+    top_p: 0.9,
     max_tokens: maxTokens,
     stream: false,
     messages: [
@@ -140,6 +141,7 @@ function buildRequestBody(model: string, text: string, maxTokens: number) {
 
   return body;
 }
+
 
 async function callModel(model: string, key: string, text: string, maxTokens: number, timeoutMs: number) {
   const controller = new AbortController();
