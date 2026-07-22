@@ -26,7 +26,7 @@ function NametagsPage() {
         .from("churches").select("id, name, denomination").eq("season_id", season!.id).order("name");
       const ids = (churches ?? []).map((c: any) => c.id);
       const people = ids.length
-        ? await (await import("@/lib/fetch-all")).fetchAll<any>("people", (q) => q.select("church_id, name").in("church_id", ids))
+        ? await fetchAll<any>("people", (q) => q.select("church_id, name").in("church_id", ids))
         : [];
       return { churches: churches ?? [], people };
     },

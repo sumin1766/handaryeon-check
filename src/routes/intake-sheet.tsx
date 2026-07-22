@@ -62,7 +62,7 @@ function IntakeSheetPage() {
         .from("churches").select("*").eq("season_id", season!.id).order("name");
       const ids = (churches ?? []).map((c: any) => c.id);
       const people = ids.length
-        ? await (await import("@/lib/fetch-all")).fetchAll<any>("people", (q) =>
+        ? await fetchAll<any>("people", (q) =>
             q.select("church_id, name, lodging, gender, age_group, lodging_id").in("church_id", ids),
           )
         : [];

@@ -330,7 +330,7 @@ function LodgingsSection() {
     queryKey: ["lodgings-assigned-count", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const data = await (await import("@/lib/fetch-all")).fetchAll<{ lodging_id: string | null }>(
+      const data = await fetchAll<{ lodging_id: string | null }>(
         "people",
         (q) => q.select("lodging_id").not("lodging_id", "is", null),
       );

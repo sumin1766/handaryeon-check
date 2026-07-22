@@ -119,7 +119,7 @@ function PreRegistrationPage() {
         .from("churches").select("*").eq("season_id", season!.id).order("created_at", { ascending: true });
       const ids = (churches ?? []).map((c: any) => c.id);
       const people = ids.length
-        ? await (await import("@/lib/fetch-all")).fetchAll<any>("people", (q) => q.select("church_id, name").in("church_id", ids))
+        ? await fetchAll<any>("people", (q) => q.select("church_id, name").in("church_id", ids))
         : [];
       return { churches: churches ?? [], people };
     },
@@ -486,7 +486,7 @@ function PreRegistrationList({
         .order("created_at", { ascending: true });
       const ids = (churches ?? []).map((c: any) => c.id);
       if (ids.length === 0) return { churches: churches ?? [], people: [] as any[] };
-      const people = await (await import("@/lib/fetch-all")).fetchAll<any>("people", (q) =>
+      const people = await fetchAll<any>("people", (q) =>
         q.select("church_id, gender, age_group, lodging").in("church_id", ids),
       );
       return { churches: churches ?? [], people };
