@@ -624,22 +624,65 @@ function PreRegistrationList({
   );
 }
 
-function NameEditor({ title, names, onChange }: { title: string; names: { name: string; note?: string }[]; onChange: (ns: any[]) => void }) {
+function NameEditor({
+  title,
+  names,
+  onChange,
+  filter = "",
+  sortAsc = false,
+}: {
+  title: string;
+  names: { name: string; note?: string }[];
+  onChange: (ns: any[]) => void;
+  filter?: string;
+  sortAsc?: boolean;
+}) {
+  // 원본 인덱스를 보존한 채 표시용 필터/정렬만 적용 (실제 데이터/저장 순서는 변경하지 않음)
+  const q = filter.trim();
+  const view = names
+    .map((p, i) => ({ p, i }))
+    .filter(({ p }) => !q || (p.name ?? "").includes(q) || (p.note ?? "").includes(q));
+  if (sortAsc) {
+    view.sort((a, b) => (a.p.name ?? "").localeCompare(b.p.name ?? "", "ko"));
+  }
+  const hiddenCount = names.length - view.length;
+  const highlight = (text: string) => {
+    if (!q || !text) return text;
+    const idx = text.indexOf(q);
+    if (idx < 0) return text;
+    return (
+      <>
+        {text.slice(0, idx)}
+        <mark className="bg-amber-200 dark:bg-amber-400/40 rounded px-0.5">{text.slice(idx, idx + q.length)}</mark>
+        {text.slice(idx + q.length)}
+      </>
+    );
+  };
   return (
     <div className="mt-2">
-      <div className="text-[11px] text-muted-foreground mb-1">{title}</div>
+      <div className="text-[11px] text-muted-foreground mb-1 flex items-center gap-2">
+        <span>{title}</span>
+        {hiddenCount > 0 && <span className="text-amber-600">(검색 필터로 {hiddenCount}명 숨김)</span>}
+      </div>
       <div className="flex flex-wrap gap-1">
-        {names.map((p, i) => (
-          <div key={i} className="flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-xs">
-            <Input
-              value={p.name}
-              onChange={(e) => {
-                const copy = [...names];
-                copy[i] = { ...p, name: e.target.value };
-                onChange(copy);
-              }}
-              className="h-6 w-20 px-1.5 text-xs"
-            />
+        {view.map(({ p, i }) => (
+          <div key={i} className="flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-xs" title={q && p.name.includes(q) ? `표시: ${p.name}` : undefined}>
+            <div className="relative">
+              <Input
+                value={p.name}
+                onChange={(e) => {
+                  const copy = [...names];
+                  copy[i] = { ...p, name: e.target.value };
+                  onChange(copy);
+                }}
+                className={`h-6 w-20 px-1.5 text-xs ${q && p.name.includes(q) ? "ring-1 ring-amber-400" : ""}`}
+              />
+              {q && p.name.includes(q) && (
+                <div className="pointer-events-none absolute -top-3 left-0 text-[9px] text-amber-600">
+                  {highlight(p.name)}
+                </div>
+              )}
+            </div>
             <Input
               value={p.note ?? ""}
               onChange={(e) => {
@@ -665,6 +708,7 @@ function NameEditor({ title, names, onChange }: { title: string; names: { name: 
     </div>
   );
 }
+
 
 // ----- OCR Uploader -----
 
