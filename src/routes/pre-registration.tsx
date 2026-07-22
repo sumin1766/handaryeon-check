@@ -18,6 +18,7 @@ import {
 } from "@/lib/parsers/pre-registration-parser";
 import { parseWithLlmOrFallback, type ParseStage } from "@/lib/parsers/llm-parser";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAll } from "@/lib/fetch-all";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Save, Trash2, Plus, Pencil, X, Image as ImageIcon, Loader2, ScanText, Sparkles } from "lucide-react";

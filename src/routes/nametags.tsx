@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAll } from "@/lib/fetch-all";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

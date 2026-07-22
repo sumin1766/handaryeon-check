@@ -3,6 +3,7 @@ import { AppShell, GenderBadge } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAll } from "@/lib/fetch-all";
 import { Card } from "@/components/ui/card";
 import {
   AlertDialog,
