@@ -195,59 +195,102 @@ async function runStage(model: string, key: string, text: string, maxTokens: num
   return { ok: true, data: parsed, finishReason };
 }
 
+// Safe stage runner: never throws — converts any unexpected exception into a StageResult.
+async function safeRunStage(model: string, key: string, text: string, maxTokens: number, timeoutMs: number): Promise<StageResult> {
+  try {
+    return await runStage(model, key, text, maxTokens, timeoutMs);
+  } catch (e) {
+    const detail = String(e).slice(0, 300);
+    console.log(`[parse-preregistration] ${model} unexpected ${detail}`);
+    return { ok: false, status: 0, detail, reason: "network" };
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
     const body = await req.json().catch(() => ({}));
     const text: string = String(body?.text ?? "").trim();
-    if (!text) return json({ error: "텍스트를 입력해주세요." }, 400);
+    if (!text) return json({ ok: false, stage: "rule_fallback", error: "텍스트를 입력해주세요." }, 200);
 
     // ---- Stage 2: primary model ----
-    const primaryKey = await loadPrimaryKey();
-    if (!primaryKey) return json({ error: "LLM API 키가 설정되지 않았습니다." }, 500);
-
-    console.log(`[parse-preregistration] stage=primary model=${PRIMARY_MODEL} chars=${text.length}`);
-    const primary = await runStage(PRIMARY_MODEL, primaryKey, text, PRIMARY_MAX_TOKENS, PRIMARY_TIMEOUT_MS);
-    if (primary.ok) {
-      return json({ ok: true, stage: "primary", model: PRIMARY_MODEL, data: primary.data });
+    let primary: StageResult | null = null;
+    let primaryAuthFail = false;
+    try {
+      const primaryKey = await loadPrimaryKey();
+      if (!primaryKey) {
+        primary = { ok: false, status: 0, detail: "primary key missing", reason: "network" };
+      } else {
+        console.log(`[parse-preregistration] stage=primary model=${PRIMARY_MODEL} chars=${text.length}`);
+        primary = await safeRunStage(PRIMARY_MODEL, primaryKey, text, PRIMARY_MAX_TOKENS, PRIMARY_TIMEOUT_MS);
+        if (primary.ok) {
+          return json({ ok: true, stage: "primary", model: PRIMARY_MODEL, data: primary.data });
+        }
+        if (primary.reason === "http" && (primary.status === 401 || primary.status === 403)) {
+          primaryAuthFail = true;
+        }
+      }
+    } catch (e) {
+      primary = { ok: false, status: 0, detail: String(e).slice(0, 300), reason: "network" };
     }
 
-    // Fatal auth failures on primary shouldn't cascade — stop here.
-    if (primary.reason === "http" && (primary.status === 401 || primary.status === 403)) {
-      return json({ error: "기본 LLM API 키가 유효하지 않습니다.", detail: primary.detail, stage: "primary" }, primary.status);
+    // ---- Stage 3: backup large model (attempt for ALL primary failures except auth) ----
+    let backup: StageResult | null = null;
+    let backupKeyMissing = false;
+    if (!primaryAuthFail) {
+      try {
+        const backupKey = await loadBackupKey();
+        if (!backupKey) {
+          backupKeyMissing = true;
+        } else {
+          console.log(`[parse-preregistration] stage=backup model=${BACKUP_MODEL} primary_reason=${primary?.reason}`);
+          backup = await safeRunStage(BACKUP_MODEL, backupKey, text, BACKUP_MAX_TOKENS, BACKUP_TIMEOUT_MS);
+          if (backup.ok) {
+            return json({
+              ok: true,
+              stage: "backup",
+              model: BACKUP_MODEL,
+              data: backup.data,
+              primary_reason: primary?.reason,
+            });
+          }
+        }
+      } catch (e) {
+        backup = { ok: false, status: 0, detail: String(e).slice(0, 300), reason: "network" };
+      }
     }
 
-    // ---- Stage 3: backup large model ----
-    const backupKey = await loadBackupKey();
-    if (!backupKey) {
-      return json({
-        error: "2단계 파싱 실패, 3단계 백업 키가 설정되지 않았습니다. 관리자 설정에서 대용량 파서 API 키를 등록해주세요.",
-        stage: "primary_failed_no_backup",
-        primary_reason: primary.reason,
-        primary_status: primary.status,
-        primary_detail: primary.detail,
-      }, 503);
+    // Both stages failed — return 200 with ok:false so the client can cleanly fall back to
+    // the rule-based parser without supabase-js masking the body as "non-2xx".
+    let msg: string;
+    if (primaryAuthFail) {
+      msg = "기본 LLM API 키가 유효하지 않습니다.";
+    } else if (backupKeyMissing) {
+      msg = "2단계 파싱 실패, 3단계 백업 키가 설정되지 않았습니다.";
+    } else if (backup?.reason === "http" && (backup.status === 401 || backup.status === 403)) {
+      msg = "백업 LLM API 키가 유효하지 않습니다.";
+    } else if (backup?.status === 429) {
+      msg = "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
+    } else if (backup?.reason === "truncated") {
+      msg = "대용량 모델에서도 응답이 잘렸습니다. 명단을 나눠 처리해주세요.";
+    } else {
+      msg = `LLM 파싱 실패 (primary=${primary?.reason ?? "n/a"}${backup ? `, backup=${backup.reason}` : ""})`;
     }
 
-    console.log(`[parse-preregistration] stage=backup model=${BACKUP_MODEL} primary_reason=${primary.reason}`);
-    const backup = await runStage(BACKUP_MODEL, backupKey, text, BACKUP_MAX_TOKENS, BACKUP_TIMEOUT_MS);
-    if (backup.ok) {
-      return json({
-        ok: true,
-        stage: "backup",
-        model: BACKUP_MODEL,
-        data: backup.data,
-        primary_reason: primary.reason,
-      });
-    }
-
-    const s = backup.status || primary.status || 500;
-    let msg = `대용량 LLM 서비스 오류 (${s})`;
-    if (backup.reason === "http" && (backup.status === 401 || backup.status === 403)) msg = "백업 LLM API 키가 유효하지 않습니다.";
-    else if (backup.status === 429) msg = "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
-    else if (backup.reason === "truncated") msg = "대용량 모델에서도 응답이 잘렸습니다. 명단을 나눠서 처리해주세요.";
-    return json({ error: msg, detail: backup.detail, stage: "backup_failed", primary_reason: primary.reason }, s);
+    return json({
+      ok: false,
+      stage: "rule_fallback",
+      error: msg,
+      primary_reason: primary?.reason ?? null,
+      primary_status: primary?.status ?? null,
+      primary_detail: primary?.detail ?? null,
+      backup_reason: backup?.reason ?? null,
+      backup_status: backup?.status ?? null,
+      backup_detail: backup?.detail ?? null,
+      backup_key_missing: backupKeyMissing,
+      primary_auth_fail: primaryAuthFail,
+    }, 200);
   } catch (e) {
-    return json({ error: String(e) }, 500);
+    return json({ ok: false, stage: "rule_fallback", error: String(e) }, 200);
   }
 });
