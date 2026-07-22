@@ -491,8 +491,14 @@ export function parsePreRegistration(input: string): ParsedRegistration {
       if (counts.lodgingSpecified) specified[cat].lodging = true;
       if (counts.nonLodgingSpecified) specified[cat].non_lodging = true;
       currentCat = cat;
-      listMode = "none";
-      flatBlock = false;
+      const hasLodgingLabel = /(?<!비)숙박/.test(trimmed);
+      const hasNonLodgingLabel = /비숙박/.test(trimmed);
+      listMode = hasNonLodgingLabel && !hasLodgingLabel
+        ? "non_lodging"
+        : hasLodgingLabel && !hasNonLodgingLabel
+          ? "lodging"
+          : "none";
+      flatBlock = listMode !== "none";
       continue;
     }
     // 명단 헤더
