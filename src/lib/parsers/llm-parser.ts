@@ -47,13 +47,10 @@ function normalizePerson(p: any): Person | null {
 function normalizeList(arr: any[] | undefined): Person[] {
   if (!Array.isArray(arr)) return [];
   const out: Person[] = [];
-  const seen = new Set<string>();
   for (const item of arr) {
     const person = normalizePerson(item);
     if (!person) continue;
-    const key = person.name + "|" + (person.note ?? "");
-    if (seen.has(key)) continue;
-    seen.add(key);
+    // dedupe 하지 않음: 동명이인 보존 (진짜 중복은 중복 교회 감지에서 처리)
     out.push(person);
   }
   return out;
