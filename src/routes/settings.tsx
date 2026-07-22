@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { useActiveSeason, useSeasons } from "@/lib/use-active-season";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAll } from "@/lib/fetch-all";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -329,9 +330,12 @@ function LodgingsSection() {
     queryKey: ["lodgings-assigned-count", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data } = await supabase.from("people").select("lodging_id").not("lodging_id", "is", null);
+      const data = await fetchAll<{ lodging_id: string | null }>(
+        "people",
+        (q) => q.select("lodging_id").not("lodging_id", "is", null),
+      );
       const map: Record<string, number> = {};
-      for (const p of data ?? []) {
+      for (const p of data) {
         if (p.lodging_id) map[p.lodging_id] = (map[p.lodging_id] ?? 0) + 1;
       }
       return map;

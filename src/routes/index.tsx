@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { num } from "@/lib/format";
+import { fetchAll } from "@/lib/fetch-all";
 import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -36,9 +37,10 @@ function DashboardPage() {
         .from("churches").select("id, is_checked_in, actual_count").eq("season_id", season!.id);
       const churchIds = (churches ?? []).map((c: any) => c.id);
       if (churchIds.length === 0) return { churches: churches ?? [], people: [] };
-      const { data: people } = await supabase
-        .from("people").select("church_id, gender, age_group, lodging").in("church_id", churchIds);
-      return { churches: churches ?? [], people: people ?? [] };
+      const people = await fetchAll<any>("people", (q) =>
+        q.select("church_id, gender, age_group, lodging").in("church_id", churchIds),
+      );
+      return { churches: churches ?? [], people };
     },
   });
 

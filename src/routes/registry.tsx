@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAll } from "@/lib/fetch-all";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,10 +83,10 @@ function RegistryPage() {
       const { data: churches } = await supabase
         .from("churches").select("*").eq("season_id", season!.id).order("created_at");
       const ids = (churches ?? []).map((c: any) => c.id);
-      const { data: people } = ids.length
-        ? await supabase.from("people").select("*").in("church_id", ids)
-        : { data: [] };
-      return { churches: churches ?? [], people: people ?? [] };
+      const people = ids.length
+        ? await fetchAll<any>("people", (q) => q.select("*").in("church_id", ids))
+        : [];
+      return { churches: churches ?? [], people };
     },
   });
 

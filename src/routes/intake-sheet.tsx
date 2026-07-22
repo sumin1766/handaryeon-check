@@ -3,6 +3,7 @@ import { AppShell, GenderBadge } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAll } from "@/lib/fetch-all";
 import { Card } from "@/components/ui/card";
 import {
   AlertDialog,
@@ -60,12 +61,14 @@ function IntakeSheetPage() {
       const { data: churches } = await supabase
         .from("churches").select("*").eq("season_id", season!.id).order("name");
       const ids = (churches ?? []).map((c: any) => c.id);
-      const { data: people } = ids.length
-        ? await supabase.from("people").select("church_id, name, lodging, gender, age_group, lodging_id").in("church_id", ids)
-        : { data: [] };
+      const people = ids.length
+        ? await fetchAll<any>("people", (q) =>
+            q.select("church_id, name, lodging, gender, age_group, lodging_id").in("church_id", ids),
+          )
+        : [];
       const { data: lodgings } = await supabase
         .from("lodgings").select("id, name, gender").eq("season_id", season!.id);
-      return { churches: churches ?? [], people: people ?? [], lodgings: lodgings ?? [] };
+      return { churches: churches ?? [], people, lodgings: lodgings ?? [] };
     },
   });
 

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAll } from "@/lib/fetch-all";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { num } from "@/lib/format";
@@ -113,10 +114,10 @@ function OnsitePage() {
       const { data: churches } = await supabase
         .from("churches").select("*").eq("season_id", season!.id).eq("source", "onsite").order("created_at", { ascending: false });
       const ids = (churches ?? []).map((c: any) => c.id);
-      const { data: people } = ids.length
-        ? await supabase.from("people").select("church_id, lodging").in("church_id", ids)
-        : { data: [] };
-      return { churches: churches ?? [], people: people ?? [] };
+      const people = ids.length
+        ? await fetchAll<any>("people", (q) => q.select("church_id, lodging").in("church_id", ids))
+        : [];
+      return { churches: churches ?? [], people };
     },
   });
 
