@@ -172,7 +172,21 @@
   table, .tabular-nums, .stat, [class*="font-mono"] {
     font-variant-numeric: tabular-nums;
   }
+
+  /* Global input/textare/select/button sizing */
+  main input,
+  main textarea,
+  main select,
+  main button {
+    font-size: 1rem;
+  }
+  main input,
+  main textarea,
+  main select {
+    min-height: 2.5rem;
+  }
 }
+
 
 /* Lodging gender card surfaces.
    - Light mode: pastel backgrounds with dark text everywhere.
