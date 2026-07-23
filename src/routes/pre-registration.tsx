@@ -95,6 +95,7 @@ function PreRegistrationPage() {
   const { season } = useActiveSeason();
   const qc = useQueryClient();
   const [text, setText] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const parsedFromText = useMemo(() => parsePreRegistration(text), [text]);
   const [edited, setEdited] = useState<ParsedRegistration | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
