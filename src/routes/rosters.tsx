@@ -7,8 +7,10 @@ import { fetchAll } from "@/lib/fetch-all";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, Printer } from "lucide-react";
+import { Download, Printer, Copy, Check } from "lucide-react";
 import { downloadRowsAsXlsx } from "@/lib/export-xlsx";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/rosters")({
   head: () => ({ meta: [{ title: "명단 출력 — 한다련 캠프" }] }),
@@ -60,6 +62,8 @@ function RostersPage() {
 
   const totalPeople = rows.reduce((s: number, r: any) => s + r.count, 0);
 
+  const [copied, setCopied] = useState(false);
+
   const download = () => {
     const xlsx = rows.map((r: any) => ({
       교회명: r.name,
@@ -68,6 +72,38 @@ function RostersPage() {
       인원수: r.count,
     }));
     downloadRowsAsXlsx(xlsx, "교회별 명단", `${season.name}_명단.xlsx`);
+  };
+
+  // TSV (탭 구분) — 구글 스프레드시트에 붙여넣으면 셀별로 자동 분리됩니다.
+  const copyCsv = async () => {
+    const escape = (v: string) => String(v ?? "").replace(/\t/g, " ").replace(/\r?\n/g, " ");
+    const header = ["교회명", "교단", "담당자 연락처", "인원수"].join("\t");
+    const body = rows
+      .map((r: any) => [escape(r.name), escape(r.denomination), escape(r.contact), r.count].join("\t"))
+      .join("\n");
+    const text = `${header}\n${body}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toast.success("복사됨 — 구글 시트에 붙여넣으세요");
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Fallback for insecure context
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        setCopied(true);
+        toast.success("복사됨");
+        setTimeout(() => setCopied(false), 1800);
+      } catch {
+        toast.error("복사 실패");
+      } finally {
+        document.body.removeChild(ta);
+      }
+    }
   };
 
   return (
@@ -91,6 +127,10 @@ function RostersPage() {
             <Button variant="outline" onClick={() => window.print()}>
               <Printer className="h-4 w-4 mr-1" />
               인쇄
+            </Button>
+            <Button variant="outline" onClick={copyCsv}>
+              {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+              {copied ? "복사됨" : "CSV 복사"}
             </Button>
             <Button onClick={download}>
               <Download className="h-4 w-4 mr-1" />
