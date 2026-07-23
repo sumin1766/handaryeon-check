@@ -250,16 +250,16 @@ function DashboardPage() {
 
 function Kpi({ label, value, unit, accent }: { label: string; value: number; unit: string; accent?: boolean }) {
   return (
-    <div className="lumina-glass p-7">
-      <div className="text-sm lumina-muted font-medium">{label}</div>
-      <div className="mt-3 flex items-baseline gap-2">
+    <div className="lumina-glass p-4 sm:p-7 overflow-hidden">
+      <div className="text-xs sm:text-sm lumina-muted font-medium truncate">{label}</div>
+      <div className="mt-2 sm:mt-3 flex items-baseline gap-1.5 sm:gap-2 flex-nowrap min-w-0">
         <span
-          className={accent ? "lumina-accent" : "lumina-num"}
-          style={{ fontSize: "52px", fontWeight: 700, letterSpacing: "-0.03em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}
+          className={`${accent ? "lumina-accent" : "lumina-num"} lumina-kpi-num whitespace-nowrap`}
+          style={{ fontWeight: 700, letterSpacing: "-0.03em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}
         >
           {num(value)}
         </span>
-        <span className="lumina-muted" style={{ fontSize: "16px" }}>{unit}</span>
+        <span className="lumina-muted whitespace-nowrap shrink-0" style={{ fontSize: "14px" }}>{unit}</span>
       </div>
     </div>
   );
@@ -267,18 +267,18 @@ function Kpi({ label, value, unit, accent }: { label: string; value: number; uni
 
 function MiniStat({ label, value, sub, strong }: { label: string; value: number; sub?: string; strong?: boolean }) {
   return (
-    <div className="lumina-glass p-5">
-      <div className="text-sm lumina-muted font-medium">{label}</div>
-      <div className="mt-2 flex items-baseline gap-2">
+    <div className="lumina-glass p-4 sm:p-5 overflow-hidden">
+      <div className="text-xs sm:text-sm lumina-muted font-medium truncate">{label}</div>
+      <div className="mt-2 flex items-baseline gap-1.5 sm:gap-2 flex-nowrap min-w-0">
         <span
-          className="lumina-num"
-          style={{ fontSize: strong ? "36px" : "30px", fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}
+          className="lumina-num whitespace-nowrap"
+          style={{ fontSize: strong ? "clamp(24px, 6vw, 36px)" : "clamp(22px, 5vw, 30px)", fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}
         >
           {num(value)}
         </span>
-        <span className="lumina-muted" style={{ fontSize: "14px" }}>명</span>
+        <span className="lumina-muted whitespace-nowrap shrink-0" style={{ fontSize: "13px" }}>명</span>
       </div>
-      {sub && <div className="mt-2 text-xs lumina-muted">{sub}</div>}
+      {sub && <div className="mt-2 text-[11px] sm:text-xs lumina-muted truncate">{sub}</div>}
     </div>
   );
 }
@@ -292,20 +292,20 @@ function CompareCard({ label, actual, pre, diff, pct, unit }: any) {
         ? { color: "#ffffff", bg: "#ba1a1a" }
         : { color: "var(--lumina-fg-muted)", bg: "var(--lumina-surface-high)" };
   return (
-    <div className="lumina-glass p-7">
-      <div className="text-sm lumina-muted font-medium">{label}</div>
-      <div className="mt-3 flex items-baseline gap-3 flex-wrap">
+    <div className="lumina-glass p-4 sm:p-7 overflow-hidden">
+      <div className="text-xs sm:text-sm lumina-muted font-medium truncate">{label}</div>
+      <div className="mt-2 sm:mt-3 flex items-baseline gap-2 sm:gap-3 flex-wrap min-w-0">
         <span
-          className="lumina-num"
-          style={{ fontSize: "56px", fontWeight: 700, letterSpacing: "-0.04em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}
+          className="lumina-num lumina-compare-num whitespace-nowrap"
+          style={{ fontWeight: 700, letterSpacing: "-0.04em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}
         >
           {num(actual)}
         </span>
-        <span className="lumina-muted" style={{ fontSize: "16px" }}>{unit}</span>
-        <span className="text-sm lumina-muted ml-auto">사전 {num(pre)}{unit}</span>
+        <span className="lumina-muted whitespace-nowrap shrink-0" style={{ fontSize: "14px" }}>{unit}</span>
+        <span className="text-xs sm:text-sm lumina-muted ml-auto whitespace-nowrap">사전 {num(pre)}{unit}</span>
       </div>
       <div
-        className="mt-5 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold"
+        className="mt-4 sm:mt-5 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs sm:text-sm font-semibold whitespace-nowrap"
         style={{ color: trend.color, background: trend.bg }}
       >
         <Icon className="h-4 w-4" style={{ color: trend.color }} />
