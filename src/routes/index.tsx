@@ -251,6 +251,24 @@ function Kpi({ label, value, unit, accent }: { label: string; value: number; uni
   );
 }
 
+function MiniStat({ label, value, sub, strong }: { label: string; value: number; sub?: string; strong?: boolean }) {
+  return (
+    <div className="lumina-glass p-5">
+      <div className="text-sm lumina-muted font-medium">{label}</div>
+      <div className="mt-2 flex items-baseline gap-2">
+        <span
+          className="lumina-num"
+          style={{ fontSize: strong ? "36px" : "30px", fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}
+        >
+          {num(value)}
+        </span>
+        <span className="lumina-muted" style={{ fontSize: "14px" }}>명</span>
+      </div>
+      {sub && <div className="mt-2 text-xs lumina-muted">{sub}</div>}
+    </div>
+  );
+}
+
 function CompareCard({ label, actual, pre, diff, pct, unit }: any) {
   const Icon = diff > 0 ? ArrowUp : diff < 0 ? ArrowDown : Minus;
   const trend =
