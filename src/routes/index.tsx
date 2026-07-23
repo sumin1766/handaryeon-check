@@ -134,107 +134,113 @@ function DashboardPage() {
     );
   }
 
+  const sections: Record<"pre" | "segue" | "actual", JSX.Element> = {
+    pre: (
+      <section key="pre">
+        <h2 className="lumina-section-title font-semibold mb-5">사전접수 현황</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-6">
+          <Kpi label="접수 교회" value={preChurchCount} unit="교회" />
+          <Kpi label="전체 사전접수" value={preTotal} unit="명" />
+          <Kpi label="숙박 인원" value={people.filter((p: any) => p.lodging).length} unit="명" />
+          <Kpi label="비숙박 인원" value={people.filter((p: any) => !p.lodging).length} unit="명" />
+        </div>
+        <div className="lumina-glass p-2 sm:p-3">
+          <div className="overflow-x-auto rounded-[1.15rem]">
+            <table className="w-full min-w-[520px] tabular-nums border-separate border-spacing-0 whitespace-nowrap">
+              <thead style={{ background: "var(--lumina-surface-high)" }}>
+                <tr className="lumina-muted">
+                  <th className="text-center px-3 sm:px-5 py-3 sm:py-4 w-24 sm:w-32 text-[13px] sm:text-base font-semibold">구분</th>
+                  {CAT_COLS.map((c) => (
+                    <th key={c.key} className="text-center px-2 sm:px-5 py-3 sm:py-4 text-[13px] sm:text-base font-semibold">{c.label}</th>
+                  ))}
+                  <th className="text-center px-2 sm:px-5 py-3 sm:py-4 lumina-sum-cell text-[13px] sm:text-base font-semibold">합계</th>
+                </tr>
+              </thead>
+              <tbody>
+                {CAT_ROWS.map((r, idx) => {
+                  const m = matrix(r.lodging);
+                  const sum = Object.values(m).reduce((a, b) => a + b, 0);
+                  const topBorder = idx === 0 ? "none" : "1px solid var(--lumina-border)";
+                  return (
+                    <tr key={r.key}>
+                      <td className="text-center px-3 sm:px-5 py-4 sm:py-6 text-base sm:text-[21px] font-semibold" style={{ borderTop: topBorder }}>{r.label}</td>
+                      {CAT_COLS.map((c) => (
+                        <td key={c.key} className="text-center px-2 sm:px-5 py-4 sm:py-6 text-base sm:text-[21px] font-semibold tabular-nums" style={{ borderTop: topBorder }}>{num(m[c.key])}</td>
+                      ))}
+                      <td className="text-center px-2 sm:px-5 py-4 sm:py-6 lumina-sum-cell text-base sm:text-[21px] font-bold tabular-nums" style={{ borderTop: topBorder }}>
+                        {num(sum)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    ),
+    segue: (
+      <section key="segue">
+        <h2 className="lumina-section-title font-semibold mb-5">세계로교회 · 외부교회 집계</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
+          {SEGUE_DEPTS.map((d) => (
+            <MiniStat
+              key={d.key}
+              label={`세계로 ${d.key}`}
+              value={deptPeopleCount[d.key]}
+              sub={`${deptChurchCount[d.key]}개 그룹`}
+            />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <MiniStat label="세계로 합계" value={segueTotal} sub={`${segueChurches.length}개 그룹`} strong />
+          <MiniStat label="외부교회" value={externalPeople} sub={`${externalChurches.length}개 교회`} strong />
+          <MiniStat
+            label="합계 대조"
+            value={grandCheck}
+            sub={grandCheck === preTotal ? "전체와 일치" : `전체 ${preTotal}명과 불일치`}
+            strong
+          />
+        </div>
+      </section>
+    ),
+    actual: (
+      <section key="actual">
+        <h2 className="lumina-section-title font-semibold mb-5">실접수 현황</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-5">
+          <CompareCard label="실접수 교회" actual={actualChurchCount} pre={preChurchCount} diff={diffChurch} pct={pctChurch} unit="교회" />
+          <CompareCard label="실접수 총인원" actual={actualTotal} pre={preTotal} diff={diffTotal} pct={pctTotal} unit="명" />
+        </div>
+      </section>
+    ),
+  };
+  const activeOrder = order ?? DEFAULT_DASHBOARD_ORDER;
+
   return (
     <AppShell>
+      <style>{`
+        .lumina-section-title { font-size: 20px; letter-spacing: -0.01em; }
+        @media (min-width: 640px) { .lumina-section-title { font-size: 24px; } }
+        .lumina-kpi-num { font-size: 36px; }
+        @media (min-width: 640px) { .lumina-kpi-num { font-size: 52px; } }
+        .lumina-compare-num { font-size: 40px; }
+        @media (min-width: 640px) { .lumina-compare-num { font-size: 56px; } }
+        .lumina-title { font-size: 28px; }
+        @media (min-width: 640px) { .lumina-title { font-size: 40px; } }
+        .lumina-subtitle { font-size: 16px; }
+        @media (min-width: 640px) { .lumina-subtitle { font-size: 22px; } }
+      `}</style>
       <div className="lumina-scope -mx-6 -my-6 min-h-[calc(100vh-130px)]">
-        <div className="mx-auto max-w-[1200px] px-10 py-12 space-y-12">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-10 py-8 sm:py-12 space-y-8 sm:space-y-12">
           <header>
-            <h1
-              className="font-bold"
-              style={{ fontSize: "40px", fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.1 }}
-            >
+            <h1 className="lumina-title font-bold" style={{ fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
               대시보드
             </h1>
-            <p
-              className="lumina-muted mt-2"
-              style={{ fontSize: "22px", fontWeight: 600, letterSpacing: "-0.01em" }}
-            >
+            <p className="lumina-muted lumina-subtitle mt-2" style={{ fontWeight: 600, letterSpacing: "-0.01em" }}>
               {season.name} 현황
             </p>
           </header>
-
-          <section>
-            <h2 className="font-semibold mb-5" style={{ fontSize: "24px", fontWeight: 600, letterSpacing: "-0.01em" }}>
-              사전접수 현황
-            </h2>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-              <Kpi label="접수 교회" value={preChurchCount} unit="교회" />
-              <Kpi label="전체 사전접수" value={preTotal} unit="명" />
-              <Kpi label="숙박 인원" value={people.filter((p: any) => p.lodging).length} unit="명" />
-              <Kpi label="비숙박 인원" value={people.filter((p: any) => !p.lodging).length} unit="명" />
-            </div>
-            <div className="lumina-glass p-3">
-              <div className="overflow-x-auto rounded-[1.15rem]">
-                <table className="w-full min-w-[640px] tabular-nums border-separate border-spacing-0 whitespace-nowrap">
-                  <thead style={{ background: "var(--lumina-surface-high)" }}>
-                    <tr className="lumina-muted">
-                      <th className="text-center px-5 py-4 w-32" style={{ fontSize: "16px", fontWeight: 600 }}>구분</th>
-                      {CAT_COLS.map((c) => (
-                        <th key={c.key} className="text-center px-5 py-4" style={{ fontSize: "16px", fontWeight: 600 }}>{c.label}</th>
-                      ))}
-                      <th className="text-center px-5 py-4 lumina-sum-cell" style={{ fontSize: "16px", fontWeight: 600 }}>합계</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {CAT_ROWS.map((r, idx) => {
-                      const m = matrix(r.lodging);
-                      const sum = Object.values(m).reduce((a, b) => a + b, 0);
-                      const topBorder = idx === 0 ? "none" : "1px solid var(--lumina-border)";
-                      return (
-                        <tr key={r.key}>
-                          <td className="text-center px-5 py-6" style={{ fontSize: "21px", fontWeight: 600, borderTop: topBorder }}>{r.label}</td>
-                          {CAT_COLS.map((c) => (
-                            <td key={c.key} className="text-center px-5 py-6" style={{ fontSize: "21px", fontWeight: 600, borderTop: topBorder, fontVariantNumeric: "tabular-nums" }}>{num(m[c.key])}</td>
-                          ))}
-                          <td className="text-center px-5 py-6 lumina-sum-cell" style={{ fontSize: "21px", fontWeight: 700, borderTop: topBorder, fontVariantNumeric: "tabular-nums" }}>
-                            {num(sum)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-          </section>
-
-        <section>
-          <h2 className="font-semibold mb-5" style={{ fontSize: "24px", fontWeight: 600, letterSpacing: "-0.01em" }}>
-            세계로교회 · 외부교회 집계
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
-            {SEGUE_DEPTS.map((d) => (
-              <MiniStat
-                key={d.key}
-                label={`세계로 ${d.key}`}
-                value={deptPeopleCount[d.key]}
-                sub={`${deptChurchCount[d.key]}개 그룹`}
-              />
-            ))}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <MiniStat label="세계로 합계" value={segueTotal} sub={`${segueChurches.length}개 그룹`} strong />
-            <MiniStat label="외부교회" value={externalPeople} sub={`${externalChurches.length}개 교회`} strong />
-            <MiniStat
-              label="합계 대조"
-              value={grandCheck}
-              sub={grandCheck === preTotal ? "전체와 일치" : `전체 ${preTotal}명과 불일치`}
-              strong
-            />
-          </div>
-        </section>
-
-
-          <section>
-            <h2 className="font-semibold mb-5" style={{ fontSize: "24px", fontWeight: 600, letterSpacing: "-0.01em" }}>
-              실접수 현황
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <CompareCard label="실접수 교회" actual={actualChurchCount} pre={preChurchCount} diff={diffChurch} pct={pctChurch} unit="교회" />
-              <CompareCard label="실접수 총인원" actual={actualTotal} pre={preTotal} diff={diffTotal} pct={pctTotal} unit="명" />
-            </div>
-          </section>
+          {activeOrder.map((k) => sections[k])}
         </div>
       </div>
     </AppShell>
