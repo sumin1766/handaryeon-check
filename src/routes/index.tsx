@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import type * as React from "react";
 import { AppShell } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery } from "@tanstack/react-query";
