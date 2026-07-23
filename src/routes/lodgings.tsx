@@ -44,7 +44,7 @@ function LodgingsPage() {
       const { data: churches } = await supabase.from("churches").select("id, name, denomination").eq("season_id", season!.id);
       const ids = (churches ?? []).map((c: any) => c.id);
       const people = ids.length
-        ? await fetchAll<any>("people", (q) => q.select("*").in("church_id", ids))
+        ? await fetchAll<any>("people", (q) => q.select("*").in("church_id", ids).order("id"))
         : [];
       return { lodgings: lodgings ?? [], churches: churches ?? [], people };
     },
