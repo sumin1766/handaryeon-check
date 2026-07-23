@@ -18,18 +18,21 @@ export type Database = {
         Row: {
           bath_unit_price: number
           created_at: string
+          dashboard_section_order: string[]
           ocr_enabled: boolean
           season_id: string
         }
         Insert: {
           bath_unit_price?: number
           created_at?: string
+          dashboard_section_order?: string[]
           ocr_enabled?: boolean
           season_id: string
         }
         Update: {
           bath_unit_price?: number
           created_at?: string
+          dashboard_section_order?: string[]
           ocr_enabled?: boolean
           season_id?: string
         }
