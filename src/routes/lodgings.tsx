@@ -102,24 +102,17 @@ function LodgingsPage() {
   const unMCount = unassignedM.reduce((s, g) => s + g.persons.length, 0);
   const unFCount = unassignedF.reduce((s, g) => s + g.persons.length, 0);
 
-  // Churches with any person carrying a non-blank note (배치 요청 사전 확인용).
+  // Churches whose registration memo (교회 단위 비고) is non-blank — batch check before placement.
   const notesByChurch = useMemo(() => {
-    const m = new Map<string, { name: string; note: string; gender: string }[]>();
-    for (const p of people) {
-      const note = (p.note ?? "").trim();
-      if (!note) continue;
-      const arr = m.get(p.church_id) ?? [];
-      arr.push({ name: p.name ?? "?", note, gender: p.gender });
-      m.set(p.church_id, arr);
-    }
-    return Array.from(m.entries())
-      .map(([churchId, entries]) => ({
-        churchId,
-        label: (churchMap.get(churchId) ?? "?") as string,
-        entries,
+    return churches
+      .map((c: any) => ({
+        churchId: c.id as string,
+        label: (c.denomination ? `${c.name}(${c.denomination})` : c.name) as string,
+        memo: (c.memo ?? "").trim(),
       }))
+      .filter((c) => c.memo.length > 0)
       .sort((a, b) => a.label.localeCompare(b.label, "ko"));
-  }, [people, churchMap]);
+  }, [churches]);
 
   const totalCap = lodgings.filter((l: any) => l.active).reduce((s: number, l: any) => s + l.capacity, 0);
   const totalAssigned = lodgings.reduce((s: number, l: any) => s + (peopleByLodging.get(l.id)?.length ?? 0), 0);
