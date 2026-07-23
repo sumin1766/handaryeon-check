@@ -33,7 +33,7 @@ function LodgingsPage() {
   const retryRef = useRef<Set<string>>(new Set()); // `${churchId}:${gender}:${lodgingId}` previously warned
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const roomRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
-  const [notesOpen, setNotesOpen] = useState(true);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [sortMode, setSortMode] = useState<"name" | "count-desc" | "count-asc">("count-desc");
 
   const { data } = useQuery({
