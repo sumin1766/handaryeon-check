@@ -194,6 +194,33 @@ function DashboardPage() {
 
           <section>
             <h2 className="font-semibold mb-5" style={{ fontSize: "24px", fontWeight: 600, letterSpacing: "-0.01em" }}>
+              세계로교회 · 외부교회 집계
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
+              {SEGUE_DEPTS.map((d) => (
+                <MiniStat
+                  key={d.key}
+                  label={`세계로 ${d.key}`}
+                  value={deptPeopleCount[d.key]}
+                  sub={`${deptChurchCount[d.key]}개 교회`}
+                />
+              ))}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <MiniStat label="세계로 합계" value={segueTotal} sub={`${segueChurches.length}개 교회`} strong />
+              <MiniStat label="외부교회" value={externalPeople} sub={`${externalChurches.length}개 교회`} strong />
+              <MiniStat
+                label="합계 대조"
+                value={grandCheck}
+                sub={grandCheck === preTotal ? "전체와 일치" : `전체 ${preTotal}명과 불일치`}
+                strong
+              />
+            </div>
+          </section>
+
+
+          <section>
+            <h2 className="font-semibold mb-5" style={{ fontSize: "24px", fontWeight: 600, letterSpacing: "-0.01em" }}>
               실접수 현황
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
