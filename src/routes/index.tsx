@@ -34,7 +34,7 @@ function DashboardPage() {
     enabled: !!season?.id,
     queryFn: async () => {
       const { data: churches } = await supabase
-        .from("churches").select("id, is_checked_in, actual_count").eq("season_id", season!.id);
+        .from("churches").select("id, name, denomination, is_checked_in, actual_count").eq("season_id", season!.id);
       const churchIds = (churches ?? []).map((c: any) => c.id);
       if (churchIds.length === 0) return { churches: churches ?? [], people: [] };
       const people = await fetchAll<any>("people", (q) =>
@@ -66,6 +66,58 @@ function DashboardPage() {
   const diffTotal = actualTotal - preTotal;
   const pctChurch = preChurchCount ? (diffChurch / preChurchCount) * 100 : 0;
   const pctTotal = preTotal ? (diffTotal / preTotal) * 100 : 0;
+
+  // 세계로 부서 분류 (registry.tsx의 세계로 필터와 동일 판별: name.includes("세계로"))
+  const SEGUE_DEPTS = [
+    { key: "중등", kw: "중등" },
+    { key: "고등", kw: "고등" },
+    { key: "3청년", kw: "3청년" },
+    { key: "2청년", kw: "2청년" },
+    { key: "1청년", kw: "1청년" },
+    { key: "우남", kw: "우남" },
+    { key: "일반", kw: null as string | null },
+  ] as const;
+  const classifySegueDept = (c: any) => {
+    const s = `${c.name ?? ""} ${c.denomination ?? ""}`;
+    for (const d of SEGUE_DEPTS) {
+      if (d.kw && s.includes(d.kw)) return d.key;
+    }
+    return "일반";
+  };
+  const churchDept = new Map<string, string>();
+  const segueChurches: any[] = [];
+  const externalChurches: any[] = [];
+  for (const c of churches) {
+    const isSegue = !!(c.name && c.name.includes("세계로"));
+    if (isSegue) {
+      const dept = classifySegueDept(c);
+      churchDept.set(c.id, dept);
+      segueChurches.push({ ...c, __dept: dept });
+    } else {
+      externalChurches.push(c);
+    }
+  }
+  const deptPeopleCount: Record<string, number> = Object.fromEntries(SEGUE_DEPTS.map((d) => [d.key, 0]));
+  const deptChurchCount: Record<string, number> = Object.fromEntries(SEGUE_DEPTS.map((d) => [d.key, 0]));
+  for (const c of segueChurches) deptChurchCount[c.__dept] += 1;
+  let externalPeople = 0;
+  for (const p of people) {
+    const dept = churchDept.get(p.church_id);
+    if (dept) deptPeopleCount[dept] += 1;
+    else externalPeople += 1;
+  }
+  const segueTotal = Object.values(deptPeopleCount).reduce((a, b) => a + b, 0);
+  const grandCheck = segueTotal + externalPeople;
+
+  if (typeof window !== "undefined" && churches.length > 0) {
+    // 검증용 로그
+    const generalList = segueChurches.filter((c) => c.__dept === "일반").map((c) => `${c.name} (${c.denomination ?? ""})`);
+    console.log("[dashboard] 세계로 부서별 집계", SEGUE_DEPTS.map((d) => ({
+      부서: d.key, 교회수: deptChurchCount[d.key], 인원: deptPeopleCount[d.key],
+    })));
+    console.log("[dashboard] 일반으로 분류된 세계로 교회", generalList);
+    console.log("[dashboard] 총합 대조", { 세계로합계: segueTotal, 외부: externalPeople, 총합: grandCheck, 전체사전접수: preTotal, 일치: grandCheck === preTotal });
+  }
 
   if (!season) {
     return (
@@ -142,6 +194,33 @@ function DashboardPage() {
 
           <section>
             <h2 className="font-semibold mb-5" style={{ fontSize: "24px", fontWeight: 600, letterSpacing: "-0.01em" }}>
+              세계로교회 · 외부교회 집계
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
+              {SEGUE_DEPTS.map((d) => (
+                <MiniStat
+                  key={d.key}
+                  label={`세계로 ${d.key}`}
+                  value={deptPeopleCount[d.key]}
+                  sub={`${deptChurchCount[d.key]}개 교회`}
+                />
+              ))}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <MiniStat label="세계로 합계" value={segueTotal} sub={`${segueChurches.length}개 교회`} strong />
+              <MiniStat label="외부교회" value={externalPeople} sub={`${externalChurches.length}개 교회`} strong />
+              <MiniStat
+                label="합계 대조"
+                value={grandCheck}
+                sub={grandCheck === preTotal ? "전체와 일치" : `전체 ${preTotal}명과 불일치`}
+                strong
+              />
+            </div>
+          </section>
+
+
+          <section>
+            <h2 className="font-semibold mb-5" style={{ fontSize: "24px", fontWeight: 600, letterSpacing: "-0.01em" }}>
               실접수 현황
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -168,6 +247,24 @@ function Kpi({ label, value, unit, accent }: { label: string; value: number; uni
         </span>
         <span className="lumina-muted" style={{ fontSize: "16px" }}>{unit}</span>
       </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value, sub, strong }: { label: string; value: number; sub?: string; strong?: boolean }) {
+  return (
+    <div className="lumina-glass p-5">
+      <div className="text-sm lumina-muted font-medium">{label}</div>
+      <div className="mt-2 flex items-baseline gap-2">
+        <span
+          className="lumina-num"
+          style={{ fontSize: strong ? "36px" : "30px", fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}
+        >
+          {num(value)}
+        </span>
+        <span className="lumina-muted" style={{ fontSize: "14px" }}>명</span>
+      </div>
+      {sub && <div className="mt-2 text-xs lumina-muted">{sub}</div>}
     </div>
   );
 }
