@@ -219,18 +219,18 @@ function LodgingsPage() {
               {notesOpen && (
                 <div className="border-t border-amber-400/30 divide-y divide-amber-400/20">
                   {notesByChurch.map(({ churchId, label, entries }) => (
-                    <div key={churchId} className="px-4 py-2 text-sm">
-                      <div className="font-semibold mb-1">{label}</div>
-                      <ul className="space-y-0.5">
+                    <div key={churchId} className="px-4 py-2.5 text-sm">
+                      <div className="font-semibold mb-1.5">{label}</div>
+                      <ul className="space-y-1.5">
                         {entries.map((e, i) => (
-                          <li key={i} className="flex flex-wrap items-baseline gap-x-2 text-xs">
-                            <span className="font-medium">
+                          <li key={i} className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-2 text-xs">
+                            <span className="shrink-0 font-medium min-w-[80px]">
                               {e.name}
                               <span className="ml-1 text-muted-foreground">
                                 ({e.gender === "M" ? "남" : e.gender === "F" ? "여" : "-"})
                               </span>
                             </span>
-                            <span className="rounded bg-amber-200/70 dark:bg-amber-700/40 px-1.5 py-0.5 font-semibold text-amber-950 dark:text-amber-50">
+                            <span className="flex-1 rounded bg-amber-200/80 dark:bg-amber-700/50 px-2 py-1 font-semibold text-amber-950 dark:text-amber-50 whitespace-pre-wrap break-words">
                               {e.note}
                             </span>
                           </li>
