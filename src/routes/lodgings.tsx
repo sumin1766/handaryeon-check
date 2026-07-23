@@ -204,6 +204,44 @@ function LodgingsPage() {
       <div className="flex flex-col lg:flex-row gap-4">
         {/* LEFT 70% */}
         <div className="flex-1 min-w-0 space-y-4">
+          {notesByChurch.length > 0 && (
+            <Card className="p-0 overflow-hidden border-amber-400/40 bg-amber-50/50 dark:bg-amber-900/10">
+              <button
+                type="button"
+                onClick={() => setNotesOpen((v) => !v)}
+                className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-left hover:bg-amber-100/40 dark:hover:bg-amber-900/20"
+              >
+                <span className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                  비고 있는 교회 {notesByChurch.length}곳 — 배치 전 확인
+                </span>
+                {notesOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+              {notesOpen && (
+                <div className="border-t border-amber-400/30 divide-y divide-amber-400/20">
+                  {notesByChurch.map(({ churchId, label, entries }) => (
+                    <div key={churchId} className="px-4 py-2 text-sm">
+                      <div className="font-semibold mb-1">{label}</div>
+                      <ul className="space-y-0.5">
+                        {entries.map((e, i) => (
+                          <li key={i} className="flex flex-wrap items-baseline gap-x-2 text-xs">
+                            <span className="font-medium">
+                              {e.name}
+                              <span className="ml-1 text-muted-foreground">
+                                ({e.gender === "M" ? "남" : e.gender === "F" ? "여" : "-"})
+                              </span>
+                            </span>
+                            <span className="rounded bg-amber-200/70 dark:bg-amber-700/40 px-1.5 py-0.5 font-semibold text-amber-950 dark:text-amber-50">
+                              {e.note}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
           <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
             <div className="min-w-0">
               <h1 className="text-2xl font-bold">숙소배치</h1>
@@ -211,6 +249,7 @@ function LodgingsPage() {
             </div>
             <Input placeholder="이름/교회 검색…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-56" />
           </header>
+
 
           <Card className="p-4">
             <div className="flex gap-6 text-sm tabular-nums flex-wrap">
