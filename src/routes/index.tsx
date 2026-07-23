@@ -7,6 +7,7 @@ import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { num } from "@/lib/format";
 import { fetchAll } from "@/lib/fetch-all";
 import { ArrowDown, ArrowUp, Minus } from "lucide-react";
+import { useDashboardOrder, DEFAULT_DASHBOARD_ORDER } from "@/lib/dashboard-order";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [{ title: "대시보드 — 한다련 캠프" }] }),
