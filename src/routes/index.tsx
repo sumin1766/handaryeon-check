@@ -28,6 +28,7 @@ const CAT_COLS = [
 
 function DashboardPage() {
   const { season } = useActiveSeason();
+  const { data: order } = useDashboardOrder(season?.id);
   useRealtimeInvalidate(["churches", "people"], [["dashboard"]]);
 
   const { data } = useQuery({
