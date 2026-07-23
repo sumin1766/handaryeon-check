@@ -106,6 +106,12 @@ function PreRegistrationPage() {
   const [nameFilter, setNameFilter] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
 
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [text]);
 
   useRealtimeInvalidate(["churches", "people", "app_settings"], [["pre-list"], ["pre-all"], ["pre_ocr_enabled"]]);
 
