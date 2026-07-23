@@ -13,14 +13,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DEFAULT_LODGINGS } from "@/lib/default-lodgings";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   useReceiptLayout, useSaveReceiptLayout, DEFAULT_LAYOUT, RECEIPT_ELEMENTS,
   type ReceiptLayout,
 } from "@/lib/receipt-layout";
 import { ReceiptLayoutEditor, type ReceiptData, type ReceiptMode } from "@/components/receipt-document";
 import { toast } from "sonner";
-import { Plus, Star, Calendar, Building2, Bath, Maximize2, Trash2, FileText, Lock, ScanText, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Plus, Star, Calendar, Building2, Bath, Maximize2, Trash2, FileText, Lock, ScanText, CheckCircle2, XCircle, Loader2, LayoutDashboard, ChevronUp, ChevronDown } from "lucide-react";
+import {
+  useDashboardOrder, useSaveDashboardOrder, DEFAULT_DASHBOARD_ORDER,
+  DASHBOARD_SECTION_LABEL, type DashboardSectionKey,
+} from "@/lib/dashboard-order";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { krw } from "@/lib/format";
 import { useAuthRole } from "@/lib/use-auth-role";
@@ -97,6 +101,13 @@ function SettingsPage() {
             summary={<OcrSummary />}
           >
             <OcrSection />
+          </SettingsCard>
+          <SettingsCard
+            icon={<LayoutDashboard className="h-5 w-5" />}
+            title="대시보드 섹션 순서"
+            summary={<DashboardOrderSummary />}
+          >
+            <DashboardOrderSection />
           </SettingsCard>
         </div>
       </div>
@@ -971,3 +982,77 @@ function BackupKeySection({
 }
 
 
+
+// ----- Dashboard section order -----
+
+function DashboardOrderSummary() {
+  const { season } = useActiveSeason();
+  const { data: order } = useDashboardOrder(season?.id);
+  const eff = order ?? DEFAULT_DASHBOARD_ORDER;
+  return (
+    <div className="space-y-1">
+      {eff.map((k, i) => (
+        <div key={k} className="truncate">
+          <span className="text-muted-foreground">{i + 1}.</span>{" "}
+          <b className="text-foreground">{DASHBOARD_SECTION_LABEL[k]}</b>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DashboardOrderSection() {
+  const { season } = useActiveSeason();
+  const { data: saved } = useDashboardOrder(season?.id);
+  const save = useSaveDashboardOrder(season?.id);
+  const [order, setOrder] = useState<DashboardSectionKey[]>(saved ?? DEFAULT_DASHBOARD_ORDER);
+  const savedKey = (saved ?? DEFAULT_DASHBOARD_ORDER).join(",");
+  useEffect(() => {
+    if (saved) setOrder(saved);
+  }, [savedKey]);
+  const move = (idx: number, dir: -1 | 1) => {
+    const j = idx + dir;
+    if (j < 0 || j >= order.length) return;
+    const next = [...order];
+    [next[idx], next[j]] = [next[j], next[idx]];
+    setOrder(next);
+  };
+  const reset = () => setOrder(DEFAULT_DASHBOARD_ORDER);
+  const dirty = order.join(",") !== savedKey;
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        대시보드 상단부터 순서대로 표시됩니다. 저장 후 새로고침·다른 기기에서도 동일하게 적용됩니다.
+      </p>
+      <ul className="space-y-2">
+        {order.map((k, i) => (
+          <li key={k} className="flex items-center gap-2 rounded-md border bg-card px-3 py-2.5">
+            <span className="w-6 tabular-nums text-sm text-muted-foreground">{i + 1}.</span>
+            <span className="flex-1 font-medium">{DASHBOARD_SECTION_LABEL[k]}</span>
+            <Button size="icon" variant="outline" onClick={() => move(i, -1)} disabled={i === 0} aria-label="위로">
+              <ChevronUp className="h-4 w-4" />
+            </Button>
+            <Button size="icon" variant="outline" onClick={() => move(i, 1)} disabled={i === order.length - 1} aria-label="아래로">
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </li>
+        ))}
+      </ul>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          onClick={() => save.mutate(order, {
+            onSuccess: () => toast.success("순서 저장됨"),
+            onError: (e: any) => toast.error(e.message ?? "저장 실패"),
+          })}
+          disabled={!dirty || save.isPending}
+        >
+          {save.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+          저장
+        </Button>
+        <Button variant="outline" onClick={reset} disabled={order.join(",") === DEFAULT_DASHBOARD_ORDER.join(",")}>
+          기본값으로
+        </Button>
+      </div>
+    </div>
+  );
+}

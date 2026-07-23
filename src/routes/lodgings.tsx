@@ -41,7 +41,7 @@ function LodgingsPage() {
     enabled: !!season?.id,
     queryFn: async () => {
       const { data: lodgings } = await supabase.from("lodgings").select("*").eq("season_id", season!.id).order("sort_order");
-      const { data: churches } = await supabase.from("churches").select("id, name, denomination").eq("season_id", season!.id);
+      const { data: churches } = await supabase.from("churches").select("id, name, denomination, memo").eq("season_id", season!.id);
       const ids = (churches ?? []).map((c: any) => c.id);
       const people = ids.length
         ? await fetchAll<any>("people", (q) => q.select("*").in("church_id", ids))
@@ -102,24 +102,17 @@ function LodgingsPage() {
   const unMCount = unassignedM.reduce((s, g) => s + g.persons.length, 0);
   const unFCount = unassignedF.reduce((s, g) => s + g.persons.length, 0);
 
-  // Churches with any person carrying a non-blank note (배치 요청 사전 확인용).
+  // Churches whose registration memo (교회 단위 비고) is non-blank — batch check before placement.
   const notesByChurch = useMemo(() => {
-    const m = new Map<string, { name: string; note: string; gender: string }[]>();
-    for (const p of people) {
-      const note = (p.note ?? "").trim();
-      if (!note) continue;
-      const arr = m.get(p.church_id) ?? [];
-      arr.push({ name: p.name ?? "?", note, gender: p.gender });
-      m.set(p.church_id, arr);
-    }
-    return Array.from(m.entries())
-      .map(([churchId, entries]) => ({
-        churchId,
-        label: (churchMap.get(churchId) ?? "?") as string,
-        entries,
+    return churches
+      .map((c: any) => ({
+        churchId: c.id as string,
+        label: (c.denomination ? `${c.name}(${c.denomination})` : c.name) as string,
+        memo: (c.memo ?? "").trim(),
       }))
+      .filter((c) => c.memo.length > 0)
       .sort((a, b) => a.label.localeCompare(b.label, "ko"));
-  }, [people, churchMap]);
+  }, [churches]);
 
   const totalCap = lodgings.filter((l: any) => l.active).reduce((s: number, l: any) => s + l.capacity, 0);
   const totalAssigned = lodgings.reduce((s: number, l: any) => s + (peopleByLodging.get(l.id)?.length ?? 0), 0);
@@ -218,24 +211,12 @@ function LodgingsPage() {
               </button>
               {notesOpen && (
                 <div className="border-t border-amber-400/30 divide-y divide-amber-400/20">
-                  {notesByChurch.map(({ churchId, label, entries }) => (
+                  {notesByChurch.map(({ churchId, label, memo }) => (
                     <div key={churchId} className="px-4 py-2.5 text-sm">
                       <div className="font-semibold mb-1.5">{label}</div>
-                      <ul className="space-y-1.5">
-                        {entries.map((e, i) => (
-                          <li key={i} className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-2 text-xs">
-                            <span className="shrink-0 font-medium min-w-[80px]">
-                              {e.name}
-                              <span className="ml-1 text-muted-foreground">
-                                ({e.gender === "M" ? "남" : e.gender === "F" ? "여" : "-"})
-                              </span>
-                            </span>
-                            <span className="flex-1 rounded bg-amber-200/80 dark:bg-amber-700/50 px-2 py-1 font-semibold text-amber-950 dark:text-amber-50 whitespace-pre-wrap break-words">
-                              {e.note}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
+                      <div className="rounded bg-amber-200/80 dark:bg-amber-700/50 px-2.5 py-1.5 text-xs font-semibold text-amber-950 dark:text-amber-50 whitespace-pre-wrap break-words">
+                        {memo}
+                      </div>
                     </div>
                   ))}
                 </div>
