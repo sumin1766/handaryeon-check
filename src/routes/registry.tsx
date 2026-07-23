@@ -56,6 +56,7 @@ function RegistryPage() {
   const canEdit = role === "admin" || role === "staff";
   const [search, setSearch] = useState("");
   const [segueOnly, setSegueOnly] = useState(false);
+  const [sortByName, setSortByName] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [compareGroup, setCompareGroup] = useState<DuplicateGroup | null>(null);
   const qc = useQueryClient();
@@ -110,11 +111,37 @@ function RegistryPage() {
     [churches, people],
   );
 
-  // Name search results
+  // Extended search: name / affiliation (church name + denomination) / phone (digits only)
   const trimmed = search.trim();
+  const digitsOnly = (s: string) => (s ?? "").replace(/\D+/g, "");
+  const searchDigits = digitsOnly(trimmed);
+  const isDigitQuery = trimmed.length > 0 && searchDigits.length > 0 && /^[\d\s-]+$/.test(trimmed);
+
+  const personMatches = (p: any, c: any) => {
+    if (!trimmed) return false;
+    if (p.name && p.name.includes(trimmed)) return true;
+    if (c?.name && c.name.includes(trimmed)) return true;
+    if (c?.denomination && c.denomination.includes(trimmed)) return true;
+    if (c?.contact_name && c.contact_name.includes(trimmed)) return true;
+    if (isDigitQuery && c?.phone && digitsOnly(c.phone).includes(searchDigits)) return true;
+    return false;
+  };
+
+  const churchMatches = (c: any) => {
+    if (!trimmed) return true;
+    if (c.name && c.name.includes(trimmed)) return true;
+    if (c.denomination && c.denomination.includes(trimmed)) return true;
+    if (c.contact_name && c.contact_name.includes(trimmed)) return true;
+    if (isDigitQuery && c.phone && digitsOnly(c.phone).includes(searchDigits)) return true;
+    const ps = peopleByChurch.get(c.id) ?? [];
+    if (ps.some((p: any) => p.name?.includes(trimmed))) return true;
+    return false;
+  };
+
   const nameMatches = trimmed
-    ? people.filter((p: any) => p.name && p.name.includes(trimmed))
+    ? people.filter((p: any) => personMatches(p, churchById.get(p.church_id)))
     : [];
+
 
   return (
     <AppShell>

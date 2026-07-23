@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as RostersRouteImport } from './routes/rosters'
 import { Route as RegistryRouteImport } from './routes/registry'
 import { Route as ReceiptRouteImport } from './routes/receipt'
 import { Route as PreRegistrationRouteImport } from './routes/pre-registration'
@@ -23,6 +24,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RostersRoute = RostersRouteImport.update({
+  id: '/rosters',
+  path: '/rosters',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegistryRoute = RegistryRouteImport.update({
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/pre-registration': typeof PreRegistrationRoute
   '/receipt': typeof ReceiptRoute
   '/registry': typeof RegistryRoute
+  '/rosters': typeof RostersRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesByTo {
@@ -93,6 +100,7 @@ export interface FileRoutesByTo {
   '/pre-registration': typeof PreRegistrationRoute
   '/receipt': typeof ReceiptRoute
   '/registry': typeof RegistryRoute
+  '/rosters': typeof RostersRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesById {
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   '/pre-registration': typeof PreRegistrationRoute
   '/receipt': typeof ReceiptRoute
   '/registry': typeof RegistryRoute
+  '/rosters': typeof RostersRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
     | '/pre-registration'
     | '/receipt'
     | '/registry'
+    | '/rosters'
     | '/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
     | '/pre-registration'
     | '/receipt'
     | '/registry'
+    | '/rosters'
     | '/settings'
   id:
     | '__root__'
@@ -144,6 +155,7 @@ export interface FileRouteTypes {
     | '/pre-registration'
     | '/receipt'
     | '/registry'
+    | '/rosters'
     | '/settings'
   fileRoutesById: FileRoutesById
 }
@@ -157,6 +169,7 @@ export interface RootRouteChildren {
   PreRegistrationRoute: typeof PreRegistrationRoute
   ReceiptRoute: typeof ReceiptRoute
   RegistryRoute: typeof RegistryRoute
+  RostersRoute: typeof RostersRoute
   SettingsRoute: typeof SettingsRoute
 }
 
@@ -167,6 +180,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rosters': {
+      id: '/rosters'
+      path: '/rosters'
+      fullPath: '/rosters'
+      preLoaderRoute: typeof RostersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/registry': {
@@ -245,6 +265,7 @@ const rootRouteChildren: RootRouteChildren = {
   PreRegistrationRoute: PreRegistrationRoute,
   ReceiptRoute: ReceiptRoute,
   RegistryRoute: RegistryRoute,
+  RostersRoute: RostersRoute,
   SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
