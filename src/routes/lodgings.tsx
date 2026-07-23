@@ -80,10 +80,46 @@ function LodgingsPage() {
     return Array.from(byKey.values());
   }, [people]);
 
-  const unassignedM = unassignedGroups.filter((g) => g.gender === "M");
-  const unassignedF = unassignedGroups.filter((g) => g.gender === "F");
+  // Sort unassigned groups per selected mode (render-order only; source data unchanged).
+  const sortGroups = useCallback(
+    (arr: { churchId: string; gender: "M" | "F"; persons: any[] }[]) => {
+      const copy = [...arr];
+      if (sortMode === "name") {
+        copy.sort((a, b) =>
+          (churchMap.get(a.churchId) ?? "").localeCompare(churchMap.get(b.churchId) ?? "", "ko"),
+        );
+      } else if (sortMode === "count-desc") {
+        copy.sort((a, b) => b.persons.length - a.persons.length);
+      } else {
+        copy.sort((a, b) => a.persons.length - b.persons.length);
+      }
+      return copy;
+    },
+    [sortMode, churchMap],
+  );
+  const unassignedM = sortGroups(unassignedGroups.filter((g) => g.gender === "M"));
+  const unassignedF = sortGroups(unassignedGroups.filter((g) => g.gender === "F"));
   const unMCount = unassignedM.reduce((s, g) => s + g.persons.length, 0);
   const unFCount = unassignedF.reduce((s, g) => s + g.persons.length, 0);
+
+  // Churches with any person carrying a non-blank note (배치 요청 사전 확인용).
+  const notesByChurch = useMemo(() => {
+    const m = new Map<string, { name: string; note: string; gender: string }[]>();
+    for (const p of people) {
+      const note = (p.note ?? "").trim();
+      if (!note) continue;
+      const arr = m.get(p.church_id) ?? [];
+      arr.push({ name: p.name ?? "?", note, gender: p.gender });
+      m.set(p.church_id, arr);
+    }
+    return Array.from(m.entries())
+      .map(([churchId, entries]) => ({
+        churchId,
+        label: (churchMap.get(churchId) ?? "?") as string,
+        entries,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, "ko"));
+  }, [people, churchMap]);
 
   const totalCap = lodgings.filter((l: any) => l.active).reduce((s: number, l: any) => s + l.capacity, 0);
   const totalAssigned = lodgings.reduce((s: number, l: any) => s + (peopleByLodging.get(l.id)?.length ?? 0), 0);
