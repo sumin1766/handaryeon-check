@@ -1006,13 +1006,10 @@ function DashboardOrderSection() {
   const { data: saved } = useDashboardOrder(season?.id);
   const save = useSaveDashboardOrder(season?.id);
   const [order, setOrder] = useState<DashboardSectionKey[]>(saved ?? DEFAULT_DASHBOARD_ORDER);
-  // Sync when server data arrives / changes.
-  const [lastSyncedKey, setLastSyncedKey] = useState<string>("");
   const savedKey = (saved ?? DEFAULT_DASHBOARD_ORDER).join(",");
-  if (saved && savedKey !== lastSyncedKey) {
-    setOrder(saved);
-    setLastSyncedKey(savedKey);
-  }
+  useEffect(() => {
+    if (saved) setOrder(saved);
+  }, [savedKey]);
   const move = (idx: number, dir: -1 | 1) => {
     const j = idx + dir;
     if (j < 0 || j >= order.length) return;
