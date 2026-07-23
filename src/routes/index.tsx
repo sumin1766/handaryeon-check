@@ -68,6 +68,11 @@ function DashboardPage() {
   const pctTotal = preTotal ? (diffTotal / preTotal) * 100 : 0;
 
   // 세계로 부서 분류 (registry.tsx의 세계로 필터와 동일 판별: name.includes("세계로"))
+  // 시스템 이해: 세계로교회는 하나의 교회이지만, 신청이 부서 단위(중등·고등·3·2·1청년·우남·일반)로 나뉘어
+  // 각각 별도 그룹으로 집계된다. 우남은 학교이므로 학년별 반, 교직원, 학부모 등으로 다시 여러 그룹으로
+  // 세분화되어 그룹 수가 많게 나온다(예: 우남 8개 그룹). 이는 정상 동작이며 중복이나 오류가 아니다.
+  // 따라서 대시보드 카드의 부서/합계 아래에는 "개 그룹"을 표시하고, 진짜 서로 다른 교회들의 합인
+  // "외부교회"만 "개 교회"로 남긴다.
   const SEGUE_DEPTS = [
     { key: "중등", kw: "중등" },
     { key: "고등", kw: "고등" },
@@ -192,31 +197,31 @@ function DashboardPage() {
 
           </section>
 
-          <section>
-            <h2 className="font-semibold mb-5" style={{ fontSize: "24px", fontWeight: 600, letterSpacing: "-0.01em" }}>
-              세계로교회 · 외부교회 집계
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
-              {SEGUE_DEPTS.map((d) => (
-                <MiniStat
-                  key={d.key}
-                  label={`세계로 ${d.key}`}
-                  value={deptPeopleCount[d.key]}
-                  sub={`${deptChurchCount[d.key]}개 교회`}
-                />
-              ))}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <MiniStat label="세계로 합계" value={segueTotal} sub={`${segueChurches.length}개 교회`} strong />
-              <MiniStat label="외부교회" value={externalPeople} sub={`${externalChurches.length}개 교회`} strong />
+        <section>
+          <h2 className="font-semibold mb-5" style={{ fontSize: "24px", fontWeight: 600, letterSpacing: "-0.01em" }}>
+            세계로교회 · 외부교회 집계
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
+            {SEGUE_DEPTS.map((d) => (
               <MiniStat
-                label="합계 대조"
-                value={grandCheck}
-                sub={grandCheck === preTotal ? "전체와 일치" : `전체 ${preTotal}명과 불일치`}
-                strong
+                key={d.key}
+                label={`세계로 ${d.key}`}
+                value={deptPeopleCount[d.key]}
+                sub={`${deptChurchCount[d.key]}개 그룹`}
               />
-            </div>
-          </section>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <MiniStat label="세계로 합계" value={segueTotal} sub={`${segueChurches.length}개 그룹`} strong />
+            <MiniStat label="외부교회" value={externalPeople} sub={`${externalChurches.length}개 교회`} strong />
+            <MiniStat
+              label="합계 대조"
+              value={grandCheck}
+              sub={grandCheck === preTotal ? "전체와 일치" : `전체 ${preTotal}명과 불일치`}
+              strong
+            />
+          </div>
+        </section>
 
 
           <section>
