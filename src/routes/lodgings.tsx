@@ -380,6 +380,23 @@ function LodgingsPage() {
                 남 <b className="text-foreground">{unMCount}</b> · 여 <b className="text-foreground">{unFCount}</b>
               </div>
             </div>
+            <div className="mb-2 flex flex-wrap items-center gap-1 text-[11px]">
+              <span className="text-muted-foreground mr-1">정렬:</span>
+              {([
+                ["count-desc", "미배치 많은 순"],
+                ["count-asc", "미배치 적은 순"],
+                ["name", "교회 가나다"],
+              ] as const).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setSortMode(mode)}
+                  className={`rounded border px-2 py-0.5 ${sortMode === mode ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             {pickMode && (
               <div className="mb-2 rounded border border-primary/40 bg-primary/10 px-2 py-1.5 text-xs">
                 <b>{churchMap.get(pickMode.churchId)}</b> · {pickMode.gender === "M" ? "남" : "여"} 배치할 방을 클릭하세요.
