@@ -134,7 +134,7 @@ function DashboardPage() {
     );
   }
 
-  const sections: Record<"pre" | "segue" | "actual", JSX.Element> = {
+  const sections: Record<"pre" | "segue" | "actual", React.ReactNode> = {
     pre: (
       <section key="pre">
         <h2 className="lumina-section-title font-semibold mb-5">사전접수 현황</h2>
