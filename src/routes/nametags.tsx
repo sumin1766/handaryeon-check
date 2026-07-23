@@ -7,8 +7,10 @@ import { fetchAll } from "@/lib/fetch-all";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Copy, Check } from "lucide-react";
 import { downloadRowsAsXlsx } from "@/lib/export-xlsx";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/nametags")({
   head: () => ({ meta: [{ title: "이름표 출력 — 한다련 캠프" }] }),
@@ -31,6 +33,8 @@ function NametagsPage() {
       return { churches: churches ?? [], people };
     },
   });
+
+  const [copied, setCopied] = useState(false);
 
   if (!season) return <AppShell><div className="text-sm text-muted-foreground">시즌이 없습니다.</div></AppShell>;
 
@@ -60,15 +64,53 @@ function NametagsPage() {
     downloadRowsAsXlsx(rows, "전체 등록자 명단", `${season.name}_이름표.xlsx`);
   };
 
+  // TSV (탭 구분) — 구글 스프레드시트에 붙여넣으면 셀별로 자동 분리됩니다.
+  const copyCsv = async () => {
+    const escape = (v: string | number) =>
+      String(v ?? "").replace(/\t/g, " ").replace(/\r?\n/g, " ");
+    const header = ["No", "교회", "명단"].join("\t");
+    const body = flatRows
+      .map((r) => [r.no, escape(r.church), escape(r.name)].join("\t"))
+      .join("\n");
+    const text = `${header}\n${body}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toast.success("복사됨 — 구글 시트에 붙여넣으세요");
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        setCopied(true);
+        toast.success("복사됨");
+        setTimeout(() => setCopied(false), 1800);
+      } catch {
+        toast.error("복사 실패");
+      } finally {
+        document.body.removeChild(ta);
+      }
+    }
+  };
+
   return (
     <AppShell>
       <div className="space-y-4">
-        <header className="flex items-end justify-between">
-          <div>
+        <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:flex-wrap sm:items-end sm:justify-between">
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold">이름표 출력</h1>
             <p className="text-sm text-muted-foreground">사전접수·현장접수 등록자 전체 명단 (총 {flatRows.length}명)</p>
           </div>
-          <Button onClick={download}><Download className="h-4 w-4 mr-1" />엑셀 다운로드(.xlsx)</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={copyCsv}>
+              {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+              {copied ? "복사됨" : "CSV 복사"}
+            </Button>
+            <Button onClick={download}><Download className="h-4 w-4 mr-1" />엑셀 다운로드(.xlsx)</Button>
+          </div>
         </header>
 
         <Card className="p-0 overflow-hidden">
