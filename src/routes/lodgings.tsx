@@ -211,24 +211,12 @@ function LodgingsPage() {
               </button>
               {notesOpen && (
                 <div className="border-t border-amber-400/30 divide-y divide-amber-400/20">
-                  {notesByChurch.map(({ churchId, label, entries }) => (
+                  {notesByChurch.map(({ churchId, label, memo }) => (
                     <div key={churchId} className="px-4 py-2.5 text-sm">
                       <div className="font-semibold mb-1.5">{label}</div>
-                      <ul className="space-y-1.5">
-                        {entries.map((e, i) => (
-                          <li key={i} className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-2 text-xs">
-                            <span className="shrink-0 font-medium min-w-[80px]">
-                              {e.name}
-                              <span className="ml-1 text-muted-foreground">
-                                ({e.gender === "M" ? "남" : e.gender === "F" ? "여" : "-"})
-                              </span>
-                            </span>
-                            <span className="flex-1 rounded bg-amber-200/80 dark:bg-amber-700/50 px-2 py-1 font-semibold text-amber-950 dark:text-amber-50 whitespace-pre-wrap break-words">
-                              {e.note}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
+                      <div className="rounded bg-amber-200/80 dark:bg-amber-700/50 px-2.5 py-1.5 text-xs font-semibold text-amber-950 dark:text-amber-50 whitespace-pre-wrap break-words">
+                        {memo}
+                      </div>
                     </div>
                   ))}
                 </div>
