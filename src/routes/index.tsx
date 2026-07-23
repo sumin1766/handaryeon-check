@@ -34,7 +34,7 @@ function DashboardPage() {
     enabled: !!season?.id,
     queryFn: async () => {
       const { data: churches } = await supabase
-        .from("churches").select("id, is_checked_in, actual_count").eq("season_id", season!.id);
+        .from("churches").select("id, name, denomination, is_checked_in, actual_count").eq("season_id", season!.id);
       const churchIds = (churches ?? []).map((c: any) => c.id);
       if (churchIds.length === 0) return { churches: churches ?? [], people: [] };
       const people = await fetchAll<any>("people", (q) =>
