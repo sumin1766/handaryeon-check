@@ -7,8 +7,10 @@ import { fetchAll } from "@/lib/fetch-all";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, Printer } from "lucide-react";
+import { Download, Printer, Copy, Check } from "lucide-react";
 import { downloadRowsAsXlsx } from "@/lib/export-xlsx";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/rosters")({
   head: () => ({ meta: [{ title: "명단 출력 — 한다련 캠프" }] }),
