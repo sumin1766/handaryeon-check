@@ -411,17 +411,8 @@ main table td {
   padding-top: 0.875rem !important;
   padding-bottom: 0.875rem !important;
 }
-main input,
-main textarea,
-main select,
-main button {
-  font-size: 1rem;
-}
-main input,
-main textarea,
-main select {
-  min-height: 2.5rem;
-}
+
+
 
 /* Dashboard opt-out — preserve existing tuned sizes. */
 .lumina-scope h1,
