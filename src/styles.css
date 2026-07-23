@@ -150,7 +150,7 @@
     transition: opacity 0.3s ease;
     will-change: transform;
     transform: translate3d(0, 0, 0) scale(1);
-    animation: mesh-drift 26s ease-in-out infinite alternate;
+    animation: mesh-drift 16s ease-in-out infinite alternate;
   }
   .dark body::before {
     background-image:
