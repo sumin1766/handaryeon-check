@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useMemo, useRef, useState, useCallback } from "react";
 import { num } from "@/lib/format";
-import { X } from "lucide-react";
+import { X, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -33,6 +33,8 @@ function LodgingsPage() {
   const retryRef = useRef<Set<string>>(new Set()); // `${churchId}:${gender}:${lodgingId}` previously warned
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const roomRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const [notesOpen, setNotesOpen] = useState(true);
+  const [sortMode, setSortMode] = useState<"name" | "count-desc" | "count-asc">("count-desc");
 
   const { data } = useQuery({
     queryKey: ["lodgings-page", season?.id],
@@ -78,10 +80,46 @@ function LodgingsPage() {
     return Array.from(byKey.values());
   }, [people]);
 
-  const unassignedM = unassignedGroups.filter((g) => g.gender === "M");
-  const unassignedF = unassignedGroups.filter((g) => g.gender === "F");
+  // Sort unassigned groups per selected mode (render-order only; source data unchanged).
+  const sortGroups = useCallback(
+    (arr: { churchId: string; gender: "M" | "F"; persons: any[] }[]) => {
+      const copy = [...arr];
+      if (sortMode === "name") {
+        copy.sort((a, b) =>
+          (churchMap.get(a.churchId) ?? "").localeCompare(churchMap.get(b.churchId) ?? "", "ko"),
+        );
+      } else if (sortMode === "count-desc") {
+        copy.sort((a, b) => b.persons.length - a.persons.length);
+      } else {
+        copy.sort((a, b) => a.persons.length - b.persons.length);
+      }
+      return copy;
+    },
+    [sortMode, churchMap],
+  );
+  const unassignedM = sortGroups(unassignedGroups.filter((g) => g.gender === "M"));
+  const unassignedF = sortGroups(unassignedGroups.filter((g) => g.gender === "F"));
   const unMCount = unassignedM.reduce((s, g) => s + g.persons.length, 0);
   const unFCount = unassignedF.reduce((s, g) => s + g.persons.length, 0);
+
+  // Churches with any person carrying a non-blank note (배치 요청 사전 확인용).
+  const notesByChurch = useMemo(() => {
+    const m = new Map<string, { name: string; note: string; gender: string }[]>();
+    for (const p of people) {
+      const note = (p.note ?? "").trim();
+      if (!note) continue;
+      const arr = m.get(p.church_id) ?? [];
+      arr.push({ name: p.name ?? "?", note, gender: p.gender });
+      m.set(p.church_id, arr);
+    }
+    return Array.from(m.entries())
+      .map(([churchId, entries]) => ({
+        churchId,
+        label: (churchMap.get(churchId) ?? "?") as string,
+        entries,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, "ko"));
+  }, [people, churchMap]);
 
   const totalCap = lodgings.filter((l: any) => l.active).reduce((s: number, l: any) => s + l.capacity, 0);
   const totalAssigned = lodgings.reduce((s: number, l: any) => s + (peopleByLodging.get(l.id)?.length ?? 0), 0);
@@ -166,6 +204,44 @@ function LodgingsPage() {
       <div className="flex flex-col lg:flex-row gap-4">
         {/* LEFT 70% */}
         <div className="flex-1 min-w-0 space-y-4">
+          {notesByChurch.length > 0 && (
+            <Card className="p-0 overflow-hidden border-amber-400/40 bg-amber-50/50 dark:bg-amber-900/10">
+              <button
+                type="button"
+                onClick={() => setNotesOpen((v) => !v)}
+                className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-left hover:bg-amber-100/40 dark:hover:bg-amber-900/20"
+              >
+                <span className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                  비고 있는 교회 {notesByChurch.length}곳 — 배치 전 확인
+                </span>
+                {notesOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+              {notesOpen && (
+                <div className="border-t border-amber-400/30 divide-y divide-amber-400/20">
+                  {notesByChurch.map(({ churchId, label, entries }) => (
+                    <div key={churchId} className="px-4 py-2 text-sm">
+                      <div className="font-semibold mb-1">{label}</div>
+                      <ul className="space-y-0.5">
+                        {entries.map((e, i) => (
+                          <li key={i} className="flex flex-wrap items-baseline gap-x-2 text-xs">
+                            <span className="font-medium">
+                              {e.name}
+                              <span className="ml-1 text-muted-foreground">
+                                ({e.gender === "M" ? "남" : e.gender === "F" ? "여" : "-"})
+                              </span>
+                            </span>
+                            <span className="rounded bg-amber-200/70 dark:bg-amber-700/40 px-1.5 py-0.5 font-semibold text-amber-950 dark:text-amber-50">
+                              {e.note}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
           <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
             <div className="min-w-0">
               <h1 className="text-2xl font-bold">숙소배치</h1>
@@ -173,6 +249,7 @@ function LodgingsPage() {
             </div>
             <Input placeholder="이름/교회 검색…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-56" />
           </header>
+
 
           <Card className="p-4">
             <div className="flex gap-6 text-sm tabular-nums flex-wrap">
@@ -302,6 +379,23 @@ function LodgingsPage() {
               <div className="text-xs tabular-nums text-muted-foreground">
                 남 <b className="text-foreground">{unMCount}</b> · 여 <b className="text-foreground">{unFCount}</b>
               </div>
+            </div>
+            <div className="mb-2 flex flex-wrap items-center gap-1 text-[11px]">
+              <span className="text-muted-foreground mr-1">정렬:</span>
+              {([
+                ["count-desc", "미배치 많은 순"],
+                ["count-asc", "미배치 적은 순"],
+                ["name", "교회 가나다"],
+              ] as const).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setSortMode(mode)}
+                  className={`rounded border px-2 py-0.5 ${sortMode === mode ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"}`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
             {pickMode && (
               <div className="mb-2 rounded border border-primary/40 bg-primary/10 px-2 py-1.5 text-xs">

@@ -56,6 +56,7 @@ function RegistryPage() {
   const canEdit = role === "admin" || role === "staff";
   const [search, setSearch] = useState("");
   const [segueOnly, setSegueOnly] = useState(false);
+  const [sortByName, setSortByName] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [compareGroup, setCompareGroup] = useState<DuplicateGroup | null>(null);
   const qc = useQueryClient();
@@ -110,11 +111,37 @@ function RegistryPage() {
     [churches, people],
   );
 
-  // Name search results
+  // Extended search: name / affiliation (church name + denomination) / phone (digits only)
   const trimmed = search.trim();
+  const digitsOnly = (s: string) => (s ?? "").replace(/\D+/g, "");
+  const searchDigits = digitsOnly(trimmed);
+  const isDigitQuery = trimmed.length > 0 && searchDigits.length > 0 && /^[\d\s-]+$/.test(trimmed);
+
+  const personMatches = (p: any, c: any) => {
+    if (!trimmed) return false;
+    if (p.name && p.name.includes(trimmed)) return true;
+    if (c?.name && c.name.includes(trimmed)) return true;
+    if (c?.denomination && c.denomination.includes(trimmed)) return true;
+    if (c?.contact_name && c.contact_name.includes(trimmed)) return true;
+    if (isDigitQuery && c?.phone && digitsOnly(c.phone).includes(searchDigits)) return true;
+    return false;
+  };
+
+  const churchMatches = (c: any) => {
+    if (!trimmed) return true;
+    if (c.name && c.name.includes(trimmed)) return true;
+    if (c.denomination && c.denomination.includes(trimmed)) return true;
+    if (c.contact_name && c.contact_name.includes(trimmed)) return true;
+    if (isDigitQuery && c.phone && digitsOnly(c.phone).includes(searchDigits)) return true;
+    const ps = peopleByChurch.get(c.id) ?? [];
+    if (ps.some((p: any) => p.name?.includes(trimmed))) return true;
+    return false;
+  };
+
   const nameMatches = trimmed
-    ? people.filter((p: any) => p.name && p.name.includes(trimmed))
+    ? people.filter((p: any) => personMatches(p, churchById.get(p.church_id)))
     : [];
+
 
   return (
     <AppShell>
@@ -136,11 +163,21 @@ function RegistryPage() {
           <div className="flex flex-wrap items-center gap-2">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="이름 또는 교회명으로 검색"
+              placeholder="이름 / 교회 / 교단 / 담당자 / 전화번호"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="max-w-sm"
             />
+            <Button
+              type="button"
+              variant={sortByName ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSortByName((v) => !v)}
+              className="whitespace-nowrap"
+              title="교회명 가나다순 정렬 (렌더 순서만 변경)"
+            >
+              {sortByName ? "원래 순서" : "가나다순"}
+            </Button>
             <Button
               type="button"
               variant={segueOnly ? "default" : "outline"}
@@ -164,6 +201,12 @@ function RegistryPage() {
               <button onClick={() => setSearch("")} className="text-xs text-muted-foreground hover:text-foreground">초기화</button>
             )}
           </div>
+          {trimmed && (
+            <div className="text-xs text-muted-foreground px-1">
+              검색어 <b className="text-foreground">"{search}"</b> · 인원 매칭 {nameMatches.length}명
+              {isDigitQuery && <span className="ml-1">· 전화번호는 숫자만 비교</span>}
+            </div>
+          )}
           {trimmed && nameMatches.length > 0 && (
             <div className="rounded border bg-muted/30 p-2 space-y-1">
               <div className="text-[11px] text-muted-foreground px-1">이름 검색 결과 ({nameMatches.length}명)</div>
@@ -207,15 +250,18 @@ function RegistryPage() {
               </tr>
             </thead>
             <tbody>
-              {churches
-                .filter((c: any) => {
-                  const matchesSearch = !trimmed
-                    || (c.name && c.name.includes(trimmed))
-                    || (peopleByChurch.get(c.id) ?? []).some((p: any) => p.name?.includes(trimmed));
+              {(() => {
+                const filtered = churches.filter((c: any) => {
                   const matchesSegue = !segueOnly || (c.name && c.name.includes("세계로"));
-                  return matchesSearch && matchesSegue;
-                })
+                  return churchMatches(c) && matchesSegue;
+                });
+                const ordered = sortByName
+                  ? [...filtered].sort((a: any, b: any) => (a.name ?? "").localeCompare(b.name ?? "", "ko"))
+                  : filtered;
+                return ordered;
+              })()
                 .map((c: any) => {
+
                   const ps = peopleByChurch.get(c.id) ?? [];
                   const counts: Record<CatKey, number> = {
                     ms_l: 0, ms_n: 0, fs_l: 0, fs_n: 0, ma_l: 0, ma_n: 0, fa_l: 0, fa_n: 0,
