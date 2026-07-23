@@ -102,6 +102,13 @@ function SettingsPage() {
           >
             <OcrSection />
           </SettingsCard>
+          <SettingsCard
+            icon={<LayoutDashboard className="h-5 w-5" />}
+            title="대시보드 섹션 순서"
+            summary={<DashboardOrderSummary />}
+          >
+            <DashboardOrderSection />
+          </SettingsCard>
         </div>
       </div>
     </AppShell>
