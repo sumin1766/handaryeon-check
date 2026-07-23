@@ -128,6 +128,10 @@ function RostersPage() {
               <Printer className="h-4 w-4 mr-1" />
               인쇄
             </Button>
+            <Button variant="outline" onClick={copyCsv}>
+              {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+              {copied ? "복사됨" : "CSV 복사"}
+            </Button>
             <Button onClick={download}>
               <Download className="h-4 w-4 mr-1" />
               엑셀 다운로드(.xlsx)
