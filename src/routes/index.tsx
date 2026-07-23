@@ -67,6 +67,58 @@ function DashboardPage() {
   const pctChurch = preChurchCount ? (diffChurch / preChurchCount) * 100 : 0;
   const pctTotal = preTotal ? (diffTotal / preTotal) * 100 : 0;
 
+  // 세계로 부서 분류 (registry.tsx의 세계로 필터와 동일 판별: name.includes("세계로"))
+  const SEGUE_DEPTS = [
+    { key: "중등", kw: "중등" },
+    { key: "고등", kw: "고등" },
+    { key: "3청년", kw: "3청년" },
+    { key: "2청년", kw: "2청년" },
+    { key: "1청년", kw: "1청년" },
+    { key: "우남", kw: "우남" },
+    { key: "일반", kw: null as string | null },
+  ] as const;
+  const classifySegueDept = (c: any) => {
+    const s = `${c.name ?? ""} ${c.denomination ?? ""}`;
+    for (const d of SEGUE_DEPTS) {
+      if (d.kw && s.includes(d.kw)) return d.key;
+    }
+    return "일반";
+  };
+  const churchDept = new Map<string, string>();
+  const segueChurches: any[] = [];
+  const externalChurches: any[] = [];
+  for (const c of churches) {
+    const isSegue = !!(c.name && c.name.includes("세계로"));
+    if (isSegue) {
+      const dept = classifySegueDept(c);
+      churchDept.set(c.id, dept);
+      segueChurches.push({ ...c, __dept: dept });
+    } else {
+      externalChurches.push(c);
+    }
+  }
+  const deptPeopleCount: Record<string, number> = Object.fromEntries(SEGUE_DEPTS.map((d) => [d.key, 0]));
+  const deptChurchCount: Record<string, number> = Object.fromEntries(SEGUE_DEPTS.map((d) => [d.key, 0]));
+  for (const c of segueChurches) deptChurchCount[c.__dept] += 1;
+  let externalPeople = 0;
+  for (const p of people) {
+    const dept = churchDept.get(p.church_id);
+    if (dept) deptPeopleCount[dept] += 1;
+    else externalPeople += 1;
+  }
+  const segueTotal = Object.values(deptPeopleCount).reduce((a, b) => a + b, 0);
+  const grandCheck = segueTotal + externalPeople;
+
+  if (typeof window !== "undefined" && churches.length > 0) {
+    // 검증용 로그
+    const generalList = segueChurches.filter((c) => c.__dept === "일반").map((c) => `${c.name} (${c.denomination ?? ""})`);
+    console.log("[dashboard] 세계로 부서별 집계", SEGUE_DEPTS.map((d) => ({
+      부서: d.key, 교회수: deptChurchCount[d.key], 인원: deptPeopleCount[d.key],
+    })));
+    console.log("[dashboard] 일반으로 분류된 세계로 교회", generalList);
+    console.log("[dashboard] 총합 대조", { 세계로합계: segueTotal, 외부: externalPeople, 총합: grandCheck, 전체사전접수: preTotal, 일치: grandCheck === preTotal });
+  }
+
   if (!season) {
     return (
       <AppShell>
