@@ -580,10 +580,15 @@ function LodgingsPage() {
                               try {
                                 const raw = e.dataTransfer.getData("application/json");
                                 if (!raw) return;
-                                const payload = JSON.parse(raw) as DragPayload;
-                                performAssign(payload, l);
+                                const parsed = JSON.parse(raw) as DragPayload | MultiDragPayload;
+                                if ((parsed as MultiDragPayload).multi) {
+                                  performAssignMulti((parsed as MultiDragPayload).items, l);
+                                } else {
+                                  performAssign(parsed as DragPayload, l);
+                                }
                               } catch { /* ignore */ }
                             }}
+
                             className={`group rounded-md border-2 p-3 text-left transition hover:shadow-md ${cls} ${!l.active ? "opacity-40" : ""} ${isDragOver ? "ring-2 ring-primary" : ""} ${blink} ${highlight} ${dim ? "opacity-40" : ""}`}
                           >
                             <div className="flex items-center justify-between">
