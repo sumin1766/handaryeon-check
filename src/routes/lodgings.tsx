@@ -742,6 +742,7 @@ function LodgingsPage() {
 
 function UnassignedSection({
   title, tone, groups, churchMap, flipped, setFlipped, onPick,
+  section, selectedKeys, onCardSelect, selectionSummary,
 }: {
   title: string;
   tone: "male" | "female";
@@ -750,8 +751,13 @@ function UnassignedSection({
   flipped: string | null;
   setFlipped: (v: string | null) => void;
   onPick: (g: DragPayload) => void;
+  section: "M" | "F";
+  selectedKeys: Set<string>;
+  onCardSelect: (section: "M" | "F", sortedKeys: string[], key: string, e: React.MouseEvent) => void;
+  selectionSummary: { count: number; m: number; f: number; total: number } | null;
 }) {
   const toneCls = tone === "male" ? "lodging-male" : "lodging-female";
+  const sortedKeys = groups.map((g) => `${g.churchId}:${g.gender}`);
   return (
     <div>
       <div className="text-xs font-semibold mb-1.5 flex items-center justify-between">
@@ -764,23 +770,50 @@ function UnassignedSection({
         {groups.map((g) => {
           const key = `${g.churchId}:${g.gender}`;
           const isFlipped = flipped === key;
+          const isSelected = selectedKeys.has(key);
           return (
             <div key={key} className="flip-card h-20">
               <div className={`flip-inner h-full ${isFlipped ? "is-flipped" : ""}`}>
                 <div
                   draggable
                   onDragStart={(e) => {
-                    e.dataTransfer.setData("application/json", JSON.stringify({ churchId: g.churchId, gender: g.gender }));
+                    // 선택된 카드에서 드래그 시작 & 2개 이상 선택 → 다중 페이로드
+                    if (isSelected && selectedKeys.size > 1) {
+                      const items: DragPayload[] = [];
+                      for (const k of selectedKeys) {
+                        const [churchId, gender] = k.split(":");
+                        items.push({ churchId, gender: gender as "M" | "F" });
+                      }
+                      e.dataTransfer.setData("application/json", JSON.stringify({ multi: true, items }));
+                    } else {
+                      e.dataTransfer.setData("application/json", JSON.stringify({ churchId: g.churchId, gender: g.gender }));
+                    }
                     e.dataTransfer.effectAllowed = "move";
                   }}
+                  onClick={(e) => {
+                    // 좌클릭 → 선택 토글 (Ctrl/⌘/Shift 지원, 모바일 탭 포함)
+                    onCardSelect(section, sortedKeys, key, e);
+                  }}
                   onDoubleClick={() => setFlipped(isFlipped ? null : key)}
-                  className={`flip-face h-full rounded-md border-2 p-2 cursor-grab active:cursor-grabbing select-none ${toneCls}`}
-                  title="드래그하여 방에 배치 · 더블클릭 → 방 선택"
+                  className={`flip-face h-full rounded-md border-2 p-2 cursor-grab active:cursor-grabbing select-none ${toneCls} ${isSelected ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`}
+                  title="클릭 → 선택 · 드래그 → 방 배치 · 더블클릭 → 방 지정"
                 >
-                  <div className="text-xs font-semibold truncate">{churchMap.get(g.churchId) ?? "?"}</div>
-                  <div className="mt-1 tabular-nums">
-                    <span className="text-lg font-bold">{g.persons.length}</span>
-                    <span className="text-[10px] text-muted-foreground"> 명</span>
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="text-xs font-semibold truncate">{churchMap.get(g.churchId) ?? "?"}</div>
+                    {isSelected && (
+                      <span className="shrink-0 rounded-full bg-primary text-primary-foreground text-[9px] leading-none px-1.5 py-0.5">✓</span>
+                    )}
+                  </div>
+                  <div className="mt-1 tabular-nums flex items-baseline justify-between">
+                    <span>
+                      <span className="text-lg font-bold">{g.persons.length}</span>
+                      <span className="text-[10px] text-muted-foreground"> 명</span>
+                    </span>
+                    {isSelected && selectionSummary && selectionSummary.count > 1 && (
+                      <span className="text-[9px] text-primary font-semibold">
+                        +{selectionSummary.count - 1} 함께
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className={`flip-face flip-back h-full rounded-md border-2 border-primary bg-background p-2 flex flex-col items-center justify-center gap-1`}>
@@ -798,6 +831,7 @@ function UnassignedSection({
     </div>
   );
 }
+
 
 function RoomDetail({ lodging, people, churchMap, onChanged }: any) {
   const byChurch = useMemo(() => {
