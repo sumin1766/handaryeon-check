@@ -656,6 +656,24 @@ function LodgingsPage() {
                 <button onClick={() => { setPickMode(null); setFlipped(null); }} className="float-right text-muted-foreground hover:text-foreground">취소</button>
               </div>
             )}
+            {selectionSummary && (
+              <div className="mb-2 rounded border border-primary/40 bg-primary/10 px-2 py-1.5 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span>
+                    교회 <b>{selectionSummary.count}</b>곳 선택 · 남 <b>{selectionSummary.m}</b> / 여 <b>{selectionSummary.f}</b> · 총 <b>{selectionSummary.total}</b>명
+                  </span>
+                  <button
+                    onClick={() => { setSelectedKeys(new Set()); lastClickRef.current = null; }}
+                    className="text-muted-foreground hover:text-foreground shrink-0"
+                  >
+                    선택 해제
+                  </button>
+                </div>
+                <div className="mt-1 text-[10px] text-muted-foreground">
+                  선택된 카드 중 하나를 드래그하면 함께 이동합니다. (Ctrl/⌘·Shift 클릭 지원)
+                </div>
+              </div>
+            )}
 
             <UnassignedSection
               title="남자"
@@ -665,6 +683,10 @@ function LodgingsPage() {
               flipped={flipped}
               setFlipped={setFlipped}
               onPick={(g) => { setPickMode(g); setFlipped(null); }}
+              section="M"
+              selectedKeys={selectedKeys}
+              onCardSelect={handleCardSelect}
+              selectionSummary={selectionSummary}
             />
             <div className="my-3 border-t" />
             <UnassignedSection
@@ -675,7 +697,12 @@ function LodgingsPage() {
               flipped={flipped}
               setFlipped={setFlipped}
               onPick={(g) => { setPickMode(g); setFlipped(null); }}
+              section="F"
+              selectedKeys={selectedKeys}
+              onCardSelect={handleCardSelect}
+              selectionSummary={selectionSummary}
             />
+
 
             {unassignedGroups.length === 0 && (
               <div className="text-xs text-muted-foreground py-4 text-center">전원 배정 완료 🎉</div>
