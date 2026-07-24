@@ -780,6 +780,58 @@ function LodgingsPage() {
           )}
         </SheetContent>
       </Sheet>
+
+      <Dialog open={!!pending} onOpenChange={(o) => !o && setPending(null)}>
+        <DialogContent className="sm:max-w-md">
+          {pending && (() => {
+            const l = pending.lodging;
+            const overBy = pending.incoming - pending.remain;
+            const label =
+              pending.kind === "single"
+                ? `${churchMap.get(pending.payload.churchId) ?? ""} · ${pending.payload.gender === "M" ? "남" : "여"}`
+                : `${pending.payloads.length}개 교회 (합계 ${pending.incoming}명)`;
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle>정원 초과 배치 확인</DialogTitle>
+                  <DialogDescription asChild>
+                    <div className="space-y-1 text-sm">
+                      <div><b>{l.name}</b> 남은 자리 <b>{pending.remain}</b>명 / 배치하려는 인원 <b>{pending.incoming}</b>명</div>
+                      <div className="text-destructive font-semibold">정원을 {overBy}명 초과합니다.</div>
+                      <div className="text-muted-foreground">{label}</div>
+                    </div>
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="gap-2 sm:gap-2 flex-col sm:flex-row">
+                  <Button variant="outline" onClick={() => setPending(null)}>취소</Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      const p = pending;
+                      setPending(null);
+                      if (p.kind === "single") performAssign(p.payload, p.lodging, "split");
+                      else performAssignMulti(p.payloads, p.lodging, "split");
+                    }}
+                  >
+                    나눠서 배치 (정원까지만)
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      const p = pending;
+                      setPending(null);
+                      if (p.kind === "single") performAssign(p.payload, p.lodging, "over");
+                      else performAssignMulti(p.payloads, p.lodging, "over");
+                    }}
+                  >
+                    초과해도 그대로 배치
+                  </Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
