@@ -477,6 +477,13 @@ function LodgingsPage() {
                             <div className="mt-1 flex items-baseline gap-1 tabular-nums">
                               <span className={`text-lg font-bold ${over ? "text-destructive" : ""}`}>{ps.length}</span>
                               <span className="text-xs text-muted-foreground">/ {l.capacity}</span>
+                              {l.capacity > 0 ? (
+                                <span className={`text-xs font-semibold ${pct >= 100 ? "text-emerald-600" : over ? "text-destructive" : "text-foreground"}`}>
+                                  {pct.toFixed(1)}%
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">-</span>
+                              )}
                             </div>
                             <div className="mt-1 h-1.5 w-full overflow-hidden rounded bg-background/60">
                               <div className={`h-full ${over ? "bg-destructive" : "bg-primary"}`} style={{ width: `${pct}%` }} />
