@@ -24,6 +24,7 @@ export const Route = createFileRoute("/lodgings")({
 });
 
 type DragPayload = { churchId: string; gender: "M" | "F" };
+type MultiDragPayload = { multi: true; items: DragPayload[] };
 
 function LodgingsPage() {
   const { season } = useActiveSeason();
@@ -40,6 +41,10 @@ function LodgingsPage() {
   const [notesOpen, setNotesOpen] = useState(false);
   const [sortMode, setSortMode] = useState<"name" | "count-desc" | "count-asc">("count-desc");
   const [copied, setCopied] = useState(false);
+  // 다중 선택 (미배치 교회 카드) — key = `${churchId}:${gender}`
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const lastClickRef = useRef<{ section: "M" | "F"; key: string } | null>(null);
+
 
   const { data } = useQuery({
     queryKey: ["lodgings-page", season?.id],
