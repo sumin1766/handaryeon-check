@@ -194,6 +194,117 @@ function LodgingsPage() {
     qc.invalidateQueries({ queryKey: ["lodgings-page"] });
   }, [unassignedGroups, peopleByLodging, churchMap, qc]);
 
+  const performAssignMulti = useCallback(async (payloads: DragPayload[], lodging: any) => {
+    // Dedupe payloads by key
+    const seen = new Set<string>();
+    const uniq = payloads.filter((p) => {
+      const k = `${p.churchId}:${p.gender}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    // 성별 방 정책: 성별 지정된 방이면 다른 성별 교회는 제외 (기존 단일 드래그의 정책과 정합)
+    let effective = uniq;
+    if (lodging.gender) {
+      const before = effective.length;
+      effective = effective.filter((p) => p.gender === lodging.gender);
+      const excluded = before - effective.length;
+      if (excluded > 0) {
+        toast.warning(`${lodging.gender === "M" ? "남성" : "여성"} 방 — 다른 성별 ${excluded}개 교회 제외`);
+      }
+    }
+    if (effective.length === 0) return;
+    const current = peopleByLodging.get(lodging.id)?.length ?? 0;
+    let remain = lodging.capacity > 0 ? Math.max(0, lodging.capacity - current) : Number.POSITIVE_INFINITY;
+    const ids: string[] = [];
+    let assignedCount = 0;
+    let leftover = 0;
+    let assignedGroups = 0;
+    for (const p of effective) {
+      const grp = unassignedGroups.find((g) => g.churchId === p.churchId && g.gender === p.gender);
+      if (!grp || grp.persons.length === 0) continue;
+      const take = remain === Number.POSITIVE_INFINITY ? grp.persons.length : Math.min(remain, grp.persons.length);
+      if (take > 0) {
+        ids.push(...grp.persons.slice(0, take).map((x) => x.id));
+        assignedCount += take;
+        assignedGroups += 1;
+        if (remain !== Number.POSITIVE_INFINITY) remain -= take;
+      }
+      leftover += grp.persons.length - take;
+      if (remain === 0) break;
+    }
+    if (ids.length === 0) {
+      toast.error("남은 자리가 없습니다.");
+      return;
+    }
+    const { error } = await supabase.from("people").update({ lodging_id: lodging.id, lodging: true }).in("id", ids);
+    if (error) return toast.error(error.message);
+    toast.success(`${assignedGroups}개 교회 · ${assignedCount}명 배정${leftover ? ` (잔여 ${leftover}명)` : ""}`);
+    setSelectedKeys(new Set());
+    lastClickRef.current = null;
+    qc.invalidateQueries({ queryKey: ["lodgings-page"] });
+  }, [unassignedGroups, peopleByLodging, qc]);
+
+  // 선택 요약 (선택된 교회 수 / 남·여 인원)
+  const selectionSummary = useMemo(() => {
+    if (selectedKeys.size === 0) return null;
+    let m = 0, f = 0;
+    for (const key of selectedKeys) {
+      const g = unassignedGroups.find((x) => `${x.churchId}:${x.gender}` === key);
+      if (!g) continue;
+      if (g.gender === "M") m += g.persons.length;
+      else f += g.persons.length;
+    }
+    return { count: selectedKeys.size, m, f, total: m + f };
+  }, [selectedKeys, unassignedGroups]);
+
+  // Prune stale selections when groups change (e.g., after assignment)
+  const validKeys = useMemo(
+    () => new Set(unassignedGroups.map((g) => `${g.churchId}:${g.gender}`)),
+    [unassignedGroups],
+  );
+  if (selectedKeys.size > 0) {
+    let stale = false;
+    for (const k of selectedKeys) if (!validKeys.has(k)) { stale = true; break; }
+    if (stale) {
+      // Defer to avoid setState during render
+      queueMicrotask(() => {
+        setSelectedKeys((prev) => {
+          const next = new Set<string>();
+          for (const k of prev) if (validKeys.has(k)) next.add(k);
+          return next;
+        });
+      });
+    }
+  }
+
+  const handleCardSelect = useCallback((section: "M" | "F", sortedKeys: string[], key: string, e: React.MouseEvent) => {
+    const isRange = e.shiftKey && lastClickRef.current && lastClickRef.current.section === section;
+    const isMulti = e.ctrlKey || e.metaKey;
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (isRange) {
+        const anchor = lastClickRef.current!.key;
+        const i1 = sortedKeys.indexOf(anchor);
+        const i2 = sortedKeys.indexOf(key);
+        if (i1 !== -1 && i2 !== -1) {
+          const [lo, hi] = i1 < i2 ? [i1, i2] : [i2, i1];
+          for (let i = lo; i <= hi; i++) next.add(sortedKeys[i]);
+        } else {
+          next.has(key) ? next.delete(key) : next.add(key);
+        }
+      } else if (isMulti) {
+        next.has(key) ? next.delete(key) : next.add(key);
+      } else {
+        // Plain click / touch tap → 토글
+        next.has(key) ? next.delete(key) : next.add(key);
+      }
+      return next;
+    });
+    if (!isRange) lastClickRef.current = { section, key };
+  }, []);
+
+
   // 숙소별 교회 그룹핑 → CSV/엑셀 출력용 행
   const exportRows = useMemo(() => {
     const rows: {
