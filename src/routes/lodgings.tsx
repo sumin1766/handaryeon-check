@@ -639,8 +639,8 @@ function LodgingsPage() {
                               <span className={`text-lg font-bold ${over ? "text-destructive" : ""}`}>{ps.length}</span>
                               <span className="text-xs text-muted-foreground">/ {l.capacity}</span>
                               {l.capacity > 0 ? (
-                                <span className={`text-xs font-semibold ${pct >= 100 ? "text-emerald-600" : over ? "text-destructive" : "text-foreground"}`}>
-                                  {pct.toFixed(1)}%
+                                <span className={`text-xs font-semibold ${over ? "text-destructive" : pctRaw >= 100 ? "text-emerald-600" : "text-foreground"}`}>
+                                  {pctRaw.toFixed(1)}%
                                 </span>
                               ) : (
                                 <span className="text-xs text-muted-foreground">-</span>
@@ -650,7 +650,11 @@ function LodgingsPage() {
                               <div className={`h-full ${over ? "bg-destructive" : "bg-primary"}`} style={{ width: `${pct}%` }} />
                             </div>
                             <div className="mt-1 text-[10px] text-muted-foreground">
-                              남은 {Math.max(0, l.capacity - ps.length)}
+                              {over ? (
+                                <span className="text-destructive font-semibold">초과 {overBy}명</span>
+                              ) : (
+                                <>남은 {Math.max(0, l.capacity - ps.length)}</>
+                              )}
                               {l.note && <span className="ml-1">· {l.note}</span>}
                             </div>
                           </button>
