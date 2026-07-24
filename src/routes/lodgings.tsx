@@ -708,3 +708,47 @@ function RoomDetail({ lodging, people, churchMap, onChanged }: any) {
     </div>
   );
 }
+
+function ProgressGauge({
+  label, assigned, cap, pct, target, emphasize, tone,
+}: {
+  label: string;
+  assigned: number;
+  cap: number;
+  pct: number;
+  target: number;
+  emphasize?: boolean;
+  tone?: "male" | "female";
+}) {
+  const reached = pct >= target;
+  const width = Math.min(100, Math.max(0, pct));
+  const barColor = reached
+    ? "bg-emerald-500"
+    : tone === "male"
+      ? "bg-sky-500"
+      : tone === "female"
+        ? "bg-pink-400"
+        : "bg-primary";
+  return (
+    <div className="space-y-1">
+      <div className={`flex items-baseline justify-between gap-2 tabular-nums ${emphasize ? "text-sm" : "text-xs"}`}>
+        <span className="font-semibold">
+          {label}
+          {reached && <span className="ml-1.5 text-[10px] rounded bg-emerald-500 text-white px-1.5 py-0.5 align-middle">목표 달성</span>}
+        </span>
+        <span className="text-muted-foreground">
+          <b className="text-foreground">{num(assigned)}</b> / {num(cap)}명 · <b className={reached ? "text-emerald-600" : "text-foreground"}>{pct.toFixed(1)}%</b>
+        </span>
+      </div>
+      <div className={`relative w-full overflow-hidden rounded bg-muted ${emphasize ? "h-3" : "h-2"}`}>
+        <div className={`h-full transition-all duration-300 ${barColor}`} style={{ width: `${width}%` }} />
+        {/* 목표선 마커 */}
+        <div
+          className="absolute top-0 bottom-0 w-px bg-foreground/50"
+          style={{ left: `${target}%` }}
+          title={`목표 ${target}%`}
+        />
+      </div>
+    </div>
+  );
+}
