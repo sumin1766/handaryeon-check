@@ -8,6 +8,7 @@ import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useMemo, useRef, useState, useCallback } from "react";
 import { num } from "@/lib/format";
 import { X, ChevronDown, ChevronUp, Download, Copy, Check } from "lucide-react";
