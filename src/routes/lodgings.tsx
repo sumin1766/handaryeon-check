@@ -169,7 +169,7 @@ function LodgingsPage() {
     setTimeout(() => setHighlightId((h) => (h === id ? null : h)), 2500);
   };
 
-  const performAssign = useCallback(async (payload: DragPayload, lodging: any) => {
+  const performAssign = useCallback(async (payload: DragPayload, lodging: any, mode: "ask" | "over" | "split" = "ask") => {
     const group = unassignedGroups.find((g) => g.churchId === payload.churchId && g.gender === payload.gender);
     if (!group || group.persons.length === 0) return;
 
@@ -187,7 +187,21 @@ function LodgingsPage() {
     // Capacity
     const current = peopleByLodging.get(lodging.id)?.length ?? 0;
     const remain = Math.max(0, (lodging.capacity ?? 0) - current);
-    const slots = lodging.capacity > 0 ? Math.min(remain, group.persons.length) : group.persons.length;
+    const incoming = group.persons.length;
+    const hasCap = lodging.capacity > 0;
+    const isOverflow = hasCap && incoming > remain;
+
+    if (isOverflow && mode === "ask") {
+      setPending({ kind: "single", payload, lodging, incoming, remain });
+      return;
+    }
+
+    // Decide slots
+    let slots: number;
+    if (!hasCap) slots = incoming;
+    else if (mode === "over") slots = incoming; // 초과 허용 — 전원 배정
+    else slots = Math.min(remain, incoming); // split (또는 초과 아님)
+
     if (slots === 0) {
       toast.error("남은 자리가 없습니다.");
       return;
@@ -195,12 +209,13 @@ function LodgingsPage() {
     const ids = group.persons.slice(0, slots).map((p) => p.id);
     const { error } = await supabase.from("people").update({ lodging_id: lodging.id, lodging: true }).in("id", ids);
     if (error) return toast.error(error.message);
-    const leftover = group.persons.length - slots;
-    toast.success(`${churchMap.get(payload.churchId)} · ${payload.gender === "M" ? "남" : "여"} ${slots}명 배정${leftover ? ` (잔여 ${leftover}명)` : ""}`);
+    const leftover = incoming - slots;
+    const overNote = mode === "over" && isOverflow ? ` · 초과 ${incoming - remain}명` : "";
+    toast.success(`${churchMap.get(payload.churchId)} · ${payload.gender === "M" ? "남" : "여"} ${slots}명 배정${leftover ? ` (잔여 ${leftover}명)` : ""}${overNote}`);
     qc.invalidateQueries({ queryKey: ["lodgings-page"] });
   }, [unassignedGroups, peopleByLodging, churchMap, qc]);
 
-  const performAssignMulti = useCallback(async (payloads: DragPayload[], lodging: any) => {
+  const performAssignMulti = useCallback(async (payloads: DragPayload[], lodging: any, mode: "ask" | "over" | "split" = "ask") => {
     // Dedupe payloads by key
     const seen = new Set<string>();
     const uniq = payloads.filter((p) => {
@@ -215,13 +230,29 @@ function LodgingsPage() {
       const before = effective.length;
       effective = effective.filter((p) => p.gender === lodging.gender);
       const excluded = before - effective.length;
-      if (excluded > 0) {
+      if (excluded > 0 && mode === "ask") {
         toast.warning(`${lodging.gender === "M" ? "남성" : "여성"} 방 — 다른 성별 ${excluded}개 교회 제외`);
       }
     }
     if (effective.length === 0) return;
+
+    // Compute totals for overflow decision
     const current = peopleByLodging.get(lodging.id)?.length ?? 0;
-    let remain = lodging.capacity > 0 ? Math.max(0, lodging.capacity - current) : Number.POSITIVE_INFINITY;
+    const hasCap = lodging.capacity > 0;
+    const remain = hasCap ? Math.max(0, lodging.capacity - current) : Number.POSITIVE_INFINITY;
+    let incomingTotal = 0;
+    for (const p of effective) {
+      const grp = unassignedGroups.find((g) => g.churchId === p.churchId && g.gender === p.gender);
+      if (grp) incomingTotal += grp.persons.length;
+    }
+    const isOverflow = hasCap && incomingTotal > remain;
+
+    if (isOverflow && mode === "ask") {
+      setPending({ kind: "multi", payloads: effective, lodging, incoming: incomingTotal, remain: remain as number });
+      return;
+    }
+
+    let remaining = mode === "over" ? Number.POSITIVE_INFINITY : remain;
     const ids: string[] = [];
     let assignedCount = 0;
     let leftover = 0;
@@ -229,15 +260,15 @@ function LodgingsPage() {
     for (const p of effective) {
       const grp = unassignedGroups.find((g) => g.churchId === p.churchId && g.gender === p.gender);
       if (!grp || grp.persons.length === 0) continue;
-      const take = remain === Number.POSITIVE_INFINITY ? grp.persons.length : Math.min(remain, grp.persons.length);
+      const take = remaining === Number.POSITIVE_INFINITY ? grp.persons.length : Math.min(remaining, grp.persons.length);
       if (take > 0) {
         ids.push(...grp.persons.slice(0, take).map((x) => x.id));
         assignedCount += take;
         assignedGroups += 1;
-        if (remain !== Number.POSITIVE_INFINITY) remain -= take;
+        if (remaining !== Number.POSITIVE_INFINITY) remaining -= take;
       }
       leftover += grp.persons.length - take;
-      if (remain === 0) break;
+      if (remaining === 0 && mode !== "over") break;
     }
     if (ids.length === 0) {
       toast.error("남은 자리가 없습니다.");
@@ -245,11 +276,12 @@ function LodgingsPage() {
     }
     const { error } = await supabase.from("people").update({ lodging_id: lodging.id, lodging: true }).in("id", ids);
     if (error) return toast.error(error.message);
-    toast.success(`${assignedGroups}개 교회 · ${assignedCount}명 배정${leftover ? ` (잔여 ${leftover}명)` : ""}`);
+    const overNote = mode === "over" && isOverflow ? ` · 초과 ${incomingTotal - (remain as number)}명` : "";
+    toast.success(`${assignedGroups}개 교회 · ${assignedCount}명 배정${leftover ? ` (잔여 ${leftover}명)` : ""}${overNote}`);
     setSelectedKeys(new Set());
     lastClickRef.current = null;
     qc.invalidateQueries({ queryKey: ["lodgings-page"] });
-  }, [unassignedGroups, peopleByLodging, qc]);
+  }, [unassignedGroups, peopleByLodging, churchMap, qc]);
 
   // 선택 요약 (선택된 교회 수 / 남·여 인원)
   const selectionSummary = useMemo(() => {
