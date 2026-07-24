@@ -39,6 +39,7 @@ function LodgingsPage() {
   const roomRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const [notesOpen, setNotesOpen] = useState(false);
   const [sortMode, setSortMode] = useState<"name" | "count-desc" | "count-asc">("count-desc");
+  const [copied, setCopied] = useState(false);
 
   const { data } = useQuery({
     queryKey: ["lodgings-page", season?.id],
