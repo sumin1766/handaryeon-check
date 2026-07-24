@@ -189,6 +189,101 @@ function LodgingsPage() {
     qc.invalidateQueries({ queryKey: ["lodgings-page"] });
   }, [unassignedGroups, peopleByLodging, churchMap, qc]);
 
+  // 숙소별 교회 그룹핑 → CSV/엑셀 출력용 행
+  const exportRows = useMemo(() => {
+    const rows: {
+      숙소: string;
+      건물: string;
+      층: string;
+      성별: string;
+      교회: string;
+      남: number;
+      여: number;
+      인원: number;
+    }[] = [];
+    const sortedLodgings = [...lodgings].sort((a: any, b: any) => {
+      const ab = String(a.building ?? "");
+      const bb = String(b.building ?? "");
+      if (ab !== bb) return ab.localeCompare(bb, "ko");
+      const af = String(a.floor ?? "");
+      const bf = String(b.floor ?? "");
+      if (af !== bf) return af.localeCompare(bf, "ko");
+      return String(a.name ?? "").localeCompare(String(b.name ?? ""), "ko");
+    });
+    for (const l of sortedLodgings) {
+      const ps = peopleByLodging.get(l.id) ?? [];
+      if (ps.length === 0) continue;
+      const byChurch = new Map<string, any[]>();
+      for (const p of ps) {
+        const arr = byChurch.get(p.church_id) ?? [];
+        arr.push(p);
+        byChurch.set(p.church_id, arr);
+      }
+      const entries = Array.from(byChurch.entries()).sort((a, b) =>
+        (churchMap.get(a[0]) ?? "").localeCompare(churchMap.get(b[0]) ?? "", "ko"),
+      );
+      for (const [cid, arr] of entries) {
+        const m = arr.filter((p: any) => p.gender === "M").length;
+        const f = arr.filter((p: any) => p.gender === "F").length;
+        rows.push({
+          숙소: l.name ?? "",
+          건물: l.building ?? "",
+          층: String(l.floor ?? ""),
+          성별: l.gender === "M" ? "남" : l.gender === "F" ? "여" : "",
+          교회: churchMap.get(cid) ?? "",
+          남: m,
+          여: f,
+          인원: arr.length,
+        });
+      }
+    }
+    return rows;
+  }, [lodgings, peopleByLodging, churchMap]);
+
+  const downloadExcel = () => {
+    if (exportRows.length === 0) {
+      toast.error("배치된 인원이 없습니다.");
+      return;
+    }
+    downloadRowsAsXlsx(exportRows, "숙소별 배치", `${season?.name ?? "숙소"}_숙소배치.xlsx`);
+  };
+
+  const copyCsv = async () => {
+    if (exportRows.length === 0) {
+      toast.error("배치된 인원이 없습니다.");
+      return;
+    }
+    const escape = (v: string | number) =>
+      String(v ?? "").replace(/\t/g, " ").replace(/\r?\n/g, " ");
+    const headers = ["숙소", "건물", "층", "성별", "교회", "남", "여", "인원"];
+    const header = headers.join("\t");
+    const body = exportRows
+      .map((r) => [r.숙소, r.건물, r.층, r.성별, r.교회, r.남, r.여, r.인원].map(escape).join("\t"))
+      .join("\n");
+    const text = `${header}\n${body}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toast.success("복사됨 — 구글 시트에 붙여넣으세요");
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        setCopied(true);
+        toast.success("복사됨");
+        setTimeout(() => setCopied(false), 1800);
+      } catch {
+        toast.error("복사 실패");
+      } finally {
+        document.body.removeChild(ta);
+      }
+    }
+  };
+
   if (!season) return <AppShell><div className="text-sm text-muted-foreground">시즌이 없습니다.</div></AppShell>;
 
   const selectedLodging = selected ? lodgings.find((l: any) => l.id === selected) : null;
