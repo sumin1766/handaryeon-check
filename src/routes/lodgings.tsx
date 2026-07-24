@@ -10,9 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useMemo, useRef, useState, useCallback } from "react";
 import { num } from "@/lib/format";
-import { X, ChevronDown, ChevronUp } from "lucide-react";
+import { X, ChevronDown, ChevronUp, Download, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { downloadRowsAsXlsx } from "@/lib/export-xlsx";
+
+// 배치률 1차 목표선 — 필요 시 여기만 조정
+const TARGET_PCT = 80;
 
 export const Route = createFileRoute("/lodgings")({
   head: () => ({ meta: [{ title: "숙소배치 — 한다련 캠프" }] }),
@@ -35,6 +39,7 @@ function LodgingsPage() {
   const roomRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const [notesOpen, setNotesOpen] = useState(false);
   const [sortMode, setSortMode] = useState<"name" | "count-desc" | "count-asc">("count-desc");
+  const [copied, setCopied] = useState(false);
 
   const { data } = useQuery({
     queryKey: ["lodgings-page", season?.id],
@@ -115,7 +120,15 @@ function LodgingsPage() {
   }, [churches]);
 
   const totalCap = lodgings.filter((l: any) => l.active).reduce((s: number, l: any) => s + l.capacity, 0);
+  const totalCapM = lodgings.filter((l: any) => l.active && l.gender === "M").reduce((s: number, l: any) => s + l.capacity, 0);
+  const totalCapF = lodgings.filter((l: any) => l.active && l.gender === "F").reduce((s: number, l: any) => s + l.capacity, 0);
   const totalAssigned = lodgings.reduce((s: number, l: any) => s + (peopleByLodging.get(l.id)?.length ?? 0), 0);
+  const totalAssignedM = people.filter((p: any) => p.lodging_id && p.gender === "M").length;
+  const totalAssignedF = people.filter((p: any) => p.lodging_id && p.gender === "F").length;
+  const pctAll = totalCap > 0 ? (totalAssigned / totalCap) * 100 : 0;
+  const pctM = totalCapM > 0 ? (totalAssignedM / totalCapM) * 100 : 0;
+  const pctF = totalCapF > 0 ? (totalAssignedF / totalCapF) * 100 : 0;
+  const reachedGoal = pctAll >= TARGET_PCT;
 
   const groups = useMemo(() => {
     const g: Record<string, Record<string, any[]>> = {};
@@ -176,6 +189,101 @@ function LodgingsPage() {
     qc.invalidateQueries({ queryKey: ["lodgings-page"] });
   }, [unassignedGroups, peopleByLodging, churchMap, qc]);
 
+  // 숙소별 교회 그룹핑 → CSV/엑셀 출력용 행
+  const exportRows = useMemo(() => {
+    const rows: {
+      숙소: string;
+      건물: string;
+      층: string;
+      성별: string;
+      교회: string;
+      남: number;
+      여: number;
+      인원: number;
+    }[] = [];
+    const sortedLodgings = [...lodgings].sort((a: any, b: any) => {
+      const ab = String(a.building ?? "");
+      const bb = String(b.building ?? "");
+      if (ab !== bb) return ab.localeCompare(bb, "ko");
+      const af = String(a.floor ?? "");
+      const bf = String(b.floor ?? "");
+      if (af !== bf) return af.localeCompare(bf, "ko");
+      return String(a.name ?? "").localeCompare(String(b.name ?? ""), "ko");
+    });
+    for (const l of sortedLodgings) {
+      const ps = peopleByLodging.get(l.id) ?? [];
+      if (ps.length === 0) continue;
+      const byChurch = new Map<string, any[]>();
+      for (const p of ps) {
+        const arr = byChurch.get(p.church_id) ?? [];
+        arr.push(p);
+        byChurch.set(p.church_id, arr);
+      }
+      const entries = Array.from(byChurch.entries()).sort((a, b) =>
+        (churchMap.get(a[0]) ?? "").localeCompare(churchMap.get(b[0]) ?? "", "ko"),
+      );
+      for (const [cid, arr] of entries) {
+        const m = arr.filter((p: any) => p.gender === "M").length;
+        const f = arr.filter((p: any) => p.gender === "F").length;
+        rows.push({
+          숙소: l.name ?? "",
+          건물: l.building ?? "",
+          층: String(l.floor ?? ""),
+          성별: l.gender === "M" ? "남" : l.gender === "F" ? "여" : "",
+          교회: churchMap.get(cid) ?? "",
+          남: m,
+          여: f,
+          인원: arr.length,
+        });
+      }
+    }
+    return rows;
+  }, [lodgings, peopleByLodging, churchMap]);
+
+  const downloadExcel = () => {
+    if (exportRows.length === 0) {
+      toast.error("배치된 인원이 없습니다.");
+      return;
+    }
+    downloadRowsAsXlsx(exportRows, "숙소별 배치", `${season?.name ?? "숙소"}_숙소배치.xlsx`);
+  };
+
+  const copyCsv = async () => {
+    if (exportRows.length === 0) {
+      toast.error("배치된 인원이 없습니다.");
+      return;
+    }
+    const escape = (v: string | number) =>
+      String(v ?? "").replace(/\t/g, " ").replace(/\r?\n/g, " ");
+    const headers = ["숙소", "건물", "층", "성별", "교회", "남", "여", "인원"];
+    const header = headers.join("\t");
+    const body = exportRows
+      .map((r) => [r.숙소, r.건물, r.층, r.성별, r.교회, r.남, r.여, r.인원].map(escape).join("\t"))
+      .join("\n");
+    const text = `${header}\n${body}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toast.success("복사됨 — 구글 시트에 붙여넣으세요");
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        setCopied(true);
+        toast.success("복사됨");
+        setTimeout(() => setCopied(false), 1800);
+      } catch {
+        toast.error("복사 실패");
+      } finally {
+        document.body.removeChild(ta);
+      }
+    }
+  };
+
   if (!season) return <AppShell><div className="text-sm text-muted-foreground">시즌이 없습니다.</div></AppShell>;
 
   const selectedLodging = selected ? lodgings.find((l: any) => l.id === selected) : null;
@@ -223,12 +331,21 @@ function LodgingsPage() {
               )}
             </Card>
           )}
-          <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+          <header className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
               <h1 className="text-2xl font-bold">숙소배치</h1>
               <p className="text-sm text-muted-foreground">우측 카드 드래그 또는 더블클릭 → 방 선택</p>
             </div>
-            <Input placeholder="이름/교회 검색…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-56" />
+            <div className="flex flex-wrap items-center gap-2">
+              <Input placeholder="이름/교회 검색…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-56" />
+              <Button variant="outline" size="sm" onClick={copyCsv}>
+                {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+                {copied ? "복사됨" : "CSV 복사"}
+              </Button>
+              <Button size="sm" onClick={downloadExcel}>
+                <Download className="h-4 w-4 mr-1" />엑셀 다운로드
+              </Button>
+            </div>
           </header>
 
 
@@ -237,6 +354,33 @@ function LodgingsPage() {
               <span>전체 정원 <b className="text-lg">{num(totalCap)}</b>명</span>
               <span>배정 <b className="text-lg">{num(totalAssigned)}</b>명</span>
               <span>남은 자리 <b className="text-lg text-emerald-600">{num(totalCap - totalAssigned)}</b>명</span>
+            </div>
+
+            {/* 방 배정률 프로그레스 — 목표 {TARGET_PCT}% */}
+            <div className="mt-3 space-y-2">
+              <ProgressGauge
+                label="전체"
+                assigned={totalAssigned}
+                cap={totalCap}
+                pct={pctAll}
+                target={TARGET_PCT}
+                emphasize
+              />
+              {(totalCapM > 0 || totalCapF > 0) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {totalCapM > 0 && (
+                    <ProgressGauge label="남자" assigned={totalAssignedM} cap={totalCapM} pct={pctM} target={TARGET_PCT} tone="male" />
+                  )}
+                  {totalCapF > 0 && (
+                    <ProgressGauge label="여자" assigned={totalAssignedF} cap={totalCapF} pct={pctF} target={TARGET_PCT} tone="female" />
+                  )}
+                </div>
+              )}
+              {!reachedGoal && totalCap > 0 && (
+                <div className="text-[11px] text-muted-foreground tabular-nums">
+                  목표 {TARGET_PCT}%까지 <b className="text-foreground">{Math.max(0, Math.ceil(totalCap * TARGET_PCT / 100) - totalAssigned)}</b>명 남음
+                </div>
+              )}
             </div>
             <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {Object.keys(groups).map((building) => {
@@ -561,6 +705,50 @@ function RoomDetail({ lodging, people, churchMap, onChanged }: any) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function ProgressGauge({
+  label, assigned, cap, pct, target, emphasize, tone,
+}: {
+  label: string;
+  assigned: number;
+  cap: number;
+  pct: number;
+  target: number;
+  emphasize?: boolean;
+  tone?: "male" | "female";
+}) {
+  const reached = pct >= target;
+  const width = Math.min(100, Math.max(0, pct));
+  const barColor = reached
+    ? "bg-emerald-500"
+    : tone === "male"
+      ? "bg-sky-500"
+      : tone === "female"
+        ? "bg-pink-400"
+        : "bg-primary";
+  return (
+    <div className="space-y-1">
+      <div className={`flex items-baseline justify-between gap-2 tabular-nums ${emphasize ? "text-sm" : "text-xs"}`}>
+        <span className="font-semibold">
+          {label}
+          {reached && <span className="ml-1.5 text-[10px] rounded bg-emerald-500 text-white px-1.5 py-0.5 align-middle">목표 달성</span>}
+        </span>
+        <span className="text-muted-foreground">
+          <b className="text-foreground">{num(assigned)}</b> / {num(cap)}명 · <b className={reached ? "text-emerald-600" : "text-foreground"}>{pct.toFixed(1)}%</b>
+        </span>
+      </div>
+      <div className={`relative w-full overflow-hidden rounded bg-muted ${emphasize ? "h-3" : "h-2"}`}>
+        <div className={`h-full transition-all duration-300 ${barColor}`} style={{ width: `${width}%` }} />
+        {/* 목표선 마커 */}
+        <div
+          className="absolute top-0 bottom-0 w-px bg-foreground/50"
+          style={{ left: `${target}%` }}
+          title={`목표 ${target}%`}
+        />
+      </div>
     </div>
   );
 }
