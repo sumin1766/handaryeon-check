@@ -45,6 +45,11 @@ function LodgingsPage() {
   // 다중 선택 (미배치 교회 카드) — key = `${churchId}:${gender}`
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const lastClickRef = useRef<{ section: "M" | "F"; key: string } | null>(null);
+  // 정원 초과 배치 확인 대상
+  type PendingAssign =
+    | { kind: "single"; payload: DragPayload; lodging: any; incoming: number; remain: number }
+    | { kind: "multi"; payloads: DragPayload[]; lodging: any; incoming: number; remain: number };
+  const [pending, setPending] = useState<PendingAssign | null>(null);
 
 
   const { data } = useQuery({
