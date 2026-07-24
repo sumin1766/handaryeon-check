@@ -8,6 +8,7 @@ import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useMemo, useRef, useState, useCallback } from "react";
 import { num } from "@/lib/format";
 import { X, ChevronDown, ChevronUp, Download, Copy, Check } from "lucide-react";
@@ -44,6 +45,11 @@ function LodgingsPage() {
   // 다중 선택 (미배치 교회 카드) — key = `${churchId}:${gender}`
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const lastClickRef = useRef<{ section: "M" | "F"; key: string } | null>(null);
+  // 정원 초과 배치 확인 대상
+  type PendingAssign =
+    | { kind: "single"; payload: DragPayload; lodging: any; incoming: number; remain: number }
+    | { kind: "multi"; payloads: DragPayload[]; lodging: any; incoming: number; remain: number };
+  const [pending, setPending] = useState<PendingAssign | null>(null);
 
 
   const { data } = useQuery({
@@ -163,7 +169,7 @@ function LodgingsPage() {
     setTimeout(() => setHighlightId((h) => (h === id ? null : h)), 2500);
   };
 
-  const performAssign = useCallback(async (payload: DragPayload, lodging: any) => {
+  const performAssign = useCallback(async (payload: DragPayload, lodging: any, mode: "ask" | "over" | "split" = "ask") => {
     const group = unassignedGroups.find((g) => g.churchId === payload.churchId && g.gender === payload.gender);
     if (!group || group.persons.length === 0) return;
 
@@ -181,7 +187,21 @@ function LodgingsPage() {
     // Capacity
     const current = peopleByLodging.get(lodging.id)?.length ?? 0;
     const remain = Math.max(0, (lodging.capacity ?? 0) - current);
-    const slots = lodging.capacity > 0 ? Math.min(remain, group.persons.length) : group.persons.length;
+    const incoming = group.persons.length;
+    const hasCap = lodging.capacity > 0;
+    const isOverflow = hasCap && incoming > remain;
+
+    if (isOverflow && mode === "ask") {
+      setPending({ kind: "single", payload, lodging, incoming, remain });
+      return;
+    }
+
+    // Decide slots
+    let slots: number;
+    if (!hasCap) slots = incoming;
+    else if (mode === "over") slots = incoming; // 초과 허용 — 전원 배정
+    else slots = Math.min(remain, incoming); // split (또는 초과 아님)
+
     if (slots === 0) {
       toast.error("남은 자리가 없습니다.");
       return;
@@ -189,12 +209,13 @@ function LodgingsPage() {
     const ids = group.persons.slice(0, slots).map((p) => p.id);
     const { error } = await supabase.from("people").update({ lodging_id: lodging.id, lodging: true }).in("id", ids);
     if (error) return toast.error(error.message);
-    const leftover = group.persons.length - slots;
-    toast.success(`${churchMap.get(payload.churchId)} · ${payload.gender === "M" ? "남" : "여"} ${slots}명 배정${leftover ? ` (잔여 ${leftover}명)` : ""}`);
+    const leftover = incoming - slots;
+    const overNote = mode === "over" && isOverflow ? ` · 초과 ${incoming - remain}명` : "";
+    toast.success(`${churchMap.get(payload.churchId)} · ${payload.gender === "M" ? "남" : "여"} ${slots}명 배정${leftover ? ` (잔여 ${leftover}명)` : ""}${overNote}`);
     qc.invalidateQueries({ queryKey: ["lodgings-page"] });
   }, [unassignedGroups, peopleByLodging, churchMap, qc]);
 
-  const performAssignMulti = useCallback(async (payloads: DragPayload[], lodging: any) => {
+  const performAssignMulti = useCallback(async (payloads: DragPayload[], lodging: any, mode: "ask" | "over" | "split" = "ask") => {
     // Dedupe payloads by key
     const seen = new Set<string>();
     const uniq = payloads.filter((p) => {
@@ -209,13 +230,29 @@ function LodgingsPage() {
       const before = effective.length;
       effective = effective.filter((p) => p.gender === lodging.gender);
       const excluded = before - effective.length;
-      if (excluded > 0) {
+      if (excluded > 0 && mode === "ask") {
         toast.warning(`${lodging.gender === "M" ? "남성" : "여성"} 방 — 다른 성별 ${excluded}개 교회 제외`);
       }
     }
     if (effective.length === 0) return;
+
+    // Compute totals for overflow decision
     const current = peopleByLodging.get(lodging.id)?.length ?? 0;
-    let remain = lodging.capacity > 0 ? Math.max(0, lodging.capacity - current) : Number.POSITIVE_INFINITY;
+    const hasCap = lodging.capacity > 0;
+    const remain = hasCap ? Math.max(0, lodging.capacity - current) : Number.POSITIVE_INFINITY;
+    let incomingTotal = 0;
+    for (const p of effective) {
+      const grp = unassignedGroups.find((g) => g.churchId === p.churchId && g.gender === p.gender);
+      if (grp) incomingTotal += grp.persons.length;
+    }
+    const isOverflow = hasCap && incomingTotal > remain;
+
+    if (isOverflow && mode === "ask") {
+      setPending({ kind: "multi", payloads: effective, lodging, incoming: incomingTotal, remain: remain as number });
+      return;
+    }
+
+    let remaining = mode === "over" ? Number.POSITIVE_INFINITY : remain;
     const ids: string[] = [];
     let assignedCount = 0;
     let leftover = 0;
@@ -223,15 +260,15 @@ function LodgingsPage() {
     for (const p of effective) {
       const grp = unassignedGroups.find((g) => g.churchId === p.churchId && g.gender === p.gender);
       if (!grp || grp.persons.length === 0) continue;
-      const take = remain === Number.POSITIVE_INFINITY ? grp.persons.length : Math.min(remain, grp.persons.length);
+      const take = remaining === Number.POSITIVE_INFINITY ? grp.persons.length : Math.min(remaining, grp.persons.length);
       if (take > 0) {
         ids.push(...grp.persons.slice(0, take).map((x) => x.id));
         assignedCount += take;
         assignedGroups += 1;
-        if (remain !== Number.POSITIVE_INFINITY) remain -= take;
+        if (remaining !== Number.POSITIVE_INFINITY) remaining -= take;
       }
       leftover += grp.persons.length - take;
-      if (remain === 0) break;
+      if (remaining === 0 && mode !== "over") break;
     }
     if (ids.length === 0) {
       toast.error("남은 자리가 없습니다.");
@@ -239,11 +276,12 @@ function LodgingsPage() {
     }
     const { error } = await supabase.from("people").update({ lodging_id: lodging.id, lodging: true }).in("id", ids);
     if (error) return toast.error(error.message);
-    toast.success(`${assignedGroups}개 교회 · ${assignedCount}명 배정${leftover ? ` (잔여 ${leftover}명)` : ""}`);
+    const overNote = mode === "over" && isOverflow ? ` · 초과 ${incomingTotal - (remain as number)}명` : "";
+    toast.success(`${assignedGroups}개 교회 · ${assignedCount}명 배정${leftover ? ` (잔여 ${leftover}명)` : ""}${overNote}`);
     setSelectedKeys(new Set());
     lastClickRef.current = null;
     qc.invalidateQueries({ queryKey: ["lodgings-page"] });
-  }, [unassignedGroups, peopleByLodging, qc]);
+  }, [unassignedGroups, peopleByLodging, churchMap, qc]);
 
   // 선택 요약 (선택된 교회 수 / 남·여 인원)
   const selectionSummary = useMemo(() => {
@@ -544,8 +582,10 @@ function LodgingsPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                       {items.map((l: any) => {
                         const ps = peopleByLodging.get(l.id) ?? [];
-                        const pct = l.capacity ? Math.min(100, (ps.length / l.capacity) * 100) : 0;
+                        const pctRaw = l.capacity ? (ps.length / l.capacity) * 100 : 0;
+                        const pct = Math.min(100, pctRaw);
                         const over = l.capacity > 0 && ps.length > l.capacity;
+                        const overBy = over ? ps.length - l.capacity : 0;
                         const cls = l.gender === "M" ? "lodging-male" : l.gender === "F" ? "lodging-female" : "lodging-none";
                         const isDragOver = dragOver === l.id;
                         const canPick = pickMode && (l.capacity ?? 0) - ps.length > 0;
@@ -599,8 +639,8 @@ function LodgingsPage() {
                               <span className={`text-lg font-bold ${over ? "text-destructive" : ""}`}>{ps.length}</span>
                               <span className="text-xs text-muted-foreground">/ {l.capacity}</span>
                               {l.capacity > 0 ? (
-                                <span className={`text-xs font-semibold ${pct >= 100 ? "text-emerald-600" : over ? "text-destructive" : "text-foreground"}`}>
-                                  {pct.toFixed(1)}%
+                                <span className={`text-xs font-semibold ${over ? "text-destructive" : pctRaw >= 100 ? "text-emerald-600" : "text-foreground"}`}>
+                                  {pctRaw.toFixed(1)}%
                                 </span>
                               ) : (
                                 <span className="text-xs text-muted-foreground">-</span>
@@ -610,7 +650,11 @@ function LodgingsPage() {
                               <div className={`h-full ${over ? "bg-destructive" : "bg-primary"}`} style={{ width: `${pct}%` }} />
                             </div>
                             <div className="mt-1 text-[10px] text-muted-foreground">
-                              남은 {Math.max(0, l.capacity - ps.length)}
+                              {over ? (
+                                <span className="text-destructive font-semibold">초과 {overBy}명</span>
+                              ) : (
+                                <>남은 {Math.max(0, l.capacity - ps.length)}</>
+                              )}
                               {l.note && <span className="ml-1">· {l.note}</span>}
                             </div>
                           </button>
@@ -736,6 +780,58 @@ function LodgingsPage() {
           )}
         </SheetContent>
       </Sheet>
+
+      <Dialog open={!!pending} onOpenChange={(o) => !o && setPending(null)}>
+        <DialogContent className="sm:max-w-md">
+          {pending && (() => {
+            const l = pending.lodging;
+            const overBy = pending.incoming - pending.remain;
+            const label =
+              pending.kind === "single"
+                ? `${churchMap.get(pending.payload.churchId) ?? ""} · ${pending.payload.gender === "M" ? "남" : "여"}`
+                : `${pending.payloads.length}개 교회 (합계 ${pending.incoming}명)`;
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle>정원 초과 배치 확인</DialogTitle>
+                  <DialogDescription asChild>
+                    <div className="space-y-1 text-sm">
+                      <div><b>{l.name}</b> 남은 자리 <b>{pending.remain}</b>명 / 배치하려는 인원 <b>{pending.incoming}</b>명</div>
+                      <div className="text-destructive font-semibold">정원을 {overBy}명 초과합니다.</div>
+                      <div className="text-muted-foreground">{label}</div>
+                    </div>
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="gap-2 sm:gap-2 flex-col sm:flex-row">
+                  <Button variant="outline" onClick={() => setPending(null)}>취소</Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      const p = pending;
+                      setPending(null);
+                      if (p.kind === "single") performAssign(p.payload, p.lodging, "split");
+                      else performAssignMulti(p.payloads, p.lodging, "split");
+                    }}
+                  >
+                    나눠서 배치 (정원까지만)
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      const p = pending;
+                      setPending(null);
+                      if (p.kind === "single") performAssign(p.payload, p.lodging, "over");
+                      else performAssignMulti(p.payloads, p.lodging, "over");
+                    }}
+                  >
+                    초과해도 그대로 배치
+                  </Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
