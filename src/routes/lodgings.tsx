@@ -582,8 +582,10 @@ function LodgingsPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                       {items.map((l: any) => {
                         const ps = peopleByLodging.get(l.id) ?? [];
-                        const pct = l.capacity ? Math.min(100, (ps.length / l.capacity) * 100) : 0;
+                        const pctRaw = l.capacity ? (ps.length / l.capacity) * 100 : 0;
+                        const pct = Math.min(100, pctRaw);
                         const over = l.capacity > 0 && ps.length > l.capacity;
+                        const overBy = over ? ps.length - l.capacity : 0;
                         const cls = l.gender === "M" ? "lodging-male" : l.gender === "F" ? "lodging-female" : "lodging-none";
                         const isDragOver = dragOver === l.id;
                         const canPick = pickMode && (l.capacity ?? 0) - ps.length > 0;
