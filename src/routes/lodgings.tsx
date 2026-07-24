@@ -24,6 +24,7 @@ export const Route = createFileRoute("/lodgings")({
 });
 
 type DragPayload = { churchId: string; gender: "M" | "F" };
+type MultiDragPayload = { multi: true; items: DragPayload[] };
 
 function LodgingsPage() {
   const { season } = useActiveSeason();
@@ -40,6 +41,10 @@ function LodgingsPage() {
   const [notesOpen, setNotesOpen] = useState(false);
   const [sortMode, setSortMode] = useState<"name" | "count-desc" | "count-asc">("count-desc");
   const [copied, setCopied] = useState(false);
+  // 다중 선택 (미배치 교회 카드) — key = `${churchId}:${gender}`
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const lastClickRef = useRef<{ section: "M" | "F"; key: string } | null>(null);
+
 
   const { data } = useQuery({
     queryKey: ["lodgings-page", season?.id],
@@ -188,6 +193,117 @@ function LodgingsPage() {
     toast.success(`${churchMap.get(payload.churchId)} · ${payload.gender === "M" ? "남" : "여"} ${slots}명 배정${leftover ? ` (잔여 ${leftover}명)` : ""}`);
     qc.invalidateQueries({ queryKey: ["lodgings-page"] });
   }, [unassignedGroups, peopleByLodging, churchMap, qc]);
+
+  const performAssignMulti = useCallback(async (payloads: DragPayload[], lodging: any) => {
+    // Dedupe payloads by key
+    const seen = new Set<string>();
+    const uniq = payloads.filter((p) => {
+      const k = `${p.churchId}:${p.gender}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    // 성별 방 정책: 성별 지정된 방이면 다른 성별 교회는 제외 (기존 단일 드래그의 정책과 정합)
+    let effective = uniq;
+    if (lodging.gender) {
+      const before = effective.length;
+      effective = effective.filter((p) => p.gender === lodging.gender);
+      const excluded = before - effective.length;
+      if (excluded > 0) {
+        toast.warning(`${lodging.gender === "M" ? "남성" : "여성"} 방 — 다른 성별 ${excluded}개 교회 제외`);
+      }
+    }
+    if (effective.length === 0) return;
+    const current = peopleByLodging.get(lodging.id)?.length ?? 0;
+    let remain = lodging.capacity > 0 ? Math.max(0, lodging.capacity - current) : Number.POSITIVE_INFINITY;
+    const ids: string[] = [];
+    let assignedCount = 0;
+    let leftover = 0;
+    let assignedGroups = 0;
+    for (const p of effective) {
+      const grp = unassignedGroups.find((g) => g.churchId === p.churchId && g.gender === p.gender);
+      if (!grp || grp.persons.length === 0) continue;
+      const take = remain === Number.POSITIVE_INFINITY ? grp.persons.length : Math.min(remain, grp.persons.length);
+      if (take > 0) {
+        ids.push(...grp.persons.slice(0, take).map((x) => x.id));
+        assignedCount += take;
+        assignedGroups += 1;
+        if (remain !== Number.POSITIVE_INFINITY) remain -= take;
+      }
+      leftover += grp.persons.length - take;
+      if (remain === 0) break;
+    }
+    if (ids.length === 0) {
+      toast.error("남은 자리가 없습니다.");
+      return;
+    }
+    const { error } = await supabase.from("people").update({ lodging_id: lodging.id, lodging: true }).in("id", ids);
+    if (error) return toast.error(error.message);
+    toast.success(`${assignedGroups}개 교회 · ${assignedCount}명 배정${leftover ? ` (잔여 ${leftover}명)` : ""}`);
+    setSelectedKeys(new Set());
+    lastClickRef.current = null;
+    qc.invalidateQueries({ queryKey: ["lodgings-page"] });
+  }, [unassignedGroups, peopleByLodging, qc]);
+
+  // 선택 요약 (선택된 교회 수 / 남·여 인원)
+  const selectionSummary = useMemo(() => {
+    if (selectedKeys.size === 0) return null;
+    let m = 0, f = 0;
+    for (const key of selectedKeys) {
+      const g = unassignedGroups.find((x) => `${x.churchId}:${x.gender}` === key);
+      if (!g) continue;
+      if (g.gender === "M") m += g.persons.length;
+      else f += g.persons.length;
+    }
+    return { count: selectedKeys.size, m, f, total: m + f };
+  }, [selectedKeys, unassignedGroups]);
+
+  // Prune stale selections when groups change (e.g., after assignment)
+  const validKeys = useMemo(
+    () => new Set(unassignedGroups.map((g) => `${g.churchId}:${g.gender}`)),
+    [unassignedGroups],
+  );
+  if (selectedKeys.size > 0) {
+    let stale = false;
+    for (const k of selectedKeys) if (!validKeys.has(k)) { stale = true; break; }
+    if (stale) {
+      // Defer to avoid setState during render
+      queueMicrotask(() => {
+        setSelectedKeys((prev) => {
+          const next = new Set<string>();
+          for (const k of prev) if (validKeys.has(k)) next.add(k);
+          return next;
+        });
+      });
+    }
+  }
+
+  const handleCardSelect = useCallback((section: "M" | "F", sortedKeys: string[], key: string, e: React.MouseEvent) => {
+    const isRange = e.shiftKey && lastClickRef.current && lastClickRef.current.section === section;
+    const isMulti = e.ctrlKey || e.metaKey;
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (isRange) {
+        const anchor = lastClickRef.current!.key;
+        const i1 = sortedKeys.indexOf(anchor);
+        const i2 = sortedKeys.indexOf(key);
+        if (i1 !== -1 && i2 !== -1) {
+          const [lo, hi] = i1 < i2 ? [i1, i2] : [i2, i1];
+          for (let i = lo; i <= hi; i++) next.add(sortedKeys[i]);
+        } else {
+          next.has(key) ? next.delete(key) : next.add(key);
+        }
+      } else if (isMulti) {
+        next.has(key) ? next.delete(key) : next.add(key);
+      } else {
+        // Plain click / touch tap → 토글
+        next.has(key) ? next.delete(key) : next.add(key);
+      }
+      return next;
+    });
+    if (!isRange) lastClickRef.current = { section, key };
+  }, []);
+
 
   // 숙소별 교회 그룹핑 → CSV/엑셀 출력용 행
   const exportRows = useMemo(() => {
@@ -464,10 +580,15 @@ function LodgingsPage() {
                               try {
                                 const raw = e.dataTransfer.getData("application/json");
                                 if (!raw) return;
-                                const payload = JSON.parse(raw) as DragPayload;
-                                performAssign(payload, l);
+                                const parsed = JSON.parse(raw) as DragPayload | MultiDragPayload;
+                                if ((parsed as MultiDragPayload).multi) {
+                                  performAssignMulti((parsed as MultiDragPayload).items, l);
+                                } else {
+                                  performAssign(parsed as DragPayload, l);
+                                }
                               } catch { /* ignore */ }
                             }}
+
                             className={`group rounded-md border-2 p-3 text-left transition hover:shadow-md ${cls} ${!l.active ? "opacity-40" : ""} ${isDragOver ? "ring-2 ring-primary" : ""} ${blink} ${highlight} ${dim ? "opacity-40" : ""}`}
                           >
                             <div className="flex items-center justify-between">
@@ -535,6 +656,24 @@ function LodgingsPage() {
                 <button onClick={() => { setPickMode(null); setFlipped(null); }} className="float-right text-muted-foreground hover:text-foreground">취소</button>
               </div>
             )}
+            {selectionSummary && (
+              <div className="mb-2 rounded border border-primary/40 bg-primary/10 px-2 py-1.5 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span>
+                    교회 <b>{selectionSummary.count}</b>곳 선택 · 남 <b>{selectionSummary.m}</b> / 여 <b>{selectionSummary.f}</b> · 총 <b>{selectionSummary.total}</b>명
+                  </span>
+                  <button
+                    onClick={() => { setSelectedKeys(new Set()); lastClickRef.current = null; }}
+                    className="text-muted-foreground hover:text-foreground shrink-0"
+                  >
+                    선택 해제
+                  </button>
+                </div>
+                <div className="mt-1 text-[10px] text-muted-foreground">
+                  선택된 카드 중 하나를 드래그하면 함께 이동합니다. (Ctrl/⌘·Shift 클릭 지원)
+                </div>
+              </div>
+            )}
 
             <UnassignedSection
               title="남자"
@@ -544,6 +683,10 @@ function LodgingsPage() {
               flipped={flipped}
               setFlipped={setFlipped}
               onPick={(g) => { setPickMode(g); setFlipped(null); }}
+              section="M"
+              selectedKeys={selectedKeys}
+              onCardSelect={handleCardSelect}
+              selectionSummary={selectionSummary}
             />
             <div className="my-3 border-t" />
             <UnassignedSection
@@ -554,7 +697,12 @@ function LodgingsPage() {
               flipped={flipped}
               setFlipped={setFlipped}
               onPick={(g) => { setPickMode(g); setFlipped(null); }}
+              section="F"
+              selectedKeys={selectedKeys}
+              onCardSelect={handleCardSelect}
+              selectionSummary={selectionSummary}
             />
+
 
             {unassignedGroups.length === 0 && (
               <div className="text-xs text-muted-foreground py-4 text-center">전원 배정 완료 🎉</div>
@@ -594,6 +742,7 @@ function LodgingsPage() {
 
 function UnassignedSection({
   title, tone, groups, churchMap, flipped, setFlipped, onPick,
+  section, selectedKeys, onCardSelect, selectionSummary,
 }: {
   title: string;
   tone: "male" | "female";
@@ -602,8 +751,13 @@ function UnassignedSection({
   flipped: string | null;
   setFlipped: (v: string | null) => void;
   onPick: (g: DragPayload) => void;
+  section: "M" | "F";
+  selectedKeys: Set<string>;
+  onCardSelect: (section: "M" | "F", sortedKeys: string[], key: string, e: React.MouseEvent) => void;
+  selectionSummary: { count: number; m: number; f: number; total: number } | null;
 }) {
   const toneCls = tone === "male" ? "lodging-male" : "lodging-female";
+  const sortedKeys = groups.map((g) => `${g.churchId}:${g.gender}`);
   return (
     <div>
       <div className="text-xs font-semibold mb-1.5 flex items-center justify-between">
@@ -616,23 +770,50 @@ function UnassignedSection({
         {groups.map((g) => {
           const key = `${g.churchId}:${g.gender}`;
           const isFlipped = flipped === key;
+          const isSelected = selectedKeys.has(key);
           return (
             <div key={key} className="flip-card h-20">
               <div className={`flip-inner h-full ${isFlipped ? "is-flipped" : ""}`}>
                 <div
                   draggable
                   onDragStart={(e) => {
-                    e.dataTransfer.setData("application/json", JSON.stringify({ churchId: g.churchId, gender: g.gender }));
+                    // 선택된 카드에서 드래그 시작 & 2개 이상 선택 → 다중 페이로드
+                    if (isSelected && selectedKeys.size > 1) {
+                      const items: DragPayload[] = [];
+                      for (const k of selectedKeys) {
+                        const [churchId, gender] = k.split(":");
+                        items.push({ churchId, gender: gender as "M" | "F" });
+                      }
+                      e.dataTransfer.setData("application/json", JSON.stringify({ multi: true, items }));
+                    } else {
+                      e.dataTransfer.setData("application/json", JSON.stringify({ churchId: g.churchId, gender: g.gender }));
+                    }
                     e.dataTransfer.effectAllowed = "move";
                   }}
+                  onClick={(e) => {
+                    // 좌클릭 → 선택 토글 (Ctrl/⌘/Shift 지원, 모바일 탭 포함)
+                    onCardSelect(section, sortedKeys, key, e);
+                  }}
                   onDoubleClick={() => setFlipped(isFlipped ? null : key)}
-                  className={`flip-face h-full rounded-md border-2 p-2 cursor-grab active:cursor-grabbing select-none ${toneCls}`}
-                  title="드래그하여 방에 배치 · 더블클릭 → 방 선택"
+                  className={`flip-face h-full rounded-md border-2 p-2 cursor-grab active:cursor-grabbing select-none ${toneCls} ${isSelected ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : ""}`}
+                  title="클릭 → 선택 · 드래그 → 방 배치 · 더블클릭 → 방 지정"
                 >
-                  <div className="text-xs font-semibold truncate">{churchMap.get(g.churchId) ?? "?"}</div>
-                  <div className="mt-1 tabular-nums">
-                    <span className="text-lg font-bold">{g.persons.length}</span>
-                    <span className="text-[10px] text-muted-foreground"> 명</span>
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="text-xs font-semibold truncate">{churchMap.get(g.churchId) ?? "?"}</div>
+                    {isSelected && (
+                      <span className="shrink-0 rounded-full bg-primary text-primary-foreground text-[9px] leading-none px-1.5 py-0.5">✓</span>
+                    )}
+                  </div>
+                  <div className="mt-1 tabular-nums flex items-baseline justify-between">
+                    <span>
+                      <span className="text-lg font-bold">{g.persons.length}</span>
+                      <span className="text-[10px] text-muted-foreground"> 명</span>
+                    </span>
+                    {isSelected && selectionSummary && selectionSummary.count > 1 && (
+                      <span className="text-[9px] text-primary font-semibold">
+                        +{selectionSummary.count - 1} 함께
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className={`flip-face flip-back h-full rounded-md border-2 border-primary bg-background p-2 flex flex-col items-center justify-center gap-1`}>
@@ -650,6 +831,7 @@ function UnassignedSection({
     </div>
   );
 }
+
 
 function RoomDetail({ lodging, people, churchMap, onChanged }: any) {
   const byChurch = useMemo(() => {
