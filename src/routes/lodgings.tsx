@@ -120,7 +120,15 @@ function LodgingsPage() {
   }, [churches]);
 
   const totalCap = lodgings.filter((l: any) => l.active).reduce((s: number, l: any) => s + l.capacity, 0);
+  const totalCapM = lodgings.filter((l: any) => l.active && l.gender === "M").reduce((s: number, l: any) => s + l.capacity, 0);
+  const totalCapF = lodgings.filter((l: any) => l.active && l.gender === "F").reduce((s: number, l: any) => s + l.capacity, 0);
   const totalAssigned = lodgings.reduce((s: number, l: any) => s + (peopleByLodging.get(l.id)?.length ?? 0), 0);
+  const totalAssignedM = people.filter((p: any) => p.lodging_id && p.gender === "M").length;
+  const totalAssignedF = people.filter((p: any) => p.lodging_id && p.gender === "F").length;
+  const pctAll = totalCap > 0 ? (totalAssigned / totalCap) * 100 : 0;
+  const pctM = totalCapM > 0 ? (totalAssignedM / totalCapM) * 100 : 0;
+  const pctF = totalCapF > 0 ? (totalAssignedF / totalCapF) * 100 : 0;
+  const reachedGoal = pctAll >= TARGET_PCT;
 
   const groups = useMemo(() => {
     const g: Record<string, Record<string, any[]>> = {};
