@@ -10,9 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useMemo, useRef, useState, useCallback } from "react";
 import { num } from "@/lib/format";
-import { X, ChevronDown, ChevronUp } from "lucide-react";
+import { X, ChevronDown, ChevronUp, Download, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { downloadRowsAsXlsx } from "@/lib/export-xlsx";
+
+// 배치률 1차 목표선 — 필요 시 여기만 조정
+const TARGET_PCT = 80;
 
 export const Route = createFileRoute("/lodgings")({
   head: () => ({ meta: [{ title: "숙소배치 — 한다련 캠프" }] }),
