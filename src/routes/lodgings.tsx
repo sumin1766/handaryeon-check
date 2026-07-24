@@ -331,12 +331,21 @@ function LodgingsPage() {
               )}
             </Card>
           )}
-          <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+          <header className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
               <h1 className="text-2xl font-bold">숙소배치</h1>
               <p className="text-sm text-muted-foreground">우측 카드 드래그 또는 더블클릭 → 방 선택</p>
             </div>
-            <Input placeholder="이름/교회 검색…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-56" />
+            <div className="flex flex-wrap items-center gap-2">
+              <Input placeholder="이름/교회 검색…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-56" />
+              <Button variant="outline" size="sm" onClick={copyCsv}>
+                {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+                {copied ? "복사됨" : "CSV 복사"}
+              </Button>
+              <Button size="sm" onClick={downloadExcel}>
+                <Download className="h-4 w-4 mr-1" />엑셀 다운로드
+              </Button>
+            </div>
           </header>
 
 
@@ -345,6 +354,33 @@ function LodgingsPage() {
               <span>전체 정원 <b className="text-lg">{num(totalCap)}</b>명</span>
               <span>배정 <b className="text-lg">{num(totalAssigned)}</b>명</span>
               <span>남은 자리 <b className="text-lg text-emerald-600">{num(totalCap - totalAssigned)}</b>명</span>
+            </div>
+
+            {/* 방 배정률 프로그레스 — 목표 {TARGET_PCT}% */}
+            <div className="mt-3 space-y-2">
+              <ProgressGauge
+                label="전체"
+                assigned={totalAssigned}
+                cap={totalCap}
+                pct={pctAll}
+                target={TARGET_PCT}
+                emphasize
+              />
+              {(totalCapM > 0 || totalCapF > 0) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {totalCapM > 0 && (
+                    <ProgressGauge label="남자" assigned={totalAssignedM} cap={totalCapM} pct={pctM} target={TARGET_PCT} tone="male" />
+                  )}
+                  {totalCapF > 0 && (
+                    <ProgressGauge label="여자" assigned={totalAssignedF} cap={totalCapF} pct={pctF} target={TARGET_PCT} tone="female" />
+                  )}
+                </div>
+              )}
+              {!reachedGoal && totalCap > 0 && (
+                <div className="text-[11px] text-muted-foreground tabular-nums">
+                  목표 {TARGET_PCT}%까지 <b className="text-foreground">{Math.max(0, Math.ceil(totalCap * TARGET_PCT / 100) - totalAssigned)}</b>명 남음
+                </div>
+              )}
             </div>
             <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {Object.keys(groups).map((building) => {
