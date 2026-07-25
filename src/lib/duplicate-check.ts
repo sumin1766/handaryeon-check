@@ -7,6 +7,11 @@
 
 const norm = (s: string | null | undefined) => (s ?? "").replace(/\s+/g, "").trim();
 const normName = (s: string | null | undefined) => (s ?? "").replace(/\s+/g, "").trim();
+// 교회명 정규화: 공백 제거 + 끝의 "교회" 제거 (중간이 아닌 마지막 접미사만)
+const normChurchName = (s: string | null | undefined) => {
+  const base = norm(s);
+  return base.endsWith("교회") ? base.slice(0, -2) : base;
+};
 
 export type ChurchLike = {
   id: string;
@@ -54,13 +59,14 @@ export function findDuplicateGroups(
     }
   }
 
-  // group by name+denomination (both required non-empty for grouping)
+  // 그룹핑 키: 정규화된 교회명(끝의 "교회" 제거) 기준.
+  // 교단이 비어 있거나 다르더라도 이름이 같으면 같은 후보 그룹으로 묶는다.
+  // (실제 동일 교회 여부는 겹치는 명단으로 최종 확인)
   const groups = new Map<string, ChurchLike[]>();
   for (const c of churches) {
-    const n = norm(c.name);
-    const d = norm(c.denomination);
+    const n = normChurchName(c.name);
     if (!n) continue;
-    const key = `${n}||${d}`;
+    const key = n;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(c);
   }
@@ -90,11 +96,15 @@ export function findDuplicateGroups(
       }
     }
     if (involved.size < 2) continue;
-    const [name, denom] = key.split("||");
+    const involvedList = list.filter((c) => involved.has(c.id));
+    // 그룹 라벨: 첫 항목의 원본 이름/교단(참고용). 실제 각 교회의 교단은 카드에 그대로 표시됨.
+    const displayName = involvedList[0]?.name ?? list[0].name ?? key;
+    const denoms = Array.from(new Set(involvedList.map((c) => (c.denomination ?? "").trim()).filter(Boolean)));
+    const displayDenom = denoms.length === 1 ? denoms[0] : denoms.length > 1 ? denoms.join(" / ") : "";
     result.push({
       key,
-      name: list[0].name ?? name,
-      denomination: list[0].denomination ?? denom,
+      name: displayName,
+      denomination: displayDenom,
       churches: list
         .filter((c) => involved.has(c.id))
         .map((c) => {
@@ -121,8 +131,7 @@ export function findDuplicateForInput(params: {
   churches: ChurchLike[];
   people: PersonLike[];
 }): { church: ChurchLike; overlapCount: number; overlappingNames: string[] } | null {
-  const n = norm(params.formName);
-  const d = norm(params.formDenomination);
+  const n = normChurchName(params.formName);
   if (!n) return null;
   const formSet = new Set(params.formPersonNames.map(normName).filter(Boolean));
   if (formSet.size < 2) return null;
@@ -138,8 +147,8 @@ export function findDuplicateForInput(params: {
   let best: { church: ChurchLike; overlapCount: number; overlappingNames: string[] } | null = null;
   for (const c of params.churches) {
     if (params.editingId && c.id === params.editingId) continue;
-    if (norm(c.name) !== n) continue;
-    if (norm(c.denomination) !== d) continue;
+    // 이름(정규화, 끝 "교회" 제거) 일치만으로 후보. 교단은 비교하지 않음.
+    if (normChurchName(c.name) !== n) continue;
     const existing = new Set(peopleByChurch.get(c.id) ?? []);
     const overlap: string[] = [];
     for (const fn of formSet) if (existing.has(fn)) overlap.push(fn);
