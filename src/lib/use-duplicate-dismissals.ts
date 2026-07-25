@@ -58,7 +58,7 @@ export function useDuplicateDismissals(seasonId: string | undefined) {
 
   const restore = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("duplicate_dismissals").delete().eq("id", id);
+      const { error } = await (supabase.from as any)("duplicate_dismissals").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
