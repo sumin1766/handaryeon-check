@@ -173,6 +173,33 @@ export type Database = {
           },
         ]
       }
+      duplicate_dismissals: {
+        Row: {
+          church_a_id: string
+          church_b_id: string
+          created_at: string
+          id: string
+          note: string | null
+          season_id: string
+        }
+        Insert: {
+          church_a_id: string
+          church_b_id: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          season_id: string
+        }
+        Update: {
+          church_a_id?: string
+          church_b_id?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          season_id?: string
+        }
+        Relationships: []
+      }
       lodgings: {
         Row: {
           active: boolean
