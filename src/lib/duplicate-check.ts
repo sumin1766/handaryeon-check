@@ -96,11 +96,15 @@ export function findDuplicateGroups(
       }
     }
     if (involved.size < 2) continue;
-    const [name, denom] = key.split("||");
+    const involvedList = list.filter((c) => involved.has(c.id));
+    // 그룹 라벨: 첫 항목의 원본 이름/교단(참고용). 실제 각 교회의 교단은 카드에 그대로 표시됨.
+    const displayName = involvedList[0]?.name ?? list[0].name ?? key;
+    const denoms = Array.from(new Set(involvedList.map((c) => (c.denomination ?? "").trim()).filter(Boolean)));
+    const displayDenom = denoms.length === 1 ? denoms[0] : denoms.length > 1 ? denoms.join(" / ") : "";
     result.push({
       key,
-      name: list[0].name ?? name,
-      denomination: list[0].denomination ?? denom,
+      name: displayName,
+      denomination: displayDenom,
       churches: list
         .filter((c) => involved.has(c.id))
         .map((c) => {
