@@ -143,8 +143,15 @@ function PreRegistrationPage() {
   const current = edited ?? parsedFromText;
   const totals = totalCounts(current);
 
+  const dismissals = useDuplicateDismissals(season?.id);
+
   const duplicateGroups = useMemo(
-    () => findDuplicateGroups(allData?.churches ?? [], allData?.people ?? []),
+    () => findDuplicateGroups(allData?.churches ?? [], allData?.people ?? [], dismissals.set),
+    [allData, dismissals.set],
+  );
+
+  const churchById = useMemo(
+    () => new Map((allData?.churches ?? []).map((c: any) => [c.id, c])),
     [allData],
   );
 
@@ -162,6 +169,7 @@ function PreRegistrationPage() {
       formPersonNames: names,
       churches: allData?.churches ?? [],
       people: allData?.people ?? [],
+      dismissedPairs: dismissals.set,
     });
     if (dup) {
       toast.warning(
