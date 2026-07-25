@@ -30,6 +30,8 @@ import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { findDuplicateGroups, findDuplicateForInput, type DuplicateGroup } from "@/lib/duplicate-check";
 import { DuplicateBanner } from "@/components/duplicate-banner";
 import { DuplicateCompareDialog } from "@/components/duplicate-compare-dialog";
+import { DismissedPairsPanel } from "@/components/dismissed-pairs-panel";
+import { useDuplicateDismissals } from "@/lib/use-duplicate-dismissals";
 
 export const Route = createFileRoute("/pre-registration")({
   head: () => ({ meta: [{ title: "사전접수 — 한다련 캠프" }] }),
