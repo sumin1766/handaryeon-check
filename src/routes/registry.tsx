@@ -108,9 +108,11 @@ function RegistryPage() {
 
   const churchById = useMemo(() => new Map(churches.map((c: any) => [c.id, c])), [churches]);
 
+  const dismissals = useDuplicateDismissals(season?.id);
+
   const duplicateGroups = useMemo(
-    () => findDuplicateGroups(churches as any, people as any),
-    [churches, people],
+    () => findDuplicateGroups(churches as any, people as any, dismissals.set),
+    [churches, people, dismissals.set],
   );
 
   // Extended search: name / affiliation (church name + denomination) / phone (digits only)
