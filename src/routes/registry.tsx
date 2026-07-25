@@ -25,6 +25,8 @@ import { toast } from "sonner";
 import { findDuplicateGroups, type DuplicateGroup } from "@/lib/duplicate-check";
 import { DuplicateBanner } from "@/components/duplicate-banner";
 import { DuplicateCompareDialog } from "@/components/duplicate-compare-dialog";
+import { DismissedPairsPanel } from "@/components/dismissed-pairs-panel";
+import { useDuplicateDismissals } from "@/lib/use-duplicate-dismissals";
 
 export const Route = createFileRoute("/registry")({
   head: () => ({ meta: [{ title: "접수 명단 — 한다련 캠프" }] }),
