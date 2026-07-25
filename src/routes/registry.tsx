@@ -345,6 +345,7 @@ function RegistryPage() {
         onClose={() => setCompareGroup(null)}
         onEdit={(id) => { setCompareGroup(null); setOpenId(id); }}
         onDelete={canEdit ? (id) => deleteChurch.mutate(id) : undefined}
+        onDismissPair={(a, b) => dismissals.dismiss.mutate({ a, b })}
         editLabel="상세"
       />
     </AppShell>
