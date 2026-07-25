@@ -59,13 +59,14 @@ export function findDuplicateGroups(
     }
   }
 
-  // group by name+denomination (both required non-empty for grouping)
+  // 그룹핑 키: 정규화된 교회명(끝의 "교회" 제거) 기준.
+  // 교단이 비어 있거나 다르더라도 이름이 같으면 같은 후보 그룹으로 묶는다.
+  // (실제 동일 교회 여부는 겹치는 명단으로 최종 확인)
   const groups = new Map<string, ChurchLike[]>();
   for (const c of churches) {
-    const n = norm(c.name);
-    const d = norm(c.denomination);
+    const n = normChurchName(c.name);
     if (!n) continue;
-    const key = `${n}||${d}`;
+    const key = n;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(c);
   }
