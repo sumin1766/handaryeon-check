@@ -41,12 +41,12 @@ export function useDuplicateDismissals(seasonId: string | undefined) {
     mutationFn: async (payload: { a: string; b: string; note?: string }) => {
       if (!seasonId) throw new Error("시즌 정보가 없습니다.");
       const [a, b] = payload.a < payload.b ? [payload.a, payload.b] : [payload.b, payload.a];
-      const { error } = await supabase.from("duplicate_dismissals").insert({
+      const { error } = await (supabase.from as any)("duplicate_dismissals").insert({
         season_id: seasonId,
         church_a_id: a,
         church_b_id: b,
         note: payload.note ?? null,
-      } as any);
+      });
       if (error && !/duplicate|unique/i.test(error.message)) throw error;
     },
     onSuccess: () => {
