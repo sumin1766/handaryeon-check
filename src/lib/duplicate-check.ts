@@ -131,8 +131,7 @@ export function findDuplicateForInput(params: {
   churches: ChurchLike[];
   people: PersonLike[];
 }): { church: ChurchLike; overlapCount: number; overlappingNames: string[] } | null {
-  const n = norm(params.formName);
-  const d = norm(params.formDenomination);
+  const n = normChurchName(params.formName);
   if (!n) return null;
   const formSet = new Set(params.formPersonNames.map(normName).filter(Boolean));
   if (formSet.size < 2) return null;
@@ -148,8 +147,8 @@ export function findDuplicateForInput(params: {
   let best: { church: ChurchLike; overlapCount: number; overlappingNames: string[] } | null = null;
   for (const c of params.churches) {
     if (params.editingId && c.id === params.editingId) continue;
-    if (norm(c.name) !== n) continue;
-    if (norm(c.denomination) !== d) continue;
+    // 이름(정규화, 끝 "교회" 제거) 일치만으로 후보. 교단은 비교하지 않음.
+    if (normChurchName(c.name) !== n) continue;
     const existing = new Set(peopleByChurch.get(c.id) ?? []);
     const overlap: string[] = [];
     for (const fn of formSet) if (existing.has(fn)) overlap.push(fn);
