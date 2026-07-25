@@ -25,8 +25,8 @@ export function useDuplicateDismissals(seasonId: string | undefined) {
     queryKey: key,
     enabled: !!seasonId,
     queryFn: async () => {
-      const rows = await fetchAll<DismissalRow>("duplicate_dismissals", (q) =>
-        q.select("*").eq("season_id", seasonId!),
+      const rows = await fetchAll<DismissalRow>("duplicate_dismissals" as any, (q) =>
+        (q as any).select("*").eq("season_id", seasonId!),
       );
       return rows;
     },
