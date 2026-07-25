@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, ShieldOff } from "lucide-react";
 import type { DuplicateGroup } from "@/lib/duplicate-check";
 import { formatTime } from "@/lib/format";
 
@@ -31,6 +31,7 @@ export function DuplicateCompareDialog({
   onClose,
   onEdit,
   onDelete,
+  onDismissPair,
   editLabel = "편집",
 }: {
   group: DuplicateGroup | null;
@@ -38,6 +39,7 @@ export function DuplicateCompareDialog({
   onClose: () => void;
   onEdit?: (churchId: string) => void;
   onDelete?: (churchId: string) => void;
+  onDismissPair?: (aId: string, bId: string) => void;
   editLabel?: string;
 }) {
   const [pendingDelete, setPendingDelete] = useState<
