@@ -520,6 +520,11 @@ function PreRegistrationPage() {
           onCompareGroup={(g) => setCompareGroup(g)}
           onDelete={(id) => deleteChurch.mutate(id)}
         />
+        <DismissedPairsPanel
+          rows={dismissals.rows}
+          churchById={churchById as any}
+          onRestore={(id) => dismissals.restore.mutate(id)}
+        />
         <PreRegistrationList seasonId={season.id} onEdit={loadForEdit} editingId={editingId} />
 
         <DuplicateCompareDialog
@@ -528,6 +533,7 @@ function PreRegistrationPage() {
           onClose={() => setCompareGroup(null)}
           onEdit={(id) => { setCompareGroup(null); loadForEdit(id); }}
           onDelete={(id) => deleteChurch.mutate(id)}
+          onDismissPair={(a, b) => dismissals.dismiss.mutate({ a, b })}
           editLabel="편집"
         />
 
