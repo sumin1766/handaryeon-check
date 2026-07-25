@@ -30,6 +30,8 @@ import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { findDuplicateGroups, findDuplicateForInput, type DuplicateGroup } from "@/lib/duplicate-check";
 import { DuplicateBanner } from "@/components/duplicate-banner";
 import { DuplicateCompareDialog } from "@/components/duplicate-compare-dialog";
+import { DismissedPairsPanel } from "@/components/dismissed-pairs-panel";
+import { useDuplicateDismissals } from "@/lib/use-duplicate-dismissals";
 
 export const Route = createFileRoute("/pre-registration")({
   head: () => ({ meta: [{ title: "사전접수 — 한다련 캠프" }] }),
@@ -141,8 +143,15 @@ function PreRegistrationPage() {
   const current = edited ?? parsedFromText;
   const totals = totalCounts(current);
 
+  const dismissals = useDuplicateDismissals(season?.id);
+
   const duplicateGroups = useMemo(
-    () => findDuplicateGroups(allData?.churches ?? [], allData?.people ?? []),
+    () => findDuplicateGroups(allData?.churches ?? [], allData?.people ?? [], dismissals.set),
+    [allData, dismissals.set],
+  );
+
+  const churchById = useMemo(
+    () => new Map((allData?.churches ?? []).map((c: any) => [c.id, c])),
     [allData],
   );
 
@@ -160,6 +169,7 @@ function PreRegistrationPage() {
       formPersonNames: names,
       churches: allData?.churches ?? [],
       people: allData?.people ?? [],
+      dismissedPairs: dismissals.set,
     });
     if (dup) {
       toast.warning(
@@ -510,6 +520,11 @@ function PreRegistrationPage() {
           onCompareGroup={(g) => setCompareGroup(g)}
           onDelete={(id) => deleteChurch.mutate(id)}
         />
+        <DismissedPairsPanel
+          rows={dismissals.rows}
+          churchById={churchById as any}
+          onRestore={(id) => dismissals.restore.mutate(id)}
+        />
         <PreRegistrationList seasonId={season.id} onEdit={loadForEdit} editingId={editingId} />
 
         <DuplicateCompareDialog
@@ -518,6 +533,7 @@ function PreRegistrationPage() {
           onClose={() => setCompareGroup(null)}
           onEdit={(id) => { setCompareGroup(null); loadForEdit(id); }}
           onDelete={(id) => deleteChurch.mutate(id)}
+          onDismissPair={(a, b) => dismissals.dismiss.mutate({ a, b })}
           editLabel="편집"
         />
 

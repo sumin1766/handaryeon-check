@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, ShieldOff } from "lucide-react";
 import type { DuplicateGroup } from "@/lib/duplicate-check";
 import { formatTime } from "@/lib/format";
 
@@ -31,6 +31,7 @@ export function DuplicateCompareDialog({
   onClose,
   onEdit,
   onDelete,
+  onDismissPair,
   editLabel = "편집",
 }: {
   group: DuplicateGroup | null;
@@ -38,6 +39,7 @@ export function DuplicateCompareDialog({
   onClose: () => void;
   onEdit?: (churchId: string) => void;
   onDelete?: (churchId: string) => void;
+  onDismissPair?: (aId: string, bId: string) => void;
   editLabel?: string;
 }) {
   const [pendingDelete, setPendingDelete] = useState<
@@ -103,8 +105,9 @@ export function DuplicateCompareDialog({
           </DialogHeader>
 
           <div className={colClass}>
-            {group.churches.map((c) => {
+            {group.churches.map((c, idx) => {
               const ps = peopleByChurch.get(c.church.id) ?? [];
+              const others = group.churches.filter((o) => o.church.id !== c.church.id);
               return (
                 <div
                   key={c.church.id}
@@ -113,6 +116,9 @@ export function DuplicateCompareDialog({
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
+                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[10px] font-bold">
+                        {idx + 1}
+                      </span>
                       <span className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold ${c.church.source === "onsite" ? "bg-amber-100 text-amber-800" : "bg-sky-100 text-sky-800"}`}>
                         {c.church.source === "onsite" ? "현장" : "사전"}
                       </span>
@@ -148,6 +154,27 @@ export function DuplicateCompareDialog({
                         </Button>
                       )}
                     </div>
+                    {onDismissPair && others.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1 border-t mt-1">
+                        <span className="text-[10px] text-muted-foreground w-full">중복 아님으로 표시:</span>
+                        {others.map((o) => {
+                          const otherIdx = group.churches.findIndex((x) => x.church.id === o.church.id) + 1;
+                          return (
+                            <Button
+                              key={o.church.id}
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-1.5 text-[10px]"
+                              onClick={() => onDismissPair(c.church.id, o.church.id)}
+                              title={`이 카드(${idx + 1})와 ${otherIdx}번 카드를 서로 다른 교회로 표시`}
+                            >
+                              <ShieldOff className="h-3 w-3 mr-0.5" />
+                              {idx + 1}↔{otherIdx}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   <div className="border-t pt-2">
@@ -184,7 +211,7 @@ export function DuplicateCompareDialog({
           </div>
 
           <p className="text-[11px] text-muted-foreground mt-2">
-            빨간 배경으로 표시된 이름은 두 개 이상 등록에서 겹친 이름입니다.
+            빨간 배경으로 표시된 이름은 두 개 이상 등록에서 겹친 이름입니다. "중복 아님" 버튼은 서로 다른 교회임을 표시(저장)하며, 다음부터 중복 목록에서 제외됩니다.
           </p>
         </DialogContent>
       </Dialog>

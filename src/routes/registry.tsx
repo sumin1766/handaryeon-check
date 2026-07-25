@@ -25,6 +25,8 @@ import { toast } from "sonner";
 import { findDuplicateGroups, type DuplicateGroup } from "@/lib/duplicate-check";
 import { DuplicateBanner } from "@/components/duplicate-banner";
 import { DuplicateCompareDialog } from "@/components/duplicate-compare-dialog";
+import { DismissedPairsPanel } from "@/components/dismissed-pairs-panel";
+import { useDuplicateDismissals } from "@/lib/use-duplicate-dismissals";
 
 export const Route = createFileRoute("/registry")({
   head: () => ({ meta: [{ title: "접수 명단 — 한다련 캠프" }] }),
@@ -106,9 +108,11 @@ function RegistryPage() {
 
   const churchById = useMemo(() => new Map(churches.map((c: any) => [c.id, c])), [churches]);
 
+  const dismissals = useDuplicateDismissals(season?.id);
+
   const duplicateGroups = useMemo(
-    () => findDuplicateGroups(churches as any, people as any),
-    [churches, people],
+    () => findDuplicateGroups(churches as any, people as any, dismissals.set),
+    [churches, people, dismissals.set],
   );
 
   // Extended search: name / affiliation (church name + denomination) / phone (digits only)
@@ -157,6 +161,11 @@ function RegistryPage() {
           groups={duplicateGroups}
           onCompareGroup={(g) => setCompareGroup(g)}
           onDelete={canEdit ? (id) => deleteChurch.mutate(id) : undefined}
+        />
+        <DismissedPairsPanel
+          rows={dismissals.rows}
+          churchById={churchById as any}
+          onRestore={(id) => dismissals.restore.mutate(id)}
         />
 
         <Card className="p-4 space-y-3">
@@ -336,6 +345,7 @@ function RegistryPage() {
         onClose={() => setCompareGroup(null)}
         onEdit={(id) => { setCompareGroup(null); setOpenId(id); }}
         onDelete={canEdit ? (id) => deleteChurch.mutate(id) : undefined}
+        onDismissPair={(a, b) => dismissals.dismiss.mutate({ a, b })}
         editLabel="상세"
       />
     </AppShell>
