@@ -7,6 +7,11 @@
 
 const norm = (s: string | null | undefined) => (s ?? "").replace(/\s+/g, "").trim();
 const normName = (s: string | null | undefined) => (s ?? "").replace(/\s+/g, "").trim();
+// 교회명 정규화: 공백 제거 + 끝의 "교회" 제거 (중간이 아닌 마지막 접미사만)
+const normChurchName = (s: string | null | undefined) => {
+  const base = norm(s);
+  return base.endsWith("교회") ? base.slice(0, -2) : base;
+};
 
 export type ChurchLike = {
   id: string;
