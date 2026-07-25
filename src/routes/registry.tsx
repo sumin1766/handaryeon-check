@@ -162,6 +162,11 @@ function RegistryPage() {
           onCompareGroup={(g) => setCompareGroup(g)}
           onDelete={canEdit ? (id) => deleteChurch.mutate(id) : undefined}
         />
+        <DismissedPairsPanel
+          rows={dismissals.rows}
+          churchById={churchById as any}
+          onRestore={(id) => dismissals.restore.mutate(id)}
+        />
 
         <Card className="p-4 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
