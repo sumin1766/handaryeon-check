@@ -1022,12 +1022,21 @@ function RoomDetail({ lodging, people, churchMap, onChanged, search }: any) {
   return (
     <div className="space-y-3 mt-4">
       <div className="flex items-center justify-between">
-        <div className="text-xs font-semibold text-muted-foreground">교회별 배정 ({people.length}명)</div>
+        <div className="text-xs font-semibold text-muted-foreground">
+          교회별 배정 ({people.length}명)
+          {q && (
+            <span className="ml-2 text-primary">— "{q}" 필터: {displayPeople.length}명</span>
+          )}
+        </div>
         {people.length > 0 && (
           <Button size="sm" variant="outline" onClick={unassignAll}>전체 해제</Button>
         )}
       </div>
-      {byChurch.length === 0 && <div className="text-xs text-muted-foreground py-3 text-center">아직 배정된 인원이 없습니다.</div>}
+      {byChurch.length === 0 && (
+        <div className="text-xs text-muted-foreground py-3 text-center">
+          {q ? "필터 조건에 맞는 인원이 없습니다." : "아직 배정된 인원이 없습니다."}
+        </div>
+      )}
       {byChurch.map(([churchId, ps]) => (
         <div key={churchId} className="rounded border bg-background">
           <div className="flex items-center justify-between px-2 py-1.5 border-b bg-muted/30">
