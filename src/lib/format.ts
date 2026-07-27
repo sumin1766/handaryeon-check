@@ -60,5 +60,42 @@ export const formatKst = (iso?: string | null) => {
 };
 
 export const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
-export const weekdayOf = (iso?: string | null) =>
-  iso ? WEEKDAYS[new Date(iso).getDay()] : "";
+
+export const kstDateOf = (iso?: string | null) => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+};
+
+export const weekdayOf = (iso?: string | null) => {
+  const s = kstDateOf(iso);
+  if (!s) return "";
+  return WEEKDAYS[new Date(`${s}T00:00:00Z`).getUTCDay()];
+};
+
+export const weekdayOfDate = (kstDate?: string | null) => {
+  if (!kstDate) return "";
+  return WEEKDAYS[new Date(`${kstDate}T00:00:00Z`).getUTCDay()];
+};
+
+export const eachKstDateBetween = (startIso?: string | null, endIso?: string | null) => {
+  if (!startIso || !endIso) return [];
+  const start = new Date(startIso + "T00:00:00+09:00");
+  const end = new Date(endIso + "T00:00:00+09:00");
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return [];
+  const out: string[] = [];
+  const cur = new Date(start);
+  while (cur.getTime() <= end.getTime()) {
+    const kstDate = cur.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+    out.push(kstDate);
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
+};
+
+export const shortDate = (kstDate?: string | null) => {
+  if (!kstDate) return "";
+  const [m, d] = kstDate.split("-").slice(1);
+  return `${m}/${d}`;
+};
