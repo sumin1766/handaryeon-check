@@ -118,7 +118,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
                 한다련 캠프 접수 관리
               </div>
               <div className="text-sm font-semibold leading-tight">
-                {season ? season.name : "시즌 미설정"}
+                {season ? season.name : backendDown ? "연결 복구 중" : "시즌 미설정"}
               </div>
             </div>
           </Link>
