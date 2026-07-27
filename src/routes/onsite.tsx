@@ -72,6 +72,10 @@ function OnsitePage() {
   const [segueName, setSegueName] = useState("");
   const [segueGender, setSegueGender] = useState<"M" | "F">("M");
   const [segueLodging, setSegueLodging] = useState<boolean>(false);
+  // Adult (어른성도) quick-add — all rows go into the single 세계로교회 record.
+  const [adultOpen, setAdultOpen] = useState(false);
+  const [adultName, setAdultName] = useState("");
+  const [adultGender, setAdultGender] = useState<"M" | "F">("M");
 
   useRealtimeInvalidate(
     ["churches", "people", "lodgings"],
@@ -217,6 +221,25 @@ function OnsitePage() {
     },
   });
 
+  // Single "세계로교회" (no denomination) record used to gather all 어른성도.
+  const segueAdultChurch = useQuery({
+    queryKey: ["onsite-segue-adult-church", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("churches")
+        .select("id, name, created_at")
+        .eq("season_id", season!.id)
+        .eq("name", "세계로교회")
+        .is("denomination", null)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const quickAdd = useMutation({
     mutationFn: async () => {
       if (!segueDeptId) throw new Error("부서를 선택하세요");
@@ -255,6 +278,31 @@ function OnsitePage() {
       qc.invalidateQueries({ queryKey: ["intake"] });
       qc.invalidateQueries({ queryKey: ["registry"] });
       qc.invalidateQueries({ queryKey: ["lodgings"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "추가 실패"),
+  });
+
+  const adultAdd = useMutation({
+    mutationFn: async () => {
+      const churchId = segueAdultChurch.data?.id;
+      if (!churchId) throw new Error("'세계로교회' 통합 레코드가 없습니다. 관리자에게 문의하세요.");
+      const nm = adultName.trim();
+      if (!nm) throw new Error("이름을 입력하세요");
+      const { error } = await supabase.from("people").insert({
+        church_id: churchId,
+        name: nm,
+        gender: adultGender,
+        age_group: "adult",
+        lodging: false,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("어른성도 추가됨");
+      setAdultName("");
+      qc.invalidateQueries({ queryKey: ["onsite-list"] });
+      qc.invalidateQueries({ queryKey: ["intake"] });
+      qc.invalidateQueries({ queryKey: ["registry"] });
     },
     onError: (e: any) => toast.error(e.message ?? "추가 실패"),
   });
@@ -429,6 +477,76 @@ function OnsitePage() {
             </div>
           )}
         </Card>
+
+        <Card className="p-5 space-y-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div>
+              <h2 className="text-base font-semibold">세계로 어른성도 빠른 등록</h2>
+              <p className="text-xs text-muted-foreground">
+                부서 구분 없이 "세계로교회" 단일 레코드에 모두 모입니다. 전원 비숙박.
+              </p>
+            </div>
+            <Button variant={adultOpen ? "secondary" : "default"} onClick={() => setAdultOpen((v) => !v)}>
+              {adultOpen ? "닫기" : "세계로 어른성도 신청"}
+            </Button>
+          </div>
+
+          {adultOpen && (
+            <div className="space-y-3">
+              {!segueAdultChurch.data ? (
+                <div className="text-xs text-muted-foreground px-3 py-4 border rounded bg-muted/30">
+                  "세계로교회" (부서 없음) 통합 레코드를 찾지 못했습니다. 접수명단에서 먼저 만들어주세요.
+                </div>
+              ) : (
+                <>
+                  <div className="text-[11px] text-muted-foreground">
+                    대상 레코드: <b className="text-foreground">세계로교회</b>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 items-end">
+                    <div>
+                      <Label className="text-xs">이름</Label>
+                      <Input
+                        value={adultName}
+                        onChange={(e) => setAdultName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && adultName.trim()) adultAdd.mutate();
+                        }}
+                        placeholder="어른성도 이름"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">성별</Label>
+                      <div className="flex gap-1">
+                        {(["M", "F"] as const).map((g) => (
+                          <button
+                            key={g}
+                            type="button"
+                            onClick={() => setAdultGender(g)}
+                            className={`h-9 px-4 rounded border text-sm ${
+                              adultGender === g
+                                ? "border-primary bg-primary/10 font-semibold"
+                                : "hover:bg-muted/60"
+                            }`}
+                          >
+                            {g === "M" ? "남" : "여"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => adultAdd.mutate()}
+                      disabled={adultAdd.isPending || !adultName.trim()}
+                    >
+                      추가
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </Card>
+
+
 
 
         {pendingLodging && (pendingLodging.M.length > 0 || pendingLodging.F.length > 0) && (

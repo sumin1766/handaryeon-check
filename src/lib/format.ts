@@ -50,6 +50,15 @@ export const formatTime = (iso?: string | null) => {
 
 export const formatDateTime = formatTime;
 
+// KST (Asia/Seoul), format: YYYY-MM-DD HH:MM:SS. Returns "-" for empty values.
+export const formatKst = (iso?: string | null) => {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "-";
+  // sv-SE locale outputs "YYYY-MM-DD HH:MM:SS"
+  return d.toLocaleString("sv-SE", { timeZone: "Asia/Seoul", hour12: false });
+};
+
 export const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
 export const weekdayOf = (iso?: string | null) =>
   iso ? WEEKDAYS[new Date(iso).getDay()] : "";
