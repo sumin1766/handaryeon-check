@@ -153,14 +153,31 @@ function LodgingsPage() {
     return g;
   }, [lodgings]);
 
-  // Person-name search → returns rooms containing matches
-  const nameSearchHits = useMemo(() => {
+  // 통합 검색 → 사람 이름 + 교회명. 배정된 방(roomIds)과 미배치 매치를 함께 반환.
+  const searchHits = useMemo(() => {
     const q = search.trim();
     if (!q) return null;
-    const matches = people.filter((p: any) => p.name && p.name.includes(q) && p.lodging_id);
-    const roomIds = new Set(matches.map((p: any) => p.lodging_id));
-    return { matches, roomIds };
-  }, [search, people]);
+    const matchedChurchIds = new Set<string>(
+      churches
+        .filter((c: any) => {
+          const name = (c.name ?? "").trim();
+          const label = c.denomination ? `${name}(${c.denomination})` : name;
+          return name.includes(q) || label.includes(q);
+        })
+        .map((c: any) => c.id),
+    );
+    const matched = people.filter((p: any) => {
+      const nameHit = p.name && String(p.name).trim().includes(q);
+      const churchHit = matchedChurchIds.has(p.church_id);
+      return nameHit || churchHit;
+    });
+    const assigned = matched.filter((p: any) => p.lodging_id);
+    const unassigned = matched.filter((p: any) => !p.lodging_id);
+    const roomIds = new Set<string>(assigned.map((p: any) => p.lodging_id));
+    return { matches: matched, assigned, unassigned, roomIds, matchedChurchIds };
+  }, [search, people, churches]);
+  // 호환 alias (아래 카드 렌더링에서 사용)
+  const nameSearchHits = searchHits;
 
   const focusRoom = (id: string) => {
     setHighlightId(id);
@@ -551,24 +568,55 @@ function LodgingsPage() {
             </div>
           </Card>
 
-          {nameSearchHits && (
-            <Card className="p-3 space-y-1.5">
-              <div className="text-sm font-semibold">"{search}" 검색 결과 ({nameSearchHits.matches.length})</div>
-              {nameSearchHits.matches.length === 0 && <div className="text-xs text-muted-foreground">해당 이름의 배정된 인원이 없습니다.</div>}
-              <div className="flex flex-wrap gap-1.5">
-                {nameSearchHits.matches.map((p: any) => {
-                  const l = lodgings.find((x: any) => x.id === p.lodging_id);
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => focusRoom(p.lodging_id)}
-                      className="rounded border bg-accent/40 px-2 py-1 text-xs hover:bg-accent"
-                    >
-                      <b>{p.name}</b> → {l?.name ?? "?"} <span className="text-muted-foreground">({churchMap.get(p.church_id)}, {p.gender === "M" ? "남" : "여"})</span>
-                    </button>
-                  );
-                })}
+          {searchHits && (
+            <Card className="p-3 space-y-2">
+              <div className="text-sm font-semibold">
+                "{search}" 검색 결과 — 배정 {searchHits.assigned.length}명 · 미배치 {searchHits.unassigned.length}명 · 방 {searchHits.roomIds.size}곳
               </div>
+              {searchHits.matches.length === 0 && (
+                <div className="text-xs text-muted-foreground">일치하는 인원/교회가 없습니다.</div>
+              )}
+              {searchHits.assigned.length > 0 && (
+                <div>
+                  <div className="text-[11px] font-semibold text-muted-foreground mb-1">배정됨</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {searchHits.assigned.map((p: any) => {
+                      const l = lodgings.find((x: any) => x.id === p.lodging_id);
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => focusRoom(p.lodging_id)}
+                          className="rounded border bg-accent/40 px-2 py-1 text-xs hover:bg-accent"
+                        >
+                          <b>{p.name}</b> → {l?.name ?? "?"}{" "}
+                          <span className="text-muted-foreground">
+                            ({churchMap.get(p.church_id)}, {p.gender === "M" ? "남" : "여"})
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {searchHits.unassigned.length > 0 && (
+                <div>
+                  <div className="text-[11px] font-semibold text-muted-foreground mb-1">미배치</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {searchHits.unassigned.map((p: any) => (
+                      <span
+                        key={p.id}
+                        className="rounded border border-amber-400/60 bg-amber-100/50 dark:bg-amber-900/20 px-2 py-1 text-xs"
+                      >
+                        <b>{p.name}</b>{" "}
+                        <span className="text-amber-800 dark:text-amber-200">미배치</span>{" "}
+                        <span className="text-muted-foreground">
+                          ({churchMap.get(p.church_id)}, {p.gender === "M" ? "남" : "여"})
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </Card>
           )}
 
@@ -774,6 +822,7 @@ function LodgingsPage() {
                 lodging={selectedLodging}
                 people={selectedPeople}
                 churchMap={churchMap}
+                search={search}
                 onChanged={() => qc.invalidateQueries({ queryKey: ["lodgings-page"] })}
               />
             </>
@@ -929,14 +978,25 @@ function UnassignedSection({
 }
 
 
-function RoomDetail({ lodging, people, churchMap, onChanged }: any) {
+function RoomDetail({ lodging, people, churchMap, onChanged, search }: any) {
+  const q = (search ?? "").trim();
+  const filteredPeople = useMemo(() => {
+    if (!q) return people;
+    return people.filter((p: any) => {
+      const nameHit = p.name && String(p.name).trim().includes(q);
+      const label = churchMap.get(p.church_id) ?? "";
+      const churchHit = label.includes(q);
+      return nameHit || churchHit;
+    });
+  }, [people, q, churchMap]);
+  const displayPeople = q ? filteredPeople : people;
   const byChurch = useMemo(() => {
     const m = new Map<string, any[]>();
-    for (const p of people) {
+    for (const p of displayPeople) {
       const arr = m.get(p.church_id) ?? []; arr.push(p); m.set(p.church_id, arr);
     }
     return Array.from(m.entries());
-  }, [people]);
+  }, [displayPeople]);
 
   const unassignOne = async (id: string) => {
     await supabase.from("people").update({ lodging_id: null }).eq("id", id);
@@ -962,12 +1022,21 @@ function RoomDetail({ lodging, people, churchMap, onChanged }: any) {
   return (
     <div className="space-y-3 mt-4">
       <div className="flex items-center justify-between">
-        <div className="text-xs font-semibold text-muted-foreground">교회별 배정 ({people.length}명)</div>
+        <div className="text-xs font-semibold text-muted-foreground">
+          교회별 배정 ({people.length}명)
+          {q && (
+            <span className="ml-2 text-primary">— "{q}" 필터: {displayPeople.length}명</span>
+          )}
+        </div>
         {people.length > 0 && (
           <Button size="sm" variant="outline" onClick={unassignAll}>전체 해제</Button>
         )}
       </div>
-      {byChurch.length === 0 && <div className="text-xs text-muted-foreground py-3 text-center">아직 배정된 인원이 없습니다.</div>}
+      {byChurch.length === 0 && (
+        <div className="text-xs text-muted-foreground py-3 text-center">
+          {q ? "필터 조건에 맞는 인원이 없습니다." : "아직 배정된 인원이 없습니다."}
+        </div>
+      )}
       {byChurch.map(([churchId, ps]) => (
         <div key={churchId} className="rounded border bg-background">
           <div className="flex items-center justify-between px-2 py-1.5 border-b bg-muted/30">
