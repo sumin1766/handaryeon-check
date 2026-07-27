@@ -140,8 +140,8 @@ function BathPage() {
         )}
 
         <Card className="p-4">
-          <div className="flex items-end gap-2 mb-3">
-            <div className="flex-1">
+          <div className="flex flex-wrap items-end gap-3 mb-3">
+            <div className="w-40 sm:w-48">
               <label className="text-xs">이름</label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
@@ -149,7 +149,7 @@ function BathPage() {
               <label className="text-xs">매수</label>
               <Input type="number" min={1} value={form.qty} onChange={(e) => setForm({ ...form, qty: parseInt(e.target.value) || 1 })} className="text-right tabular-nums" />
             </div>
-            <div className="w-32">
+            <div className="w-36">
               <label className="text-xs">금액</label>
               <div className="h-9 flex items-center px-2 text-sm font-semibold rounded border bg-muted/40 tabular-nums">
                 {krw((form.qty || 0) * unit)}
@@ -157,6 +157,7 @@ function BathPage() {
             </div>
             <Button onClick={() => add.mutate()} disabled={add.isPending}><Plus className="h-4 w-4 mr-1" />추가</Button>
           </div>
+
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
