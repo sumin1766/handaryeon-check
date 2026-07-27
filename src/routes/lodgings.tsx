@@ -4,6 +4,7 @@ import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetch-all";
+import { resilientQueryCache, writeCachedData } from "@/lib/query-session-cache";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/lodgings")({
 
 type DragPayload = { churchId: string; gender: "M" | "F" };
 type MultiDragPayload = { multi: true; items: DragPayload[] };
+type LodgingsPageData = { lodgings: any[]; churches: any[]; people: any[] };
 
 function LodgingsPage() {
   const { season } = useActiveSeason();
@@ -50,10 +52,11 @@ function LodgingsPage() {
     | { kind: "single"; payload: DragPayload; lodging: any; incoming: number; remain: number }
     | { kind: "multi"; payloads: DragPayload[]; lodging: any; incoming: number; remain: number };
   const [pending, setPending] = useState<PendingAssign | null>(null);
+  const lodgingsKey = ["lodgings-page", season?.id] as const;
 
 
-  const { data } = useQuery({
-    queryKey: ["lodgings-page", season?.id],
+  const { data } = useQuery<LodgingsPageData>({
+    queryKey: lodgingsKey,
     enabled: !!season?.id,
     queryFn: async () => {
       const { data: lodgings } = await supabase.from("lodgings").select("*").eq("season_id", season!.id).order("sort_order");
@@ -62,15 +65,18 @@ function LodgingsPage() {
       const people = ids.length
         ? await fetchAll<any>("people", (q) => q.select("*").in("church_id", ids))
         : [];
-      return { lodgings: lodgings ?? [], churches: churches ?? [], people };
+      const result = { lodgings: lodgings ?? [], churches: churches ?? [], people };
+      writeCachedData(lodgingsKey, result);
+      return result;
     },
+    ...resilientQueryCache<LodgingsPageData>(lodgingsKey),
   });
 
-  const lodgings = data?.lodgings ?? [];
-  const churches = data?.churches ?? [];
-  const people = data?.people ?? [];
+  const lodgings: any[] = data?.lodgings ?? [];
+  const churches: any[] = data?.churches ?? [];
+  const people: any[] = data?.people ?? [];
   const churchMap = useMemo(
-    () => new Map(churches.map((c: any) => [c.id, c.denomination ? `${c.name}(${c.denomination})` : c.name])),
+    () => new Map<string, string>(churches.map((c: any) => [c.id, c.denomination ? `${c.name}(${c.denomination})` : c.name])),
     [churches],
   );
 

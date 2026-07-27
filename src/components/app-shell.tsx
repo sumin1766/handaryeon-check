@@ -179,8 +179,8 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
             <div className="flex-1">
               <div className="font-semibold">백엔드 재연결 중…</div>
               <div className="text-xs mt-0.5">
-                Lovable Cloud 응답이 지연되고 있어 자동으로 다시 시도하고 있습니다
-                {failures > 0 ? ` (${failures}회 재시도)` : ""}. 화면은 그대로 두셔도 됩니다.
+                응답 지연 중에도 마지막으로 불러온 화면 데이터는 유지됩니다
+                {failures > 0 ? ` (${failures}회 감지)` : ""}. 새로고침하지 말고 그대로 두세요.
               </div>
             </div>
             <button

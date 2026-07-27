@@ -4,6 +4,7 @@ import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetch-all";
+import { resilientQueryCache, writeCachedData } from "@/lib/query-session-cache";
 import { Card } from "@/components/ui/card";
 import {
   AlertDialog,
@@ -53,9 +54,10 @@ function IntakeSheetPage() {
   const isTouch = useIsTouchDevice();
   const [keypad, setKeypad] = useState<{ id: string; name: string; value: string } | null>(null);
   const [uncheckConfirm, setUncheckConfirm] = useState<{ id: string; name: string } | null>(null);
+  const intakeKey = ["intake", season?.id] as const;
 
   const { data } = useQuery({
-    queryKey: ["intake", season?.id],
+    queryKey: intakeKey,
     enabled: !!season?.id,
     queryFn: async () => {
       const { data: churches } = await supabase
@@ -68,8 +70,11 @@ function IntakeSheetPage() {
         : [];
       const { data: lodgings } = await supabase
         .from("lodgings").select("id, name, gender").eq("season_id", season!.id);
-      return { churches: churches ?? [], people, lodgings: lodgings ?? [] };
+      const result = { churches: churches ?? [], people, lodgings: lodgings ?? [] };
+      writeCachedData(intakeKey, result);
+      return result;
     },
+    ...resilientQueryCache<any>(intakeKey),
   });
 
   const churches = data?.churches ?? [];
