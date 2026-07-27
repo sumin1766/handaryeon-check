@@ -15,7 +15,7 @@ export const getRouter = () => {
         refetchOnReconnect: "always",
         staleTime: 120_000,
         gcTime: 60 * 60 * 1000,
-        placeholderData: (previousData) => previousData,
+        placeholderData: (previousData: unknown) => previousData,
       },
       mutations: {
         retry: 2,
