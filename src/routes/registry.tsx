@@ -341,7 +341,7 @@ function RegistryPage() {
         </Card>
       </div>
 
-      {openId && churchById.get(openId) && (
+      {openId && churchById.has(openId) && (
         <ChurchDialog
           church={churchById.get(openId) as any}
           people={peopleByChurch.get(openId) ?? []}
