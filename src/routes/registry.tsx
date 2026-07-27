@@ -119,6 +119,10 @@ function RegistryPage() {
 
   const churchById = useMemo(() => new Map(churches.map((c: any) => [c.id, c])), [churches]);
 
+  useEffect(() => {
+    if (openChurch && churchById.has(openChurch)) setOpenId(openChurch);
+  }, [openChurch, churchById]);
+
   const dismissals = useDuplicateDismissals(season?.id);
 
   const duplicateGroups = useMemo(
