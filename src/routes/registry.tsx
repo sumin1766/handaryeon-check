@@ -355,9 +355,9 @@ function RegistryPage() {
           onClose={() => {
             setOpenId(null);
             if (from === "onsite") {
-              navigate({ to: "/onsite", search: true as any, replace: true });
+              navigate({ to: "/onsite", search: {} as any, replace: true });
             } else if (from === "intake-sheet") {
-              navigate({ to: "/intake-sheet", search: true as any, hash: row ? `church-row-${row}` : undefined, replace: true });
+              navigate({ to: "/intake-sheet", search: {} as any, hash: row ? `church-row-${row}` : undefined, replace: true });
             } else if (openChurch) {
               navigate({ search: {}, replace: true });
             }
