@@ -8,12 +8,13 @@ export function useRealtimeInvalidate(tables: string[], invalidateKeys: unknown[
   useEffect(() => {
     const ch = supabase.channel(`rt-${tables.join("-")}-${Math.random()}`);
     const invalidateSoon = () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         for (const k of invalidateKeys) {
           qc.invalidateQueries({ queryKey: k, refetchType: "active" });
         }
-      }, 1_200);
+      }, 4_000);
     };
     for (const t of tables) {
       ch.on("postgres_changes", { event: "*", schema: "public", table: t }, () => {

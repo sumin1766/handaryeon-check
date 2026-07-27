@@ -148,7 +148,7 @@ export function useBackendKeepalive() {
         clearTimeout(t);
       }
     },
-    refetchInterval: (query) => (query.state.error ? 10_000 : 45_000),
+    refetchInterval: (query) => (query.state.error ? 20_000 : 120_000),
     refetchIntervalInBackground: false,
     retry: 1,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8_000),

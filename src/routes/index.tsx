@@ -29,7 +29,7 @@ const CAT_COLS = [
 ] as const;
 
 function DashboardPage() {
-  const { season } = useActiveSeason();
+  const { season, isLoading, isError } = useActiveSeason();
   const { data: order } = useDashboardOrder(season?.id);
   useRealtimeInvalidate(["churches", "people"], [["dashboard"]]);
   const dashboardKey = ["dashboard", season?.id] as const;
@@ -139,7 +139,11 @@ function DashboardPage() {
   if (!season) {
     return (
       <AppShell>
-        <div className="text-sm text-muted-foreground">설정에서 시즌을 먼저 생성하세요.</div>
+        <div className="rounded-lg border border-amber-400/40 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-900/20 dark:text-amber-100">
+          {isLoading || isError
+            ? "백엔드 연결을 복구하는 중입니다. 새로고침하지 말고 잠시 기다려 주세요."
+            : "설정에서 시즌을 먼저 생성하세요."}
+        </div>
       </AppShell>
     );
   }
