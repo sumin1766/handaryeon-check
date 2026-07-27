@@ -125,8 +125,8 @@ function BathPage() {
 
         {weekdayAgg.length > 0 && (
           <Card className="p-3">
-            <div className="text-sm font-semibold mb-2">요일별 판매현황</div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+            <div className="text-lg font-bold mb-3">요일별 판매현황</div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {weekdayAgg.map((d) => (
                 <div key={d.w} className="rounded border p-2 text-xs tabular-nums">
                   <div className="font-semibold text-sm">{d.w}요일</div>
@@ -177,17 +177,17 @@ function BathPage() {
               <tbody>
                 {rows.map((r: any) => (
                   <tr key={r.id} className="border-t">
-                    <td className="px-2 py-1"><Input defaultValue={r.name} onBlur={(e) => update.mutate({ ...r, name: e.target.value })} className="h-8 w-full" /></td>
-                    <td className="px-2 py-1"><Input type="number" defaultValue={r.qty} onBlur={(e) => update.mutate({ ...r, qty: parseInt(e.target.value) || 0 })} className="h-8 w-full text-right tabular-nums" /></td>
+                    <td className="text-left px-2 py-1"><Input defaultValue={r.name} onBlur={(e) => update.mutate({ ...r, name: e.target.value })} className="h-8 w-full" /></td>
+                    <td className="text-right px-2 py-1"><Input type="number" defaultValue={r.qty} onBlur={(e) => update.mutate({ ...r, qty: parseInt(e.target.value) || 0 })} className="h-8 w-full text-right tabular-nums" /></td>
                     <td className="text-center">
                       <Checkbox checked={r.paid_transfer} onCheckedChange={(v) => update.mutate({ ...r, paid_transfer: !!v, transfer_at: v ? new Date().toISOString() : null })} />
                     </td>
-                    <td className="px-2 py-1 text-xs tabular-nums">{formatTime(r.transfer_at)}</td>
+                    <td className="text-left px-2 py-1 text-xs tabular-nums">{formatTime(r.transfer_at)}</td>
                     <td className="text-center">
                       <Checkbox checked={r.paid_cash} onCheckedChange={(v) => update.mutate({ ...r, paid_cash: !!v, cash_at: v ? new Date().toISOString() : null })} />
                     </td>
-                    <td className="px-2 py-1 text-xs tabular-nums">{formatTime(r.cash_at)}</td>
-                    <td className="px-2 py-1">
+                    <td className="text-left px-2 py-1 text-xs tabular-nums">{formatTime(r.cash_at)}</td>
+                    <td className="text-left px-2 py-1">
                       <select
                         defaultValue={(BATH_WEEKDAYS as readonly string[]).includes(r.weekday) ? r.weekday : pickBathWeekday(new Date(r.created_at))}
                         onChange={(e) => update.mutate({ ...r, weekday: e.target.value })}
@@ -196,7 +196,7 @@ function BathPage() {
                         {BATH_WEEKDAYS.map((w) => <option key={w} value={w}>{w}</option>)}
                       </select>
                     </td>
-                    <td className="px-2 py-1 text-right font-semibold tabular-nums">{krw(r.amount)}</td>
+                    <td className="text-right px-2 py-1 font-semibold tabular-nums">{krw(r.amount)}</td>
                     <td><Button size="icon" variant="ghost" onClick={() => remove.mutate(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></td>
                   </tr>
                 ))}
