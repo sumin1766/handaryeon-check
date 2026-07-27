@@ -102,15 +102,16 @@ export function useBackendKeepalive() {
           .limit(1)
           .abortSignal(controller.signal);
         if (error) throw error;
+        const wasDown = !statusRef.current.ok;
         statusRef.current = { ok: true, failures: 0 };
+        // On recovery, kick every server-backed query so screens self-heal.
+        if (wasDown) qc.invalidateQueries();
         return true;
       } catch (e) {
         statusRef.current = {
           ok: false,
           failures: statusRef.current.failures + 1,
         };
-        // Kick every server-backed query to retry as soon as we recover.
-        qc.invalidateQueries();
         throw e;
       } finally {
         clearTimeout(t);
