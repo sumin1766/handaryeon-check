@@ -363,7 +363,7 @@ function OnsitePage() {
                     })}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 items-end">
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
                     <div>
                       <Label className="text-xs">이름</Label>
                       <Input
@@ -391,6 +391,25 @@ function OnsitePage() {
                             }`}
                           >
                             {g === "M" ? "남" : "여"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs">숙박</Label>
+                      <div className="flex gap-1">
+                        {([false, true] as const).map((v) => (
+                          <button
+                            key={String(v)}
+                            type="button"
+                            onClick={() => setSegueLodging(v)}
+                            className={`h-9 px-4 rounded border text-sm ${
+                              segueLodging === v
+                                ? "border-primary bg-primary/10 font-semibold"
+                                : "hover:bg-muted/60"
+                            }`}
+                          >
+                            {v ? "숙박" : "비숙박"}
                           </button>
                         ))}
                       </div>
