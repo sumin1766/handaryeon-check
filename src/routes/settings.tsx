@@ -33,6 +33,7 @@ import {
 import { PAGE_ACCESS } from "@/components/app-shell";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { krw } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { useAuthRole } from "@/lib/use-auth-role";
 import { useChangePasswords } from "@/lib/auth-config";
 
