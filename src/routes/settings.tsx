@@ -20,11 +20,17 @@ import {
 } from "@/lib/receipt-layout";
 import { ReceiptLayoutEditor, type ReceiptData, type ReceiptMode } from "@/components/receipt-document";
 import { toast } from "sonner";
-import { Plus, Star, Calendar, Building2, Bath, Maximize2, Trash2, FileText, Lock, ScanText, CheckCircle2, XCircle, Loader2, LayoutDashboard, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Star, Calendar, Building2, Bath, Maximize2, Trash2, FileText, Lock, ScanText, CheckCircle2, XCircle, Loader2, LayoutDashboard, ChevronUp, ChevronDown, Menu as MenuIcon, Eye, EyeOff } from "lucide-react";
 import {
   useDashboardOrder, useSaveDashboardOrder, DEFAULT_DASHBOARD_ORDER,
   DASHBOARD_SECTION_LABEL, type DashboardSectionKey,
 } from "@/lib/dashboard-order";
+import {
+  useNavMenuConfig, useSaveNavMenuConfig,
+  DEFAULT_NAV_ORDER, NAV_PROTECTED_PATHS,
+  type NavMenuConfig,
+} from "@/lib/nav-menu-config";
+import { PAGE_ACCESS } from "@/components/app-shell";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { krw } from "@/lib/format";
 import { useAuthRole } from "@/lib/use-auth-role";
