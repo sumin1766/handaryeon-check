@@ -27,6 +27,7 @@ export const Route = createFileRoute("/lodgings")({
 
 type DragPayload = { churchId: string; gender: "M" | "F" };
 type MultiDragPayload = { multi: true; items: DragPayload[] };
+type LodgingsPageData = { lodgings: any[]; churches: any[]; people: any[] };
 
 function LodgingsPage() {
   const { season } = useActiveSeason();
@@ -54,7 +55,7 @@ function LodgingsPage() {
   const lodgingsKey = ["lodgings-page", season?.id] as const;
 
 
-  const { data } = useQuery<any>({
+  const { data } = useQuery<LodgingsPageData>({
     queryKey: lodgingsKey,
     enabled: !!season?.id,
     queryFn: async () => {
@@ -68,14 +69,14 @@ function LodgingsPage() {
       writeCachedData(lodgingsKey, result);
       return result;
     },
-    ...resilientQueryCache<any>(lodgingsKey),
+    ...resilientQueryCache<LodgingsPageData>(lodgingsKey),
   });
 
-  const lodgings = data?.lodgings ?? [];
-  const churches = data?.churches ?? [];
-  const people = data?.people ?? [];
+  const lodgings: any[] = data?.lodgings ?? [];
+  const churches: any[] = data?.churches ?? [];
+  const people: any[] = data?.people ?? [];
   const churchMap = useMemo(
-    () => new Map(churches.map((c: any) => [c.id, c.denomination ? `${c.name}(${c.denomination})` : c.name])),
+    () => new Map<string, string>(churches.map((c: any) => [c.id, c.denomination ? `${c.name}(${c.denomination})` : c.name])),
     [churches],
   );
 
