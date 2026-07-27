@@ -71,6 +71,7 @@ function OnsitePage() {
   const [segueDeptId, setSegueDeptId] = useState<string | null>(null);
   const [segueName, setSegueName] = useState("");
   const [segueGender, setSegueGender] = useState<"M" | "F">("M");
+  const [segueLodging, setSegueLodging] = useState<boolean>(false);
 
   useRealtimeInvalidate(
     ["churches", "people", "lodgings"],
@@ -221,21 +222,39 @@ function OnsitePage() {
       if (!segueDeptId) throw new Error("부서를 선택하세요");
       const nm = segueName.trim();
       if (!nm) throw new Error("이름을 입력하세요");
-      const { error } = await supabase.from("people").insert({
+      const { data, error } = await supabase.from("people").insert({
         church_id: segueDeptId,
         name: nm,
         gender: segueGender,
         age_group: "student",
-        lodging: false,
-      });
+        lodging: segueLodging,
+      }).select("id, gender, lodging").single();
       if (error) throw error;
+      const dept = (segueDepts.data ?? []).find((d: any) => d.id === segueDeptId);
+      return { inserted: data, churchName: dept?.name ?? "세계로" };
     },
-    onSuccess: () => {
+    onSuccess: ({ inserted, churchName }) => {
       toast.success("추가됨");
       setSegueName("");
+      if (inserted?.lodging) {
+        const id = inserted.id as string;
+        const g = inserted.gender as "M" | "F";
+        setPendingLodging((prev) => {
+          const base = prev && prev.churchName === churchName
+            ? prev
+            : { churchName, M: [], F: [] };
+          return {
+            churchName,
+            M: g === "M" ? [...base.M, id] : base.M,
+            F: g === "F" ? [...base.F, id] : base.F,
+          };
+        });
+      }
       qc.invalidateQueries({ queryKey: ["onsite-list"] });
+      qc.invalidateQueries({ queryKey: ["onsite-lodgings"] });
       qc.invalidateQueries({ queryKey: ["intake"] });
       qc.invalidateQueries({ queryKey: ["registry"] });
+      qc.invalidateQueries({ queryKey: ["lodgings"] });
     },
     onError: (e: any) => toast.error(e.message ?? "추가 실패"),
   });
@@ -344,7 +363,7 @@ function OnsitePage() {
                     })}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 items-end">
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
                     <div>
                       <Label className="text-xs">이름</Label>
                       <Input
@@ -372,6 +391,25 @@ function OnsitePage() {
                             }`}
                           >
                             {g === "M" ? "남" : "여"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs">숙박</Label>
+                      <div className="flex gap-1">
+                        {([false, true] as const).map((v) => (
+                          <button
+                            key={String(v)}
+                            type="button"
+                            onClick={() => setSegueLodging(v)}
+                            className={`h-9 px-4 rounded border text-sm ${
+                              segueLodging === v
+                                ? "border-primary bg-primary/10 font-semibold"
+                                : "hover:bg-muted/60"
+                            }`}
+                          >
+                            {v ? "숙박" : "비숙박"}
                           </button>
                         ))}
                       </div>
