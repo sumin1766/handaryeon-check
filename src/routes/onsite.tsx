@@ -62,8 +62,16 @@ function OnsitePage() {
   const role = useAuthRole();
   const canManage = role === "admin" || role === "staff";
   const [form, setForm] = useState(emptyForm());
+  const [pendingLodging, setPendingLodging] = useState<{
+    churchName: string;
+    M: string[];
+    F: string[];
+  } | null>(null);
 
-  useRealtimeInvalidate(["churches", "people"], [["onsite-list", season?.id]]);
+  useRealtimeInvalidate(
+    ["churches", "people", "lodgings"],
+    [["onsite-list", season?.id], ["onsite-lodgings", season?.id]],
+  );
 
   const counts = CATS.map((c) => ({ ...c, n: parseNames(form[c.key]).length }));
   const lodgingTotal = counts.filter((c) => c.lodging).reduce((s, c) => s + c.n, 0);
@@ -92,19 +100,72 @@ function OnsitePage() {
             gender: c.gender, age_group: c.age, lodging: c.lodging });
         }
       }
+      let inserted: any[] = [];
       if (rows.length) {
-        const { error: e2 } = await supabase.from("people").insert(rows);
+        const { data: ins, error: e2 } = await supabase.from("people").insert(rows).select("id, gender, lodging");
         if (e2) throw e2;
+        inserted = ins ?? [];
       }
+      return { churchName: form.church.trim(), inserted };
     },
-    onSuccess: () => {
+    onSuccess: ({ churchName, inserted }) => {
       toast.success("등록 완료");
+      const M = inserted.filter((p) => p.lodging && p.gender === "M").map((p) => p.id);
+      const F = inserted.filter((p) => p.lodging && p.gender === "F").map((p) => p.id);
       setForm(emptyForm());
+      if (M.length || F.length) {
+        setPendingLodging({ churchName, M, F });
+      } else {
+        setPendingLodging(null);
+      }
       qc.invalidateQueries({ queryKey: ["onsite-list"] });
+      qc.invalidateQueries({ queryKey: ["onsite-lodgings"] });
       qc.invalidateQueries({ queryKey: ["intake"] });
       qc.invalidateQueries({ queryKey: ["registry"] });
+      qc.invalidateQueries({ queryKey: ["lodgings"] });
     },
     onError: (e: any) => toast.error(e.message ?? "등록 실패"),
+  });
+
+  // Lodgings + occupancy for the assignment UI (only used after save)
+  const lodgingsQ = useQuery({
+    queryKey: ["onsite-lodgings", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data: lodgings, error } = await supabase
+        .from("lodgings").select("*").eq("season_id", season!.id).eq("active", true);
+      if (error) throw error;
+      const assigned = await fetchAll<any>("people", (q) =>
+        (q as any).select("id, lodging_id, gender").not("lodging_id", "is", null),
+      );
+      return { lodgings: lodgings ?? [], assigned };
+    },
+  });
+
+  const assign = useMutation({
+    mutationFn: async (payload: { lodgingId: string; ids: string[] }) => {
+      const { error } = await supabase
+        .from("people")
+        .update({ lodging_id: payload.lodgingId, lodging: true })
+        .in("id", payload.ids);
+      if (error) throw error;
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["onsite-lodgings"] });
+      qc.invalidateQueries({ queryKey: ["lodgings"] });
+      qc.invalidateQueries({ queryKey: ["registry"] });
+      qc.invalidateQueries({ queryKey: ["intake"] });
+      // Remove assigned ids from pending
+      setPendingLodging((prev) => {
+        if (!prev) return prev;
+        const set = new Set(vars.ids);
+        const M = prev.M.filter((x) => !set.has(x));
+        const F = prev.F.filter((x) => !set.has(x));
+        if (!M.length && !F.length) return null;
+        return { ...prev, M, F };
+      });
+    },
+    onError: (e: any) => toast.error(e.message ?? "배치 실패"),
   });
 
   const list = useQuery({
@@ -194,6 +255,92 @@ function OnsitePage() {
             <Button onClick={() => submit.mutate()} disabled={submit.isPending || !form.church.trim()}>등록</Button>
           </div>
         </Card>
+
+        {pendingLodging && (pendingLodging.M.length > 0 || pendingLodging.F.length > 0) && (
+          <Card className="p-5 space-y-4 border-primary/40">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold">
+                  숙소 배치 — <span className="text-primary">{pendingLodging.churchName}</span>
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  숙박 인원을 성별에 맞는 방에 배치하세요. 빈자리 많은 순으로 표시됩니다.
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setPendingLodging(null)}>
+                나중에
+              </Button>
+            </div>
+
+            {(["M", "F"] as const).map((g) => {
+              const pendingIds = pendingLodging[g];
+              if (pendingIds.length === 0) return null;
+              const label = g === "M" ? "남성" : "여성";
+              const rooms = (lodgingsQ.data?.lodgings ?? [])
+                .filter((l: any) => l.gender === g)
+                .map((l: any) => {
+                  const cur = (lodgingsQ.data?.assigned ?? []).filter(
+                    (p: any) => p.lodging_id === l.id,
+                  ).length;
+                  const remain = Math.max(0, (l.capacity ?? 0) - cur);
+                  return { ...l, cur, remain };
+                })
+                .filter((l: any) => l.remain > 0)
+                .sort((a: any, b: any) => b.remain - a.remain);
+
+              return (
+                <div key={g} className="space-y-2">
+                  <div className="text-sm font-medium">
+                    {label} {pendingIds.length}명 · 배치할 방 선택
+                  </div>
+                  {rooms.length === 0 ? (
+                    <div className="text-xs text-muted-foreground px-3 py-4 border rounded bg-muted/30">
+                      배치 가능한 {label} 방이 없습니다.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                      {rooms.map((l: any) => {
+                        const take = Math.min(pendingIds.length, l.remain);
+                        const disabled = assign.isPending;
+                        return (
+                          <button
+                            key={l.id}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => {
+                              const ids = pendingIds.slice(0, take);
+                              assign.mutate({ lodgingId: l.id, ids });
+                              toast.success(
+                                `${l.name} · ${label} ${ids.length}명 배정${
+                                  pendingIds.length > ids.length
+                                    ? ` (잔여 ${pendingIds.length - ids.length}명)`
+                                    : ""
+                                }`,
+                              );
+                            }}
+                            className="text-left rounded-lg border p-3 hover:bg-muted/60 hover:border-primary transition disabled:opacity-50"
+                          >
+                            <div className="text-sm font-semibold truncate">{l.name}</div>
+                            <div className="text-xs text-muted-foreground mt-1 tabular-nums">
+                              빈자리 <b className="text-foreground">{l.remain}</b> / 정원 {l.capacity}
+                            </div>
+                            {take < pendingIds.length && (
+                              <div className="text-[11px] text-amber-600 mt-1">
+                                {take}명만 배치 가능
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </Card>
+        )}
+
+
 
         <Card className="p-0 overflow-hidden">
           <div className="bg-muted/40 px-4 py-3 border-b">
