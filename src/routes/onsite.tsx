@@ -256,6 +256,92 @@ function OnsitePage() {
           </div>
         </Card>
 
+        {pendingLodging && (pendingLodging.M.length > 0 || pendingLodging.F.length > 0) && (
+          <Card className="p-5 space-y-4 border-primary/40">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold">
+                  숙소 배치 — <span className="text-primary">{pendingLodging.churchName}</span>
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  숙박 인원을 성별에 맞는 방에 배치하세요. 빈자리 많은 순으로 표시됩니다.
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setPendingLodging(null)}>
+                나중에
+              </Button>
+            </div>
+
+            {(["M", "F"] as const).map((g) => {
+              const pendingIds = pendingLodging[g];
+              if (pendingIds.length === 0) return null;
+              const label = g === "M" ? "남성" : "여성";
+              const rooms = (lodgingsQ.data?.lodgings ?? [])
+                .filter((l: any) => l.gender === g)
+                .map((l: any) => {
+                  const cur = (lodgingsQ.data?.assigned ?? []).filter(
+                    (p: any) => p.lodging_id === l.id,
+                  ).length;
+                  const remain = Math.max(0, (l.capacity ?? 0) - cur);
+                  return { ...l, cur, remain };
+                })
+                .filter((l: any) => l.remain > 0)
+                .sort((a: any, b: any) => b.remain - a.remain);
+
+              return (
+                <div key={g} className="space-y-2">
+                  <div className="text-sm font-medium">
+                    {label} {pendingIds.length}명 · 배치할 방 선택
+                  </div>
+                  {rooms.length === 0 ? (
+                    <div className="text-xs text-muted-foreground px-3 py-4 border rounded bg-muted/30">
+                      배치 가능한 {label} 방이 없습니다.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                      {rooms.map((l: any) => {
+                        const take = Math.min(pendingIds.length, l.remain);
+                        const disabled = assign.isPending;
+                        return (
+                          <button
+                            key={l.id}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => {
+                              const ids = pendingIds.slice(0, take);
+                              assign.mutate({ lodgingId: l.id, ids });
+                              toast.success(
+                                `${l.name} · ${label} ${ids.length}명 배정${
+                                  pendingIds.length > ids.length
+                                    ? ` (잔여 ${pendingIds.length - ids.length}명)`
+                                    : ""
+                                }`,
+                              );
+                            }}
+                            className="text-left rounded-lg border p-3 hover:bg-muted/60 hover:border-primary transition disabled:opacity-50"
+                          >
+                            <div className="text-sm font-semibold truncate">{l.name}</div>
+                            <div className="text-xs text-muted-foreground mt-1 tabular-nums">
+                              빈자리 <b className="text-foreground">{l.remain}</b> / 정원 {l.capacity}
+                            </div>
+                            {take < pendingIds.length && (
+                              <div className="text-[11px] text-amber-600 mt-1">
+                                {take}명만 배치 가능
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </Card>
+        )}
+
+
+
         <Card className="p-0 overflow-hidden">
           <div className="bg-muted/40 px-4 py-3 border-b">
             <h2 className="text-sm font-semibold">현장접수 등록 명단 ({list.data?.churches.length ?? 0}교회)</h2>
