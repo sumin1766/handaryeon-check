@@ -641,20 +641,13 @@ function OnsitePage() {
             const peopleAll = list.data?.people ?? [];
             const totalPeople = peopleAll.length;
             const totalLodging = peopleAll.filter((p: any) => p.lodging).length;
-            const WD = ["일", "월", "화", "수", "목", "금", "토"];
-            const kstWeekday = (iso?: string | null) => {
-              if (!iso) return null;
-              const d = new Date(iso);
-              if (isNaN(d.getTime())) return null;
-              const s = d.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
-              return WD[new Date(`${s}T00:00:00Z`).getUTCDay()];
-            };
-            const byDay = new Map<string, number>();
+            const seasonDates = eachKstDateBetween(season?.start_date, season?.end_date);
+            const byDate = new Map<string, number>();
             let unknown = 0;
             for (const p of peopleAll) {
-              const w = kstWeekday(p.created_at);
-              if (!w) { unknown++; continue; }
-              byDay.set(w, (byDay.get(w) ?? 0) + 1);
+              const d = kstDateOf(p.created_at);
+              if (!d || !seasonDates.includes(d)) { unknown++; continue; }
+              byDate.set(d, (byDate.get(d) ?? 0) + 1);
             }
             return (
               <>
@@ -675,19 +668,24 @@ function OnsitePage() {
                   />
                 </div>
                 <div className="px-4 py-2 border-b bg-background/50 flex flex-wrap gap-1.5">
-                  {WD.map((w) => {
-                    const n = byDay.get(w) ?? 0;
-                    return (
-                      <span
-                        key={w}
-                        className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs tabular-nums ${
-                          n > 0 ? "bg-primary/10 border-primary/30 font-semibold" : "text-muted-foreground"
-                        }`}
-                      >
-                        {w} <b className="tabular-nums">{n}</b>명
-                      </span>
-                    );
-                  })}
+                  {seasonDates.length === 0 ? (
+                    <span className="text-xs text-muted-foreground">시즌 기간이 설정되지 않았습니다.</span>
+                  ) : (
+                    seasonDates.map((d) => {
+                      const n = byDate.get(d) ?? 0;
+                      const w = weekdayOfDate(d);
+                      return (
+                        <span
+                          key={d}
+                          className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs tabular-nums ${
+                            n > 0 ? "bg-primary/10 border-primary/30 font-semibold" : "text-muted-foreground"
+                          }`}
+                        >
+                          {shortDate(d)}({w}) <b className="tabular-nums">{n}</b>명
+                        </span>
+                      );
+                    })
+                  )}
                   {unknown > 0 && (
                     <span className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-muted-foreground">
                       미상 {unknown}명
