@@ -21,7 +21,7 @@ import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { useAuthRole } from "@/lib/use-auth-role";
 import { num } from "@/lib/format";
 import { Plus, Trash2, Pencil, X, Save, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { findDuplicateGroups, type DuplicateGroup } from "@/lib/duplicate-check";
 import { DuplicateBanner } from "@/components/duplicate-banner";
@@ -341,12 +341,15 @@ function RegistryPage() {
         </Card>
       </div>
 
-      {openId && (
+      {openId && churchById.get(openId) && (
         <ChurchDialog
           church={churchById.get(openId) as any}
           people={peopleByChurch.get(openId) ?? []}
           canEdit={canEdit}
-          onClose={() => setOpenId(null)}
+          onClose={() => {
+            setOpenId(null);
+            if (openChurch) navigate({ search: {}, replace: true });
+          }}
         />
       )}
 
