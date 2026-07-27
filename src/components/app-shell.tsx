@@ -25,6 +25,7 @@ import { formatDate } from "@/lib/format";
 import { PasswordGate } from "@/components/password-gate";
 import { useAuthRole, setAuthRole, type AuthRole } from "@/lib/use-auth-role";
 import { useTheme } from "@/lib/use-theme";
+import { useNavMenuConfig, applyNavConfig } from "@/lib/nav-menu-config";
 import logoAsset from "@/assets/handaryeon-symbol.png.asset.json";
 
 type RoleSet = readonly AuthRole[];
