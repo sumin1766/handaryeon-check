@@ -153,14 +153,31 @@ function LodgingsPage() {
     return g;
   }, [lodgings]);
 
-  // Person-name search → returns rooms containing matches
-  const nameSearchHits = useMemo(() => {
+  // 통합 검색 → 사람 이름 + 교회명. 배정된 방(roomIds)과 미배치 매치를 함께 반환.
+  const searchHits = useMemo(() => {
     const q = search.trim();
     if (!q) return null;
-    const matches = people.filter((p: any) => p.name && p.name.includes(q) && p.lodging_id);
-    const roomIds = new Set(matches.map((p: any) => p.lodging_id));
-    return { matches, roomIds };
-  }, [search, people]);
+    const matchedChurchIds = new Set<string>(
+      churches
+        .filter((c: any) => {
+          const name = (c.name ?? "").trim();
+          const label = c.denomination ? `${name}(${c.denomination})` : name;
+          return name.includes(q) || label.includes(q);
+        })
+        .map((c: any) => c.id),
+    );
+    const matched = people.filter((p: any) => {
+      const nameHit = p.name && String(p.name).trim().includes(q);
+      const churchHit = matchedChurchIds.has(p.church_id);
+      return nameHit || churchHit;
+    });
+    const assigned = matched.filter((p: any) => p.lodging_id);
+    const unassigned = matched.filter((p: any) => !p.lodging_id);
+    const roomIds = new Set<string>(assigned.map((p: any) => p.lodging_id));
+    return { matches: matched, assigned, unassigned, roomIds, matchedChurchIds };
+  }, [search, people, churches]);
+  // 호환 alias (아래 카드 렌더링에서 사용)
+  const nameSearchHits = searchHits;
 
   const focusRoom = (id: string) => {
     setHighlightId(id);
