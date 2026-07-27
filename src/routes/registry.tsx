@@ -60,6 +60,8 @@ function RegistryPage() {
   const { season } = useActiveSeason();
   const role = useAuthRole();
   const canEdit = role === "admin" || role === "staff";
+  const { openChurch } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const [search, setSearch] = useState("");
   const [segueOnly, setSegueOnly] = useState(false);
   const [sortByName, setSortByName] = useState(false);
@@ -67,6 +69,7 @@ function RegistryPage() {
   const [compareGroup, setCompareGroup] = useState<DuplicateGroup | null>(null);
   const qc = useQueryClient();
   const registryKey = ["registry", season?.id] as const;
+
 
   const deleteChurch = useMutation({
     mutationFn: async (id: string) => {
