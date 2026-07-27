@@ -71,6 +71,7 @@ function OnsitePage() {
   const [segueDeptId, setSegueDeptId] = useState<string | null>(null);
   const [segueName, setSegueName] = useState("");
   const [segueGender, setSegueGender] = useState<"M" | "F">("M");
+  const [segueLodging, setSegueLodging] = useState<boolean>(false);
 
   useRealtimeInvalidate(
     ["churches", "people", "lodgings"],
