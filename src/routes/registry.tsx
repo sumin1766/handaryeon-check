@@ -31,6 +31,9 @@ import { useDuplicateDismissals } from "@/lib/use-duplicate-dismissals";
 
 export const Route = createFileRoute("/registry")({
   head: () => ({ meta: [{ title: "접수 명단 — 한다련 캠프" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    openChurch: typeof s.openChurch === "string" ? s.openChurch : undefined,
+  }),
   component: RegistryPage,
 });
 
