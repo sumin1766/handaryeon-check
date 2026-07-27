@@ -19,7 +19,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { useActiveSeason } from "@/lib/use-active-season";
+import { useActiveSeason, useBackendKeepalive } from "@/lib/use-active-season";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { PasswordGate } from "@/components/password-gate";
@@ -76,7 +76,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
 }
 
 function AppLayoutInner({ children }: { children: ReactNode }) {
-  const { season, isEnded } = useActiveSeason();
+  const { season, isEnded, isSuccess, isError, refetch } = useActiveSeason();
+  const { failing, failures } = useBackendKeepalive();
+  const backendDown = failing || (isError && !season);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const router = useRouter();
   const role = useAuthRole();
@@ -170,7 +172,27 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
       </header>
 
 
-      {!season && (
+      {backendDown ? (
+        <div className="mx-auto max-w-[1600px] px-6 pt-6">
+          <div className="flex items-start gap-3 rounded-lg border border-amber-400/40 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-900/20 dark:text-amber-100">
+            <AlertCircle className="h-4 w-4 mt-0.5 animate-pulse" />
+            <div className="flex-1">
+              <div className="font-semibold">백엔드 재연결 중…</div>
+              <div className="text-xs mt-0.5">
+                Lovable Cloud 응답이 지연되고 있어 자동으로 다시 시도하고 있습니다
+                {failures > 0 ? ` (${failures}회 재시도)` : ""}. 화면은 그대로 두셔도 됩니다.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="rounded-md border border-amber-400/50 bg-white/60 px-2.5 py-1 text-xs font-medium hover:bg-white dark:bg-transparent dark:hover:bg-amber-900/30"
+            >
+              즉시 재시도
+            </button>
+          </div>
+        </div>
+      ) : isSuccess && !season ? (
         <div className="mx-auto max-w-[1600px] px-6 pt-6">
           <div className="flex items-start gap-3 rounded-lg border border-amber-400/40 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-900/20 dark:text-amber-100">
             <AlertCircle className="h-4 w-4 mt-0.5" />
@@ -185,7 +207,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       <main className="mx-auto max-w-[1600px] px-6 py-6">{children}</main>
     </div>
