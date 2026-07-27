@@ -478,6 +478,76 @@ function OnsitePage() {
           )}
         </Card>
 
+        <Card className="p-5 space-y-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div>
+              <h2 className="text-base font-semibold">세계로 어른성도 빠른 등록</h2>
+              <p className="text-xs text-muted-foreground">
+                부서 구분 없이 "세계로교회" 단일 레코드에 모두 모입니다. 전원 비숙박.
+              </p>
+            </div>
+            <Button variant={adultOpen ? "secondary" : "default"} onClick={() => setAdultOpen((v) => !v)}>
+              {adultOpen ? "닫기" : "세계로 어른성도 신청"}
+            </Button>
+          </div>
+
+          {adultOpen && (
+            <div className="space-y-3">
+              {!segueAdultChurch.data ? (
+                <div className="text-xs text-muted-foreground px-3 py-4 border rounded bg-muted/30">
+                  "세계로교회" (부서 없음) 통합 레코드를 찾지 못했습니다. 접수명단에서 먼저 만들어주세요.
+                </div>
+              ) : (
+                <>
+                  <div className="text-[11px] text-muted-foreground">
+                    대상 레코드: <b className="text-foreground">세계로교회</b>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 items-end">
+                    <div>
+                      <Label className="text-xs">이름</Label>
+                      <Input
+                        value={adultName}
+                        onChange={(e) => setAdultName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && adultName.trim()) adultAdd.mutate();
+                        }}
+                        placeholder="어른성도 이름"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">성별</Label>
+                      <div className="flex gap-1">
+                        {(["M", "F"] as const).map((g) => (
+                          <button
+                            key={g}
+                            type="button"
+                            onClick={() => setAdultGender(g)}
+                            className={`h-9 px-4 rounded border text-sm ${
+                              adultGender === g
+                                ? "border-primary bg-primary/10 font-semibold"
+                                : "hover:bg-muted/60"
+                            }`}
+                          >
+                            {g === "M" ? "남" : "여"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => adultAdd.mutate()}
+                      disabled={adultAdd.isPending || !adultName.trim()}
+                    >
+                      추가
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </Card>
+
+
+
 
         {pendingLodging && (pendingLodging.M.length > 0 || pendingLodging.F.length > 0) && (
           <Card className="p-5 space-y-4 border-primary/40">
