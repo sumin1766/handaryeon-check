@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { num } from "@/lib/format";
 import { fetchAll } from "@/lib/fetch-all";
+import { resilientQueryCache, writeCachedData } from "@/lib/query-session-cache";
 import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { useDashboardOrder, DEFAULT_DASHBOARD_ORDER } from "@/lib/dashboard-order";
 
@@ -31,20 +32,28 @@ function DashboardPage() {
   const { season } = useActiveSeason();
   const { data: order } = useDashboardOrder(season?.id);
   useRealtimeInvalidate(["churches", "people"], [["dashboard"]]);
+  const dashboardKey = ["dashboard", season?.id] as const;
 
   const { data } = useQuery({
-    queryKey: ["dashboard", season?.id],
+    queryKey: dashboardKey,
     enabled: !!season?.id,
     queryFn: async () => {
       const { data: churches } = await supabase
         .from("churches").select("id, name, denomination, is_checked_in, actual_count").eq("season_id", season!.id);
       const churchIds = (churches ?? []).map((c: any) => c.id);
-      if (churchIds.length === 0) return { churches: churches ?? [], people: [] };
+      if (churchIds.length === 0) {
+        const emptyResult = { churches: churches ?? [], people: [] };
+        writeCachedData(dashboardKey, emptyResult);
+        return emptyResult;
+      }
       const people = await fetchAll<any>("people", (q) =>
         q.select("church_id, gender, age_group, lodging").in("church_id", churchIds),
       );
-      return { churches: churches ?? [], people };
+      const result = { churches: churches ?? [], people };
+      writeCachedData(dashboardKey, result);
+      return result;
     },
+    ...resilientQueryCache<any>(dashboardKey),
   });
 
   const churches = data?.churches ?? [];

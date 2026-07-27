@@ -4,6 +4,7 @@ import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetch-all";
+import { resilientQueryCache, writeCachedData } from "@/lib/query-session-cache";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,6 +63,7 @@ function RegistryPage() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [compareGroup, setCompareGroup] = useState<DuplicateGroup | null>(null);
   const qc = useQueryClient();
+  const registryKey = ["registry", season?.id] as const;
 
   const deleteChurch = useMutation({
     mutationFn: async (id: string) => {
@@ -80,7 +82,7 @@ function RegistryPage() {
   useRealtimeInvalidate(["churches", "people"], [["registry", season?.id]]);
 
   const { data } = useQuery({
-    queryKey: ["registry", season?.id],
+    queryKey: registryKey,
     enabled: !!season?.id,
     queryFn: async () => {
       const { data: churches } = await supabase
@@ -89,8 +91,11 @@ function RegistryPage() {
       const people = ids.length
         ? await fetchAll<any>("people", (q) => q.select("*").in("church_id", ids))
         : [];
-      return { churches: churches ?? [], people };
+      const result = { churches: churches ?? [], people };
+      writeCachedData(registryKey, result);
+      return result;
     },
+    ...resilientQueryCache<any>(registryKey),
   });
 
   const churches = data?.churches ?? [];
