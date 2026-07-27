@@ -115,6 +115,13 @@ function SettingsPage() {
           >
             <DashboardOrderSection />
           </SettingsCard>
+          <SettingsCard
+            icon={<MenuIcon className="h-5 w-5" />}
+            title="메뉴(탭) 순서·표시"
+            summary={<NavMenuSummary />}
+          >
+            <NavMenuSection />
+          </SettingsCard>
         </div>
       </div>
     </AppShell>
