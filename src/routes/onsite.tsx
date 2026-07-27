@@ -62,8 +62,16 @@ function OnsitePage() {
   const role = useAuthRole();
   const canManage = role === "admin" || role === "staff";
   const [form, setForm] = useState(emptyForm());
+  const [pendingLodging, setPendingLodging] = useState<{
+    churchName: string;
+    M: string[];
+    F: string[];
+  } | null>(null);
 
-  useRealtimeInvalidate(["churches", "people"], [["onsite-list", season?.id]]);
+  useRealtimeInvalidate(
+    ["churches", "people", "lodgings"],
+    [["onsite-list", season?.id], ["onsite-lodgings", season?.id]],
+  );
 
   const counts = CATS.map((c) => ({ ...c, n: parseNames(form[c.key]).length }));
   const lodgingTotal = counts.filter((c) => c.lodging).reduce((s, c) => s + c.n, 0);
@@ -92,19 +100,72 @@ function OnsitePage() {
             gender: c.gender, age_group: c.age, lodging: c.lodging });
         }
       }
+      let inserted: any[] = [];
       if (rows.length) {
-        const { error: e2 } = await supabase.from("people").insert(rows);
+        const { data: ins, error: e2 } = await supabase.from("people").insert(rows).select("id, gender, lodging");
         if (e2) throw e2;
+        inserted = ins ?? [];
       }
+      return { churchName: form.church.trim(), inserted };
     },
-    onSuccess: () => {
+    onSuccess: ({ churchName, inserted }) => {
       toast.success("등록 완료");
+      const M = inserted.filter((p) => p.lodging && p.gender === "M").map((p) => p.id);
+      const F = inserted.filter((p) => p.lodging && p.gender === "F").map((p) => p.id);
       setForm(emptyForm());
+      if (M.length || F.length) {
+        setPendingLodging({ churchName, M, F });
+      } else {
+        setPendingLodging(null);
+      }
       qc.invalidateQueries({ queryKey: ["onsite-list"] });
+      qc.invalidateQueries({ queryKey: ["onsite-lodgings"] });
       qc.invalidateQueries({ queryKey: ["intake"] });
       qc.invalidateQueries({ queryKey: ["registry"] });
+      qc.invalidateQueries({ queryKey: ["lodgings"] });
     },
     onError: (e: any) => toast.error(e.message ?? "등록 실패"),
+  });
+
+  // Lodgings + occupancy for the assignment UI (only used after save)
+  const lodgingsQ = useQuery({
+    queryKey: ["onsite-lodgings", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data: lodgings, error } = await supabase
+        .from("lodgings").select("*").eq("season_id", season!.id).eq("active", true);
+      if (error) throw error;
+      const assigned = await fetchAll<any>("people", (q) =>
+        (q as any).select("id, lodging_id, gender").not("lodging_id", "is", null),
+      );
+      return { lodgings: lodgings ?? [], assigned };
+    },
+  });
+
+  const assign = useMutation({
+    mutationFn: async (payload: { lodgingId: string; ids: string[] }) => {
+      const { error } = await supabase
+        .from("people")
+        .update({ lodging_id: payload.lodgingId, lodging: true })
+        .in("id", payload.ids);
+      if (error) throw error;
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["onsite-lodgings"] });
+      qc.invalidateQueries({ queryKey: ["lodgings"] });
+      qc.invalidateQueries({ queryKey: ["registry"] });
+      qc.invalidateQueries({ queryKey: ["intake"] });
+      // Remove assigned ids from pending
+      setPendingLodging((prev) => {
+        if (!prev) return prev;
+        const set = new Set(vars.ids);
+        const M = prev.M.filter((x) => !set.has(x));
+        const F = prev.F.filter((x) => !set.has(x));
+        if (!M.length && !F.length) return null;
+        return { ...prev, M, F };
+      });
+    },
+    onError: (e: any) => toast.error(e.message ?? "배치 실패"),
   });
 
   const list = useQuery({
