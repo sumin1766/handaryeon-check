@@ -72,6 +72,10 @@ function OnsitePage() {
   const [segueName, setSegueName] = useState("");
   const [segueGender, setSegueGender] = useState<"M" | "F">("M");
   const [segueLodging, setSegueLodging] = useState<boolean>(false);
+  // Adult (어른성도) quick-add — all rows go into the single 세계로교회 record.
+  const [adultOpen, setAdultOpen] = useState(false);
+  const [adultName, setAdultName] = useState("");
+  const [adultGender, setAdultGender] = useState<"M" | "F">("M");
 
   useRealtimeInvalidate(
     ["churches", "people", "lodgings"],
