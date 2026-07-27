@@ -76,6 +76,7 @@ function OnsitePage() {
   const [adultOpen, setAdultOpen] = useState(false);
   const [adultName, setAdultName] = useState("");
   const [adultGender, setAdultGender] = useState<"M" | "F">("M");
+  const [listSearch, setListSearch] = useState("");
 
   useRealtimeInvalidate(
     ["churches", "people", "lodgings"],
