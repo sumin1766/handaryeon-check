@@ -67,6 +67,10 @@ function OnsitePage() {
     M: string[];
     F: string[];
   } | null>(null);
+  const [segueOpen, setSegueOpen] = useState(false);
+  const [segueDeptId, setSegueDeptId] = useState<string | null>(null);
+  const [segueName, setSegueName] = useState("");
+  const [segueGender, setSegueGender] = useState<"M" | "F">("M");
 
   useRealtimeInvalidate(
     ["churches", "people", "lodgings"],
@@ -196,6 +200,46 @@ function OnsitePage() {
     onError: (e: any) => toast.error(e.message ?? "삭제 실패"),
   });
 
+  // Segue (세계로) department churches for quick-add
+  const segueDepts = useQuery({
+    queryKey: ["onsite-segue-depts", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("churches")
+        .select("id, name, denomination, contact_name, phone")
+        .eq("season_id", season!.id)
+        .ilike("name", "%세계로%")
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const quickAdd = useMutation({
+    mutationFn: async () => {
+      if (!segueDeptId) throw new Error("부서를 선택하세요");
+      const nm = segueName.trim();
+      if (!nm) throw new Error("이름을 입력하세요");
+      const { error } = await supabase.from("people").insert({
+        church_id: segueDeptId,
+        name: nm,
+        gender: segueGender,
+        age_group: "student",
+        lodging: false,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("추가됨");
+      setSegueName("");
+      qc.invalidateQueries({ queryKey: ["onsite-list"] });
+      qc.invalidateQueries({ queryKey: ["intake"] });
+      qc.invalidateQueries({ queryKey: ["registry"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "추가 실패"),
+  });
+
   if (!season) return <AppShell><div className="text-sm text-muted-foreground">시즌이 없습니다.</div></AppShell>;
 
   return (
@@ -255,6 +299,99 @@ function OnsitePage() {
             <Button onClick={() => submit.mutate()} disabled={submit.isPending || !form.church.trim()}>등록</Button>
           </div>
         </Card>
+
+        <Card className="p-5 space-y-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div>
+              <h2 className="text-base font-semibold">세계로 교육부서 빠른 등록</h2>
+              <p className="text-xs text-muted-foreground">
+                부서 선택 → 이름·성별만 입력. 교회명·교단·연락처는 부서 레코드 값이 유지됩니다.
+              </p>
+            </div>
+            <Button variant={segueOpen ? "secondary" : "default"} onClick={() => setSegueOpen((v) => !v)}>
+              {segueOpen ? "닫기" : "세계로 교육부서 신청"}
+            </Button>
+          </div>
+
+          {segueOpen && (
+            <div className="space-y-3">
+              {(segueDepts.data?.length ?? 0) === 0 ? (
+                <div className="text-xs text-muted-foreground px-3 py-4 border rounded bg-muted/30">
+                  등록된 세계로 부서가 없습니다. 먼저 사전접수 또는 현장접수로 부서 레코드를 만들어주세요.
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {segueDepts.data!.map((d: any) => {
+                      const active = segueDeptId === d.id;
+                      return (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => setSegueDeptId(d.id)}
+                          className={`rounded-lg border px-3 py-2 text-sm transition ${
+                            active
+                              ? "border-primary bg-primary/10 text-foreground font-semibold"
+                              : "hover:bg-muted/60"
+                          }`}
+                        >
+                          {d.name}
+                          {d.denomination && (
+                            <span className="ml-1 text-[11px] text-muted-foreground">({d.denomination})</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 items-end">
+                    <div>
+                      <Label className="text-xs">이름</Label>
+                      <Input
+                        value={segueName}
+                        onChange={(e) => setSegueName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && segueDeptId && segueName.trim()) quickAdd.mutate();
+                        }}
+                        placeholder="학생 이름"
+                        disabled={!segueDeptId}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">성별</Label>
+                      <div className="flex gap-1">
+                        {(["M", "F"] as const).map((g) => (
+                          <button
+                            key={g}
+                            type="button"
+                            onClick={() => setSegueGender(g)}
+                            className={`h-9 px-4 rounded border text-sm ${
+                              segueGender === g
+                                ? "border-primary bg-primary/10 font-semibold"
+                                : "hover:bg-muted/60"
+                            }`}
+                          >
+                            {g === "M" ? "남" : "여"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => quickAdd.mutate()}
+                      disabled={quickAdd.isPending || !segueDeptId || !segueName.trim()}
+                    >
+                      추가
+                    </Button>
+                  </div>
+                  {!segueDeptId && (
+                    <p className="text-[11px] text-muted-foreground">먼저 부서를 선택해주세요.</p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </Card>
+
 
         {pendingLodging && (pendingLodging.M.length > 0 || pendingLodging.F.length > 0) && (
           <Card className="p-5 space-y-4 border-primary/40">
