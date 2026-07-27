@@ -519,7 +519,7 @@ function OnsitePage() {
                       {canManage && (
                         <td className="px-2 py-2">
                           <div className="flex gap-1 justify-end">
-                            <Link to="/registry" className="inline-flex h-7 px-2 items-center rounded border text-xs hover:bg-muted">
+                            <Link to="/registry" search={{ openChurch: c.id }} className="inline-flex h-7 px-2 items-center rounded border text-xs hover:bg-muted">
                               <Pencil className="h-3 w-3 mr-1" />수정
                             </Link>
                             <button

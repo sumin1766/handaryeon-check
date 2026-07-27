@@ -21,7 +21,7 @@ import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { useAuthRole } from "@/lib/use-auth-role";
 import { num } from "@/lib/format";
 import { Plus, Trash2, Pencil, X, Save, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { findDuplicateGroups, type DuplicateGroup } from "@/lib/duplicate-check";
 import { DuplicateBanner } from "@/components/duplicate-banner";
@@ -31,6 +31,9 @@ import { useDuplicateDismissals } from "@/lib/use-duplicate-dismissals";
 
 export const Route = createFileRoute("/registry")({
   head: () => ({ meta: [{ title: "접수 명단 — 한다련 캠프" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    openChurch: typeof s.openChurch === "string" ? s.openChurch : undefined,
+  }),
   component: RegistryPage,
 });
 
@@ -57,6 +60,8 @@ function RegistryPage() {
   const { season } = useActiveSeason();
   const role = useAuthRole();
   const canEdit = role === "admin" || role === "staff";
+  const { openChurch } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const [search, setSearch] = useState("");
   const [segueOnly, setSegueOnly] = useState(false);
   const [sortByName, setSortByName] = useState(false);
@@ -64,6 +69,7 @@ function RegistryPage() {
   const [compareGroup, setCompareGroup] = useState<DuplicateGroup | null>(null);
   const qc = useQueryClient();
   const registryKey = ["registry", season?.id] as const;
+
 
   const deleteChurch = useMutation({
     mutationFn: async (id: string) => {
@@ -112,6 +118,10 @@ function RegistryPage() {
   }, [people]);
 
   const churchById = useMemo(() => new Map(churches.map((c: any) => [c.id, c])), [churches]);
+
+  useEffect(() => {
+    if (openChurch && churchById.has(openChurch)) setOpenId(openChurch);
+  }, [openChurch, churchById]);
 
   const dismissals = useDuplicateDismissals(season?.id);
 
@@ -335,12 +345,15 @@ function RegistryPage() {
         </Card>
       </div>
 
-      {openId && (
+      {openId && churchById.has(openId) && (
         <ChurchDialog
           church={churchById.get(openId) as any}
           people={peopleByChurch.get(openId) ?? []}
           canEdit={canEdit}
-          onClose={() => setOpenId(null)}
+          onClose={() => {
+            setOpenId(null);
+            if (openChurch) navigate({ search: {}, replace: true });
+          }}
         />
       )}
 
