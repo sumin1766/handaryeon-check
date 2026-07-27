@@ -1069,3 +1069,152 @@ function DashboardOrderSection() {
     </div>
   );
 }
+
+// ----- Nav menu (top tab) order + visibility -----
+
+const NAV_LABEL: Record<string, string> = {
+  "/": "대시보드",
+  "/pre-registration": "사전접수",
+  "/intake-sheet": "접수시트",
+  "/registry": "접수 명단",
+  "/onsite": "현장접수",
+  "/lodgings": "숙소배치",
+  "/nametags": "이름표 출력",
+  "/rosters": "명단 출력",
+  "/bath-coupons": "목욕쿠폰",
+  "/receipt": "영수증",
+  "/settings": "설정",
+};
+
+function NavMenuSummary() {
+  const { season } = useActiveSeason();
+  const { data: cfg } = useNavMenuConfig(season?.id);
+  const order = cfg?.order ?? DEFAULT_NAV_ORDER;
+  const hidden = new Set(cfg?.hidden ?? []);
+  const visible = order.filter((p) => !hidden.has(p));
+  return (
+    <div className="tabular-nums">
+      <div>표시 <b className="text-foreground">{visible.length}</b> / 전체 {order.length}</div>
+      {hidden.size > 0 && (
+        <div className="truncate">숨김: <b className="text-foreground">
+          {Array.from(hidden).map((p) => NAV_LABEL[p] ?? p).join(", ")}
+        </b></div>
+      )}
+    </div>
+  );
+}
+
+function NavMenuSection() {
+  const { season } = useActiveSeason();
+  const { data: saved } = useNavMenuConfig(season?.id);
+  const save = useSaveNavMenuConfig(season?.id);
+  const [cfg, setCfg] = useState<NavMenuConfig>(
+    saved ?? { order: DEFAULT_NAV_ORDER, hidden: [] },
+  );
+  const savedKey = JSON.stringify(saved ?? { order: DEFAULT_NAV_ORDER, hidden: [] });
+  useEffect(() => {
+    if (saved) setCfg(saved);
+  }, [savedKey]);
+
+  const hiddenSet = new Set(cfg.hidden);
+  const move = (idx: number, dir: -1 | 1) => {
+    const j = idx + dir;
+    if (j < 0 || j >= cfg.order.length) return;
+    const next = [...cfg.order];
+    [next[idx], next[j]] = [next[j], next[idx]];
+    setCfg({ ...cfg, order: next });
+  };
+  const toggleHide = (path: string) => {
+    if (NAV_PROTECTED_PATHS.has(path)) return;
+    const next = hiddenSet.has(path)
+      ? cfg.hidden.filter((p) => p !== path)
+      : [...cfg.hidden, path];
+    // Safety: ensure at least one non-protected tab remains visible
+    const remaining = cfg.order.filter((p) => !next.includes(p));
+    if (remaining.length === 0) {
+      toast.error("최소 하나의 메뉴는 표시되어야 합니다.");
+      return;
+    }
+    setCfg({ ...cfg, hidden: next });
+  };
+  const reset = () => setCfg({ order: DEFAULT_NAV_ORDER, hidden: [] });
+  const dirty = JSON.stringify(cfg) !== savedKey;
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        상단 네비게이션의 순서·표시를 변경합니다. 저장 후 새로고침·다른 기기에서도 유지됩니다.
+        각 메뉴의 <b>권한</b>은 그대로 유지되며, 여기서 숨긴 메뉴는 권한이 있어도 화면에서 감춰집니다.
+        <br />
+        <span className="text-xs">
+          ※ <b>대시보드</b>와 <b>설정</b> 메뉴는 안전을 위해 숨길 수 없습니다.
+        </span>
+      </p>
+      <ul className="space-y-2">
+        {cfg.order.map((path, i) => {
+          const isHidden = hiddenSet.has(path);
+          const protectedItem = NAV_PROTECTED_PATHS.has(path);
+          const roles = PAGE_ACCESS[path];
+          return (
+            <li
+              key={path}
+              className={cn(
+                "flex items-center gap-2 rounded-md border bg-card px-3 py-2.5",
+                isHidden && "opacity-60",
+              )}
+            >
+              <span className="w-6 tabular-nums text-sm text-muted-foreground">{i + 1}.</span>
+              <span className="flex-1 min-w-0">
+                <div className="font-medium truncate">{NAV_LABEL[path] ?? path}</div>
+                <div className="text-[11px] text-muted-foreground truncate">
+                  {path}
+                  {roles && (
+                    <span className="ml-1">
+                      · 권한: {roles.map((r) => r === "admin" ? "관리자" : r === "staff" ? "담당자" : "일반").join("/")}
+                    </span>
+                  )}
+                </div>
+              </span>
+              <Button
+                size="icon"
+                variant={isHidden ? "outline" : "secondary"}
+                onClick={() => toggleHide(path)}
+                disabled={protectedItem}
+                title={protectedItem ? "이 메뉴는 숨길 수 없습니다" : isHidden ? "표시" : "숨김"}
+                aria-label={isHidden ? "표시" : "숨김"}
+              >
+                {isHidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+              <Button size="icon" variant="outline" onClick={() => move(i, -1)} disabled={i === 0} aria-label="위로">
+                <ChevronUp className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="outline" onClick={() => move(i, 1)} disabled={i === cfg.order.length - 1} aria-label="아래로">
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          onClick={() => save.mutate(cfg, {
+            onSuccess: () => toast.success("메뉴 설정 저장됨"),
+            onError: (e: any) => toast.error(e.message ?? "저장 실패"),
+          })}
+          disabled={!dirty || save.isPending}
+        >
+          {save.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+          저장
+        </Button>
+        <Button
+          variant="outline"
+          onClick={reset}
+          disabled={JSON.stringify(cfg) === JSON.stringify({ order: DEFAULT_NAV_ORDER, hidden: [] })}
+        >
+          기본값으로
+        </Button>
+      </div>
+    </div>
+  );
+}
+
