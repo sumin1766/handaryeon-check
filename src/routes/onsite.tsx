@@ -221,6 +221,25 @@ function OnsitePage() {
     },
   });
 
+  // Single "세계로교회" (no denomination) record used to gather all 어른성도.
+  const segueAdultChurch = useQuery({
+    queryKey: ["onsite-segue-adult-church", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("churches")
+        .select("id, name, created_at")
+        .eq("season_id", season!.id)
+        .eq("name", "세계로교회")
+        .is("denomination", null)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const quickAdd = useMutation({
     mutationFn: async () => {
       if (!segueDeptId) throw new Error("부서를 선택하세요");
@@ -259,6 +278,31 @@ function OnsitePage() {
       qc.invalidateQueries({ queryKey: ["intake"] });
       qc.invalidateQueries({ queryKey: ["registry"] });
       qc.invalidateQueries({ queryKey: ["lodgings"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "추가 실패"),
+  });
+
+  const adultAdd = useMutation({
+    mutationFn: async () => {
+      const churchId = segueAdultChurch.data?.id;
+      if (!churchId) throw new Error("'세계로교회' 통합 레코드가 없습니다. 관리자에게 문의하세요.");
+      const nm = adultName.trim();
+      if (!nm) throw new Error("이름을 입력하세요");
+      const { error } = await supabase.from("people").insert({
+        church_id: churchId,
+        name: nm,
+        gender: adultGender,
+        age_group: "adult",
+        lodging: false,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("어른성도 추가됨");
+      setAdultName("");
+      qc.invalidateQueries({ queryKey: ["onsite-list"] });
+      qc.invalidateQueries({ queryKey: ["intake"] });
+      qc.invalidateQueries({ queryKey: ["registry"] });
     },
     onError: (e: any) => toast.error(e.message ?? "추가 실패"),
   });
