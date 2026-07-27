@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { useAuthRole } from "@/lib/use-auth-role";
-import { num } from "@/lib/format";
+import { num, formatKst } from "@/lib/format";
 import { Plus, Trash2, Pencil, X, Save, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -54,7 +54,7 @@ function catKeyOf(p: { gender: string; age_group: string; lodging: boolean }): C
   return found?.key ?? null;
 }
 
-type Person = { id?: string; name: string; note: string };
+type Person = { id?: string; name: string; note: string; created_at?: string | null };
 
 function RegistryPage() {
   const { season } = useActiveSeason();
@@ -385,7 +385,7 @@ function ChurchDialog({
   };
   for (const p of people) {
     const k = catKeyOf(p);
-    if (k) initial[k].push({ id: p.id, name: p.name ?? "", note: p.note ?? "" });
+    if (k) initial[k].push({ id: p.id, name: p.name ?? "", note: p.note ?? "", created_at: p.created_at ?? null });
   }
   const [cats, setCats] = useState<Record<CatKey, Person[]>>(initial);
 
@@ -403,21 +403,42 @@ function ChurchDialog({
       }).eq("id", church.id);
       if (eU) throw eU;
 
-      // Replace people: delete all then re-insert
-      const { error: eD } = await supabase.from("people").delete().eq("church_id", church.id);
-      if (eD) throw eD;
-      const rows: any[] = [];
+      // Diff-save people so existing rows keep their created_at.
+      const keptIds = new Set<string>();
+      const toInsert: any[] = [];
+      const toUpdate: { id: string; fields: any }[] = [];
       for (const c of CATS) {
         for (const p of cats[c.key]) {
           if (!p.name.trim()) continue;
-          rows.push({
-            church_id: church.id, name: p.name.trim(), note: p.note || null,
-            gender: c.gender, age_group: c.age, lodging: c.lodging,
-          });
+          const fields = {
+            church_id: church.id,
+            name: p.name.trim(),
+            note: p.note || null,
+            gender: c.gender,
+            age_group: c.age,
+            lodging: c.lodging,
+          };
+          if (p.id) {
+            keptIds.add(p.id);
+            toUpdate.push({ id: p.id, fields });
+          } else {
+            toInsert.push(fields);
+          }
         }
       }
-      if (rows.length) {
-        const { error: eI } = await supabase.from("people").insert(rows);
+      // Delete people that were removed from the editor.
+      const existingIds: string[] = people.map((p: any) => p.id).filter(Boolean);
+      const removedIds = existingIds.filter((id) => !keptIds.has(id));
+      if (removedIds.length) {
+        const { error: eD } = await supabase.from("people").delete().in("id", removedIds);
+        if (eD) throw eD;
+      }
+      for (const u of toUpdate) {
+        const { error: eU2 } = await supabase.from("people").update(u.fields).eq("id", u.id);
+        if (eU2) throw eU2;
+      }
+      if (toInsert.length) {
+        const { error: eI } = await supabase.from("people").insert(toInsert);
         if (eI) throw eI;
       }
     },
@@ -554,39 +575,44 @@ function NameEditor({ names, onChange, canEdit }: { names: Person[]; onChange: (
   return (
     <div className="flex flex-wrap gap-1">
       {names.map((p, i) => (
-        <div key={i} className="flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-xs">
-          <Input
-            value={p.name}
-            onChange={(e) => {
-              const copy = [...names];
-              copy[i] = { ...p, name: e.target.value };
-              onChange(copy);
-            }}
-            disabled={!canEdit}
-            className="h-7 w-24 px-1.5 text-xs"
-            placeholder="이름"
-          />
-          <Input
-            value={p.note ?? ""}
-            onChange={(e) => {
-              const copy = [...names];
-              copy[i] = { ...p, note: e.target.value };
-              onChange(copy);
-            }}
-            disabled={!canEdit}
-            className="h-7 w-20 px-1.5 text-xs"
-            placeholder="학년/비고"
-          />
-          {canEdit && (
-            <button
-              type="button"
-              onClick={() => onChange(names.filter((_, j) => j !== i))}
-              className="text-muted-foreground hover:text-destructive"
-              title="삭제"
-            >
-              ×
-            </button>
-          )}
+        <div key={i} className="flex flex-col gap-0.5 rounded bg-muted px-1.5 py-1 text-xs">
+          <div className="flex items-center gap-1">
+            <Input
+              value={p.name}
+              onChange={(e) => {
+                const copy = [...names];
+                copy[i] = { ...p, name: e.target.value };
+                onChange(copy);
+              }}
+              disabled={!canEdit}
+              className="h-7 w-24 px-1.5 text-xs"
+              placeholder="이름"
+            />
+            <Input
+              value={p.note ?? ""}
+              onChange={(e) => {
+                const copy = [...names];
+                copy[i] = { ...p, note: e.target.value };
+                onChange(copy);
+              }}
+              disabled={!canEdit}
+              className="h-7 w-20 px-1.5 text-xs"
+              placeholder="학년/비고"
+            />
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => onChange(names.filter((_, j) => j !== i))}
+                className="text-muted-foreground hover:text-destructive"
+                title="삭제"
+              >
+                ×
+              </button>
+            )}
+          </div>
+          <div className="text-[10px] text-muted-foreground tabular-nums pl-0.5" title="등록 시각 (KST)">
+            {formatKst(p.created_at)}
+          </div>
         </div>
       ))}
       {canEdit && (
