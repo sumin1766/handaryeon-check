@@ -81,6 +81,19 @@ function IntakeSheetPage() {
   const people = data?.people ?? [];
   const lodgingMap = new Map((data?.lodgings ?? []).map((l: any) => [l.id, l]));
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!churches.length) return;
+    const hash = window.location.hash?.replace(/^#/, "");
+    if (!hash) return;
+    const el = document.getElementById(hash);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-primary");
+      setTimeout(() => el.classList.remove("ring-2", "ring-primary"), 2000);
+    }
+  }, [churches.length]);
+
   const peopleByChurch = useMemo(() => {
     const m = new Map<string, any[]>();
     for (const p of people) {
