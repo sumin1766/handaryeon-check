@@ -637,18 +637,67 @@ function OnsitePage() {
 
 
         <Card className="p-0 overflow-hidden">
-          <div className="bg-muted/40 px-4 py-3 border-b flex items-center justify-between gap-3 flex-wrap">
-            <div>
-              <h2 className="text-sm font-semibold">현장접수 등록 명단 ({list.data?.churches.length ?? 0}교회)</h2>
-              <p className="text-xs text-muted-foreground">상세 수정은 "접수 명단" 페이지에서 가능합니다.</p>
-            </div>
-            <Input
-              value={listSearch}
-              onChange={(e) => setListSearch(e.target.value)}
-              placeholder="교회명 / 담당자 / 전화번호"
-              className="h-8 w-full sm:w-64 text-sm"
-            />
-          </div>
+          {(() => {
+            const peopleAll = list.data?.people ?? [];
+            const totalPeople = peopleAll.length;
+            const totalLodging = peopleAll.filter((p: any) => p.lodging).length;
+            const WD = ["일", "월", "화", "수", "목", "금", "토"];
+            const kstWeekday = (iso?: string | null) => {
+              if (!iso) return null;
+              const d = new Date(iso);
+              if (isNaN(d.getTime())) return null;
+              const s = d.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+              return WD[new Date(`${s}T00:00:00Z`).getUTCDay()];
+            };
+            const byDay = new Map<string, number>();
+            let unknown = 0;
+            for (const p of peopleAll) {
+              const w = kstWeekday(p.created_at);
+              if (!w) { unknown++; continue; }
+              byDay.set(w, (byDay.get(w) ?? 0) + 1);
+            }
+            return (
+              <>
+                <div className="bg-muted/40 px-4 py-3 border-b flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <h2 className="text-sm font-semibold">
+                      현장접수 등록 명단 ({list.data?.churches.length ?? 0}교회 · {totalPeople}명)
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      숙박 {totalLodging}명 · 비숙박 {totalPeople - totalLodging}명 · 상세 수정은 "접수 명단" 페이지에서 가능합니다.
+                    </p>
+                  </div>
+                  <Input
+                    value={listSearch}
+                    onChange={(e) => setListSearch(e.target.value)}
+                    placeholder="교회명 / 담당자 / 전화번호"
+                    className="h-8 w-full sm:w-64 text-sm"
+                  />
+                </div>
+                <div className="px-4 py-2 border-b bg-background/50 flex flex-wrap gap-1.5">
+                  {WD.map((w) => {
+                    const n = byDay.get(w) ?? 0;
+                    return (
+                      <span
+                        key={w}
+                        className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs tabular-nums ${
+                          n > 0 ? "bg-primary/10 border-primary/30 font-semibold" : "text-muted-foreground"
+                        }`}
+                      >
+                        {w} <b className="tabular-nums">{n}</b>명
+                      </span>
+                    );
+                  })}
+                  {unknown > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-muted-foreground">
+                      미상 {unknown}명
+                    </span>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+
           {(() => {
             const churches = list.data?.churches ?? [];
             const peopleAll = list.data?.people ?? [];
