@@ -822,6 +822,7 @@ function LodgingsPage() {
                 lodging={selectedLodging}
                 people={selectedPeople}
                 churchMap={churchMap}
+                search={search}
                 onChanged={() => qc.invalidateQueries({ queryKey: ["lodgings-page"] })}
               />
             </>
