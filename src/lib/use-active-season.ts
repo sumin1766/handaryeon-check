@@ -2,6 +2,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+const SEASON_CACHE_KEY = "handaryeon:last-good-seasons";
+
 export type Season = {
   id: string;
   name: string;
@@ -20,9 +22,32 @@ async function fetchSeasonsWithTimeout(ms = 10_000): Promise<Season[]> {
       .order("created_at", { ascending: false })
       .abortSignal(controller.signal);
     if (error) throw error;
-    return (data ?? []) as Season[];
+    const seasons = (data ?? []) as Season[];
+    cacheSeasons(seasons);
+    return seasons;
   } finally {
     clearTimeout(t);
+  }
+}
+
+function readCachedSeasons(): Season[] | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = window.localStorage.getItem(SEASON_CACHE_KEY);
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as Season[]) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function cacheSeasons(seasons: Season[]) {
+  if (typeof window === "undefined" || seasons.length === 0) return;
+  try {
+    window.localStorage.setItem(SEASON_CACHE_KEY, JSON.stringify(seasons));
+  } catch {
+    // localStorage can be blocked; keep the in-memory query cache only.
   }
 }
 
@@ -36,6 +61,10 @@ export function useSeasons() {
     refetchIntervalInBackground: false,
     retry: 8,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
+    staleTime: 60_000,
+    gcTime: 60 * 60 * 1000,
+    placeholderData: (previousData) => previousData ?? readCachedSeasons(),
+    initialData: () => readCachedSeasons(),
   });
 
   useEffect(() => {
@@ -104,8 +133,10 @@ export function useBackendKeepalive() {
         if (error) throw error;
         const wasDown = !statusRef.current.ok;
         statusRef.current = { ok: true, failures: 0 };
-        // On recovery, kick every server-backed query so screens self-heal.
-        if (wasDown) qc.invalidateQueries();
+        // On recovery, refresh root context only. Avoid invalidating every
+        // heavy list at once during live reception; route-level queries can
+        // recover on their own retry/reconnect cycle while showing cached data.
+        if (wasDown) qc.invalidateQueries({ queryKey: ["seasons"] });
         return true;
       } catch (e) {
         statusRef.current = {
@@ -117,20 +148,23 @@ export function useBackendKeepalive() {
         clearTimeout(t);
       }
     },
-    refetchInterval: (query) => (query.state.error ? 5_000 : 25_000),
+    refetchInterval: (query) => (query.state.error ? 10_000 : 45_000),
     refetchIntervalInBackground: false,
-    retry: 3,
+    retry: 1,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8_000),
-    staleTime: 0,
+    staleTime: 15_000,
   });
 
   // Also refetch immediately when the tab regains focus or network comes back.
   useEffect(() => {
     const onOnline = () => {
-      qc.invalidateQueries();
+      qc.invalidateQueries({ queryKey: ["backend-keepalive"] });
+      qc.invalidateQueries({ queryKey: ["seasons"] });
     };
     const onVisible = () => {
-      if (document.visibilityState === "visible") qc.invalidateQueries();
+      if (document.visibilityState === "visible") {
+        qc.invalidateQueries({ queryKey: ["backend-keepalive"] });
+      }
     };
     window.addEventListener("online", onOnline);
     document.addEventListener("visibilitychange", onVisible);
