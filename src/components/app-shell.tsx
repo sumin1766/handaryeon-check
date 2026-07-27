@@ -25,6 +25,7 @@ import { formatDate } from "@/lib/format";
 import { PasswordGate } from "@/components/password-gate";
 import { useAuthRole, setAuthRole, type AuthRole } from "@/lib/use-auth-role";
 import { useTheme } from "@/lib/use-theme";
+import { useNavMenuConfig, applyNavConfig } from "@/lib/nav-menu-config";
 import logoAsset from "@/assets/handaryeon-symbol.png.asset.json";
 
 type RoleSet = readonly AuthRole[];
@@ -84,7 +85,9 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   const role = useAuthRole();
   const [theme, setTheme] = useTheme();
   const isAdmin = role === "admin";
-  const visibleTabs = TABS.filter((t) => role !== null && (t.roles as readonly AuthRole[]).includes(role));
+  const { data: navCfg } = useNavMenuConfig(season?.id);
+  const roleTabs = TABS.filter((t) => role !== null && (t.roles as readonly AuthRole[]).includes(role));
+  const visibleTabs = applyNavConfig(roleTabs, navCfg);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Close mobile menu on route change
