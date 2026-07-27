@@ -185,7 +185,7 @@ function OnsitePage() {
         .from("churches").select("*").eq("season_id", season!.id).eq("source", "onsite").order("created_at", { ascending: false });
       const ids = (churches ?? []).map((c: any) => c.id);
       const people = ids.length
-        ? await fetchAll<any>("people", (q) => q.select("church_id, lodging").in("church_id", ids))
+        ? await fetchAll<any>("people", (q) => q.select("church_id, lodging, created_at").in("church_id", ids))
         : [];
       return { churches: churches ?? [], people };
     },
