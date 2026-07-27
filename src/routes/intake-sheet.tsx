@@ -81,6 +81,19 @@ function IntakeSheetPage() {
   const people = data?.people ?? [];
   const lodgingMap = new Map((data?.lodgings ?? []).map((l: any) => [l.id, l]));
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!churches.length) return;
+    const hash = window.location.hash?.replace(/^#/, "");
+    if (!hash) return;
+    const el = document.getElementById(hash);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-primary");
+      setTimeout(() => el.classList.remove("ring-2", "ring-primary"), 2000);
+    }
+  }, [churches.length]);
+
   const peopleByChurch = useMemo(() => {
     const m = new Map<string, any[]>();
     for (const p of people) {
@@ -173,7 +186,7 @@ function IntakeSheetPage() {
                 const nonLodgingCount = ps.filter((p) => !p.lodging).length;
                 const lodgingsForChurch = Array.from(new Set(ps.filter((p) => p.lodging_id).map((p) => p.lodging_id))) as string[];
                 return (
-                  <tr key={c.id} className={`border-t hover:bg-muted/30 transition-colors ${c.is_checked_in ? "intake-row-checked" : ""}`}>
+                  <tr key={c.id} id={`church-row-${c.id}`} className={`border-t hover:bg-muted/30 transition-colors ${c.is_checked_in ? "intake-row-checked" : ""}`}>
                     <td className="px-3 py-2 font-medium">
                       {c.name}
                       {c.denomination && <span className="ml-1 text-[11px] text-muted-foreground">({c.denomination})</span>}
@@ -258,7 +271,7 @@ function IntakeSheetPage() {
                     {isAdmin && (
                       <td className="px-2 py-1">
                         <div className="flex gap-1 justify-end">
-                          <Link to="/registry" search={{ openChurch: c.id }} className="inline-flex h-8 w-8 items-center justify-center rounded border hover:bg-muted" title="접수명단에서 수정">
+                          <Link to="/registry" search={{ openChurch: c.id, from: "intake-sheet", row: c.id }} className="inline-flex h-8 w-8 items-center justify-center rounded border hover:bg-muted" title="접수명단에서 수정">
                             <Pencil className="h-3.5 w-3.5" />
                           </Link>
                           <button
