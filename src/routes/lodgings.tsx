@@ -985,7 +985,9 @@ function UnassignedSection({
 
 
 function RoomDetail({ lodging, people, churchMap, onChanged, search }: any) {
-  const q = (search ?? "").trim();
+  const [localQ, setLocalQ] = useState("");
+  const effectiveQ = (localQ.trim() || (search ?? "").trim());
+  const q = effectiveQ;
   const filteredPeople = useMemo(() => {
     if (!q) return people;
     return people.filter((p: any) => {
@@ -1027,11 +1029,22 @@ function RoomDetail({ lodging, people, churchMap, onChanged, search }: any) {
 
   return (
     <div className="space-y-3 mt-4">
+      <div className="flex items-center gap-2">
+        <Input
+          value={localQ}
+          onChange={(e) => setLocalQ(e.target.value)}
+          placeholder="이 방에서 교회명·이름 검색"
+          className="h-8 text-sm"
+        />
+        {localQ && (
+          <Button size="sm" variant="ghost" onClick={() => setLocalQ("")}>지우기</Button>
+        )}
+      </div>
       <div className="flex items-center justify-between">
         <div className="text-xs font-semibold text-muted-foreground">
           교회별 배정 ({people.length}명)
           {q && (
-            <span className="ml-2 text-primary">— "{q}" 필터: {displayPeople.length}명</span>
+            <span className="ml-2 text-primary">— "{q}" 필터: {displayPeople.length}명 / {byChurch.length}개 교회</span>
           )}
         </div>
         {people.length > 0 && (
@@ -1043,6 +1056,7 @@ function RoomDetail({ lodging, people, churchMap, onChanged, search }: any) {
           {q ? "필터 조건에 맞는 인원이 없습니다." : "아직 배정된 인원이 없습니다."}
         </div>
       )}
+
       {byChurch.map(([churchId, ps]) => (
         <div key={churchId} className="rounded border bg-background">
           <div className="flex items-center justify-between px-2 py-1.5 border-b bg-muted/30">
