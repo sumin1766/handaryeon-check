@@ -978,7 +978,18 @@ function UnassignedSection({
 }
 
 
-function RoomDetail({ lodging, people, churchMap, onChanged }: any) {
+function RoomDetail({ lodging, people, churchMap, onChanged, search }: any) {
+  const q = (search ?? "").trim();
+  const filteredPeople = useMemo(() => {
+    if (!q) return people;
+    return people.filter((p: any) => {
+      const nameHit = p.name && String(p.name).trim().includes(q);
+      const label = churchMap.get(p.church_id) ?? "";
+      const churchHit = label.includes(q);
+      return nameHit || churchHit;
+    });
+  }, [people, q, churchMap]);
+  const displayPeople = q ? filteredPeople : people;
   const byChurch = useMemo(() => {
     const m = new Map<string, any[]>();
     for (const p of people) {
