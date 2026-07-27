@@ -179,12 +179,16 @@ function BathPage() {
                   <tr key={r.id} className="border-t">
                     <td className="text-left px-2 py-1"><Input defaultValue={r.name} onBlur={(e) => update.mutate({ ...r, name: e.target.value })} className="h-8 w-full" /></td>
                     <td className="text-right px-2 py-1"><Input type="number" defaultValue={r.qty} onBlur={(e) => update.mutate({ ...r, qty: parseInt(e.target.value) || 0 })} className="h-8 w-full text-right tabular-nums" /></td>
-                    <td className="text-center">
-                      <Checkbox checked={r.paid_transfer} onCheckedChange={(v) => update.mutate({ ...r, paid_transfer: !!v, transfer_at: v ? new Date().toISOString() : null })} />
+                    <td className="text-center px-2 py-1">
+                      <div className="flex justify-center">
+                        <Checkbox checked={r.paid_transfer} onCheckedChange={(v) => update.mutate({ ...r, paid_transfer: !!v, transfer_at: v ? new Date().toISOString() : null })} />
+                      </div>
                     </td>
                     <td className="text-left px-2 py-1 text-xs tabular-nums">{formatTime(r.transfer_at)}</td>
-                    <td className="text-center">
-                      <Checkbox checked={r.paid_cash} onCheckedChange={(v) => update.mutate({ ...r, paid_cash: !!v, cash_at: v ? new Date().toISOString() : null })} />
+                    <td className="text-center px-2 py-1">
+                      <div className="flex justify-center">
+                        <Checkbox checked={r.paid_cash} onCheckedChange={(v) => update.mutate({ ...r, paid_cash: !!v, cash_at: v ? new Date().toISOString() : null })} />
+                      </div>
                     </td>
                     <td className="text-left px-2 py-1 text-xs tabular-nums">{formatTime(r.cash_at)}</td>
                     <td className="text-left px-2 py-1">
