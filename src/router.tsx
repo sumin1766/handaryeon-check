@@ -18,7 +18,10 @@ export const getRouter = () => {
         placeholderData: (previousData: unknown) => previousData,
       },
       mutations: {
-        retry: 2,
+        // Do not auto-retry writes during an outage: a request may have
+        // succeeded server-side while the response timed out, and retrying can
+        // duplicate check-ins/registrations or add extra pressure.
+        retry: 0,
         retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8_000),
       },
     },
