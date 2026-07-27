@@ -14,7 +14,7 @@ export function useRealtimeInvalidate(tables: string[], invalidateKeys: unknown[
         for (const k of invalidateKeys) {
           qc.invalidateQueries({ queryKey: k, refetchType: "active" });
         }
-      }, 4_000);
+      }, 8_000);
     };
     for (const t of tables) {
       ch.on("postgres_changes", { event: "*", schema: "public", table: t }, () => {
