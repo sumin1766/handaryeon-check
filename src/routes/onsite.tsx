@@ -200,6 +200,46 @@ function OnsitePage() {
     onError: (e: any) => toast.error(e.message ?? "삭제 실패"),
   });
 
+  // Segue (세계로) department churches for quick-add
+  const segueDepts = useQuery({
+    queryKey: ["onsite-segue-depts", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("churches")
+        .select("id, name, denomination, contact_name, phone")
+        .eq("season_id", season!.id)
+        .ilike("name", "%세계로%")
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const quickAdd = useMutation({
+    mutationFn: async () => {
+      if (!segueDeptId) throw new Error("부서를 선택하세요");
+      const nm = segueName.trim();
+      if (!nm) throw new Error("이름을 입력하세요");
+      const { error } = await supabase.from("people").insert({
+        church_id: segueDeptId,
+        name: nm,
+        gender: segueGender,
+        age_group: "student",
+        lodging: false,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("추가됨");
+      setSegueName("");
+      qc.invalidateQueries({ queryKey: ["onsite-list"] });
+      qc.invalidateQueries({ queryKey: ["intake"] });
+      qc.invalidateQueries({ queryKey: ["registry"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "추가 실패"),
+  });
+
   if (!season) return <AppShell><div className="text-sm text-muted-foreground">시즌이 없습니다.</div></AppShell>;
 
   return (
