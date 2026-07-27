@@ -992,11 +992,11 @@ function RoomDetail({ lodging, people, churchMap, onChanged, search }: any) {
   const displayPeople = q ? filteredPeople : people;
   const byChurch = useMemo(() => {
     const m = new Map<string, any[]>();
-    for (const p of people) {
+    for (const p of displayPeople) {
       const arr = m.get(p.church_id) ?? []; arr.push(p); m.set(p.church_id, arr);
     }
     return Array.from(m.entries());
-  }, [people]);
+  }, [displayPeople]);
 
   const unassignOne = async (id: string) => {
     await supabase.from("people").update({ lodging_id: null }).eq("id", id);
