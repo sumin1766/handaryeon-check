@@ -76,7 +76,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
 }
 
 function AppLayoutInner({ children }: { children: ReactNode }) {
-  const { season, isEnded } = useActiveSeason();
+  const { season, isEnded, isSuccess, isError, refetch } = useActiveSeason();
+  const { failing, failures } = useBackendKeepalive();
+  const backendDown = failing || (isError && !season);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const router = useRouter();
   const role = useAuthRole();
