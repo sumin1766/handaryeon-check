@@ -568,24 +568,55 @@ function LodgingsPage() {
             </div>
           </Card>
 
-          {nameSearchHits && (
-            <Card className="p-3 space-y-1.5">
-              <div className="text-sm font-semibold">"{search}" 검색 결과 ({nameSearchHits.matches.length})</div>
-              {nameSearchHits.matches.length === 0 && <div className="text-xs text-muted-foreground">해당 이름의 배정된 인원이 없습니다.</div>}
-              <div className="flex flex-wrap gap-1.5">
-                {nameSearchHits.matches.map((p: any) => {
-                  const l = lodgings.find((x: any) => x.id === p.lodging_id);
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => focusRoom(p.lodging_id)}
-                      className="rounded border bg-accent/40 px-2 py-1 text-xs hover:bg-accent"
-                    >
-                      <b>{p.name}</b> → {l?.name ?? "?"} <span className="text-muted-foreground">({churchMap.get(p.church_id)}, {p.gender === "M" ? "남" : "여"})</span>
-                    </button>
-                  );
-                })}
+          {searchHits && (
+            <Card className="p-3 space-y-2">
+              <div className="text-sm font-semibold">
+                "{search}" 검색 결과 — 배정 {searchHits.assigned.length}명 · 미배치 {searchHits.unassigned.length}명 · 방 {searchHits.roomIds.size}곳
               </div>
+              {searchHits.matches.length === 0 && (
+                <div className="text-xs text-muted-foreground">일치하는 인원/교회가 없습니다.</div>
+              )}
+              {searchHits.assigned.length > 0 && (
+                <div>
+                  <div className="text-[11px] font-semibold text-muted-foreground mb-1">배정됨</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {searchHits.assigned.map((p: any) => {
+                      const l = lodgings.find((x: any) => x.id === p.lodging_id);
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => focusRoom(p.lodging_id)}
+                          className="rounded border bg-accent/40 px-2 py-1 text-xs hover:bg-accent"
+                        >
+                          <b>{p.name}</b> → {l?.name ?? "?"}{" "}
+                          <span className="text-muted-foreground">
+                            ({churchMap.get(p.church_id)}, {p.gender === "M" ? "남" : "여"})
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {searchHits.unassigned.length > 0 && (
+                <div>
+                  <div className="text-[11px] font-semibold text-muted-foreground mb-1">미배치</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {searchHits.unassigned.map((p: any) => (
+                      <span
+                        key={p.id}
+                        className="rounded border border-amber-400/60 bg-amber-100/50 dark:bg-amber-900/20 px-2 py-1 text-xs"
+                      >
+                        <b>{p.name}</b>{" "}
+                        <span className="text-amber-800 dark:text-amber-200">미배치</span>{" "}
+                        <span className="text-muted-foreground">
+                          ({churchMap.get(p.church_id)}, {p.gender === "M" ? "남" : "여"})
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </Card>
           )}
 
