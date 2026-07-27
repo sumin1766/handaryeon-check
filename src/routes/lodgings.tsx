@@ -54,7 +54,7 @@ function LodgingsPage() {
   const lodgingsKey = ["lodgings-page", season?.id] as const;
 
 
-  const { data } = useQuery({
+  const { data } = useQuery<any>({
     queryKey: lodgingsKey,
     enabled: !!season?.id,
     queryFn: async () => {
