@@ -258,7 +258,7 @@ function IntakeSheetPage() {
                     {isAdmin && (
                       <td className="px-2 py-1">
                         <div className="flex gap-1 justify-end">
-                          <Link to="/registry" className="inline-flex h-8 w-8 items-center justify-center rounded border hover:bg-muted" title="접수명단에서 수정">
+                          <Link to="/registry" search={{ openChurch: c.id }} className="inline-flex h-8 w-8 items-center justify-center rounded border hover:bg-muted" title="접수명단에서 수정">
                             <Pencil className="h-3.5 w-3.5" />
                           </Link>
                           <button
