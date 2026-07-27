@@ -33,6 +33,8 @@ export const Route = createFileRoute("/registry")({
   head: () => ({ meta: [{ title: "접수 명단 — 한다련 캠프" }] }),
   validateSearch: (s: Record<string, unknown>) => ({
     openChurch: typeof s.openChurch === "string" ? s.openChurch : undefined,
+    from: s.from === "onsite" || s.from === "intake-sheet" ? s.from : undefined,
+    row: typeof s.row === "string" ? s.row : undefined,
   }),
   component: RegistryPage,
 });
