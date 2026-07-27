@@ -160,11 +160,11 @@ function BathPage() {
 
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[760px] table-fixed text-sm">
               <thead className="bg-muted/50 text-xs uppercase">
                 <tr>
-                  <th className="text-left px-2 py-2">이름</th>
-                  <th className="text-right px-2 py-2 w-16">매수</th>
+                  <th className="text-left px-2 py-2 w-24">이름</th>
+                  <th className="text-right px-2 py-2 w-24">매수</th>
                   <th className="text-center px-2 py-2 w-14">입금</th>
                   <th className="text-left px-2 py-2 w-28">송금시간</th>
                   <th className="text-center px-2 py-2 w-14">현금</th>
@@ -177,8 +177,8 @@ function BathPage() {
               <tbody>
                 {rows.map((r: any) => (
                   <tr key={r.id} className="border-t">
-                    <td className="px-2 py-1"><Input defaultValue={r.name} onBlur={(e) => update.mutate({ ...r, name: e.target.value })} className="h-8" /></td>
-                    <td className="px-2 py-1"><Input type="number" defaultValue={r.qty} onBlur={(e) => update.mutate({ ...r, qty: parseInt(e.target.value) || 0 })} className="h-8 text-right tabular-nums" /></td>
+                    <td className="px-2 py-1"><Input defaultValue={r.name} onBlur={(e) => update.mutate({ ...r, name: e.target.value })} className="h-8 w-full" /></td>
+                    <td className="px-2 py-1"><Input type="number" defaultValue={r.qty} onBlur={(e) => update.mutate({ ...r, qty: parseInt(e.target.value) || 0 })} className="h-8 w-full text-right tabular-nums" /></td>
                     <td className="text-center">
                       <Checkbox checked={r.paid_transfer} onCheckedChange={(v) => update.mutate({ ...r, paid_transfer: !!v, transfer_at: v ? new Date().toISOString() : null })} />
                     </td>
@@ -191,7 +191,7 @@ function BathPage() {
                       <select
                         defaultValue={(BATH_WEEKDAYS as readonly string[]).includes(r.weekday) ? r.weekday : pickBathWeekday(new Date(r.created_at))}
                         onChange={(e) => update.mutate({ ...r, weekday: e.target.value })}
-                        className="h-8 rounded border bg-background px-1 text-xs"
+                        className="h-8 w-full rounded border bg-background px-1 text-xs"
                       >
                         {BATH_WEEKDAYS.map((w) => <option key={w} value={w}>{w}</option>)}
                       </select>
