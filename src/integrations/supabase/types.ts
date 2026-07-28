@@ -450,6 +450,33 @@ export type Database = {
         }
         Relationships: []
       }
+      segue_merge_log: {
+        Row: {
+          from_church_id: string
+          id: string
+          moved_at: string
+          person_id: string
+          season_id: string
+          to_church_id: string
+        }
+        Insert: {
+          from_church_id: string
+          id?: string
+          moved_at?: string
+          person_id: string
+          season_id: string
+          to_church_id: string
+        }
+        Update: {
+          from_church_id?: string
+          id?: string
+          moved_at?: string
+          person_id?: string
+          season_id?: string
+          to_church_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

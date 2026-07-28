@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SegueMergeRouteImport } from './routes/segue-merge'
 import { Route as RostersRouteImport } from './routes/rosters'
 import { Route as RegistryRouteImport } from './routes/registry'
 import { Route as ReceiptRouteImport } from './routes/receipt'
@@ -25,6 +26,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SegueMergeRoute = SegueMergeRouteImport.update({
+  id: '/segue-merge',
+  path: '/segue-merge',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RostersRoute = RostersRouteImport.update({
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/receipt': typeof ReceiptRoute
   '/registry': typeof RegistryRoute
   '/rosters': typeof RostersRoute
+  '/segue-merge': typeof SegueMergeRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesByTo {
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/receipt': typeof ReceiptRoute
   '/registry': typeof RegistryRoute
   '/rosters': typeof RostersRoute
+  '/segue-merge': typeof SegueMergeRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesById {
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/receipt': typeof ReceiptRoute
   '/registry': typeof RegistryRoute
   '/rosters': typeof RostersRoute
+  '/segue-merge': typeof SegueMergeRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/receipt'
     | '/registry'
     | '/rosters'
+    | '/segue-merge'
     | '/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/receipt'
     | '/registry'
     | '/rosters'
+    | '/segue-merge'
     | '/settings'
   id:
     | '__root__'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '/receipt'
     | '/registry'
     | '/rosters'
+    | '/segue-merge'
     | '/settings'
   fileRoutesById: FileRoutesById
 }
@@ -183,6 +195,7 @@ export interface RootRouteChildren {
   ReceiptRoute: typeof ReceiptRoute
   RegistryRoute: typeof RegistryRoute
   RostersRoute: typeof RostersRoute
+  SegueMergeRoute: typeof SegueMergeRoute
   SettingsRoute: typeof SettingsRoute
 }
 
@@ -193,6 +206,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/segue-merge': {
+      id: '/segue-merge'
+      path: '/segue-merge'
+      fullPath: '/segue-merge'
+      preLoaderRoute: typeof SegueMergeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rosters': {
@@ -287,6 +307,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReceiptRoute: ReceiptRoute,
   RegistryRoute: RegistryRoute,
   RostersRoute: RostersRoute,
+  SegueMergeRoute: SegueMergeRoute,
   SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport

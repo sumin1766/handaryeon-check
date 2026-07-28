@@ -20,7 +20,8 @@ import {
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { useAuthRole } from "@/lib/use-auth-role";
 import { num, formatKst } from "@/lib/format";
-import { Plus, Trash2, Pencil, X, Save, Search } from "lucide-react";
+import { Plus, Trash2, Pencil, X, Save, Search, Merge } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { findDuplicateGroups, type DuplicateGroup } from "@/lib/duplicate-check";
@@ -223,6 +224,13 @@ function RegistryPage() {
                 </>
               )}
             </Button>
+            <Link
+              to="/segue-merge"
+              className="inline-flex h-8 items-center gap-1 rounded-md border border-primary/40 bg-primary/5 px-3 text-xs font-semibold text-primary hover:bg-primary/10 whitespace-nowrap"
+              title="세계로 관련 교회들에 흩어진 인원을 통합 세계로교회 레코드로 취합"
+            >
+              <Merge className="h-3.5 w-3.5" />세계로교회 취합
+            </Link>
             {trimmed && (
               <button onClick={() => setSearch("")} className="text-xs text-muted-foreground hover:text-foreground">초기화</button>
             )}
