@@ -713,22 +713,41 @@ function OnsitePage() {
             const searchDigits = digitsOnly(trimmed);
             const isDigit = trimmed.length > 0 && searchDigits.length > 0 && /^[\d\s-]+$/.test(trimmed);
             const filtered = churches.filter((c: any) => {
+              if (segueOnly && !c.name?.includes("세계로")) return false;
               if (!trimmed) return true;
               if (c.name?.includes(trimmed)) return true;
               if (c.contact_name?.includes(trimmed)) return true;
               if (isDigit && c.phone && digitsOnly(c.phone).includes(searchDigits)) return true;
               return false;
             });
+            const sorted = [...filtered].sort((a: any, b: any) => {
+              if (sortMode === "default") {
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+              }
+              const ta = latestByChurch.get(a.id) ?? "";
+              const tb = latestByChurch.get(b.id) ?? "";
+              return sortMode === "latest" ? tb.localeCompare(ta) : ta.localeCompare(tb);
+            });
             if (churches.length === 0) {
               return <div className="px-4 py-10 text-center text-sm text-muted-foreground">현장접수 내역이 없습니다.</div>;
             }
             return (
               <>
-                {trimmed && (
-                  <div className="px-4 py-2 text-xs text-muted-foreground border-b bg-muted/20">
-                    검색 결과 <b className="text-foreground">{filtered.length}</b>교회
-                    {isDigit && <span className="ml-1">· 전화번호는 숫자만 비교</span>}
-                    <button onClick={() => setListSearch("")} className="ml-2 underline hover:text-foreground">초기화</button>
+                {(trimmed || segueOnly || sortMode !== "default") && (
+                  <div className="px-4 py-2 text-xs text-muted-foreground border-b bg-muted/20 flex flex-wrap items-center gap-2">
+                    <span>
+                      검색 결과 <b className="text-foreground">{sorted.length}</b>교회
+                    </span>
+                    {isDigit && <span>· 전화번호는 숫자만 비교</span>}
+                    {(segueOnly || sortMode !== "default") && (
+                      <span className="text-[11px]">
+                        {segueOnly && "세계로교회만"}
+                        {segueOnly && sortMode !== "default" && " · "}
+                        {sortMode === "latest" && "최신 등록 순"}
+                        {sortMode === "oldest" && "오래된 등록 순"}
+                      </span>
+                    )}
+                    <button onClick={() => { setListSearch(""); setSegueOnly(false); setSortMode("default"); }} className="ml-auto underline hover:text-foreground">초기화</button>
                   </div>
                 )}
                 <table className="w-full text-sm">
@@ -744,7 +763,7 @@ function OnsitePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((c: any) => {
+                    {sorted.map((c: any) => {
                       const ps = peopleAll.filter((p: any) => p.church_id === c.id);
                       const lo = ps.filter((p: any) => p.lodging).length;
                       const no = ps.length - lo;
@@ -785,7 +804,7 @@ function OnsitePage() {
                         </tr>
                       );
                     })}
-                    {filtered.length === 0 && (
+                    {sorted.length === 0 && (
                       <tr><td colSpan={canManage ? 7 : 6} className="text-center py-10 text-sm text-muted-foreground">검색 결과가 없습니다.</td></tr>
                     )}
                   </tbody>
