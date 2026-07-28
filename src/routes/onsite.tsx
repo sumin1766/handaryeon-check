@@ -767,7 +767,6 @@ function OnsitePage() {
           })()}
 
           {(() => {
-          {(() => {
             const churches = list.data?.churches ?? [];
             const peopleAll = list.data?.people ?? [];
             const payments = list.data?.payments ?? [];
