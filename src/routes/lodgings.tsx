@@ -789,6 +789,7 @@ function LodgingsPage() {
                             key={l.id}
                             ref={(el) => { if (el) roomRefs.current.set(l.id, el); else roomRefs.current.delete(l.id); }}
                             onClick={() => {
+                              if (orderEditMode) return;
                               if (pickMode) {
                                 if (!canPick) return;
                                 performAssign(pickMode, l);
@@ -798,9 +799,10 @@ function LodgingsPage() {
                                 setSelected(l.id);
                               }
                             }}
-                            onDragOver={(e) => { e.preventDefault(); setDragOver(l.id); }}
-                            onDragLeave={() => setDragOver((d) => (d === l.id ? null : d))}
+                            onDragOver={(e) => { if (orderEditMode) return; e.preventDefault(); setDragOver(l.id); }}
+                            onDragLeave={() => { if (orderEditMode) return; setDragOver((d) => (d === l.id ? null : d)); }}
                             onDrop={(e) => {
+                              if (orderEditMode) return;
                               e.preventDefault();
                               setDragOver(null);
                               try {
@@ -815,8 +817,30 @@ function LodgingsPage() {
                               } catch { /* ignore */ }
                             }}
 
-                            className={`group rounded-md border-2 p-3 text-left transition hover:shadow-md ${cls} ${!l.active ? "opacity-40" : ""} ${isDragOver ? "ring-2 ring-primary" : ""} ${blink} ${highlight} ${dim ? "opacity-40" : ""}`}
+                            className={`group relative rounded-md border-2 p-3 text-left transition hover:shadow-md ${cls} ${!l.active ? "opacity-40" : ""} ${isDragOver ? "ring-2 ring-primary" : ""} ${blink} ${highlight} ${dim ? "opacity-40" : ""} ${orderEditMode ? "ring-2 ring-primary/40 cursor-default" : ""}`}
                           >
+                            {orderEditMode && (
+                              <div className="absolute top-1 right-1 flex gap-0.5 z-10">
+                                <span
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={(e) => { e.stopPropagation(); moveDraft(l.id, -1); }}
+                                  className="inline-flex items-center justify-center h-6 w-6 rounded border bg-background hover:bg-accent"
+                                  aria-label="위로"
+                                >
+                                  <ArrowUp className="h-3.5 w-3.5" />
+                                </span>
+                                <span
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={(e) => { e.stopPropagation(); moveDraft(l.id, 1); }}
+                                  className="inline-flex items-center justify-center h-6 w-6 rounded border bg-background hover:bg-accent"
+                                  aria-label="아래로"
+                                >
+                                  <ArrowDown className="h-3.5 w-3.5" />
+                                </span>
+                              </div>
+                            )}
                             <div className="flex items-center justify-between">
                               <div className="font-semibold text-sm truncate">{l.name}</div>
                               <GenderBadge gender={l.gender} />
