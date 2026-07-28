@@ -11,10 +11,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetch-all";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { num, formatKst, kstDateOf, weekdayOfDate, eachKstDateBetween, shortDate } from "@/lib/format";
+import { num, krw, formatKst, kstDateOf, weekdayOfDate, eachKstDateBetween, shortDate } from "@/lib/format";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { useAuthRole } from "@/lib/use-auth-role";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Pencil, Trash2 } from "lucide-react";
+
+const ADULT_UNIT = 10000;
+const DEFAULT_UNIT = 20000;
 
 export const Route = createFileRoute("/onsite")({
   head: () => ({ meta: [{ title: "현장접수 — 한다련 캠프" }] }),
