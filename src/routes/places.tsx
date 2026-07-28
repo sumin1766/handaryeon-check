@@ -11,9 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Badge } from "@/components/ui/badge";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Building2, MapPin, Search, X } from "lucide-react";
+import { Building2, MapPin, Search, X, Copy, Check, Download } from "lucide-react";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { cn } from "@/lib/utils";
+import { downloadRowsAsXlsx } from "@/lib/export-xlsx";
 
 export const Route = createFileRoute("/places")({
   head: () => ({ meta: [{ title: "장소배치 — 한다련 캠프" }] }),
