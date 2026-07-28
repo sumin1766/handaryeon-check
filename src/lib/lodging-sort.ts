@@ -1,6 +1,6 @@
 // 숙소 정렬 헬퍼.
-// - manual=false: 층 숫자 → 방번호 숫자 → 이름 순으로 자동 정렬. 숫자 없는 값은 뒤로.
-// - manual=true: sort_order 우선.
+// - manual=false: 건물(교육관→본당→기타→기타 알파벳) → 층 숫자 → 방번호 숫자 → 이름.
+// - manual=true : sort_order 우선.
 export type LodgingLike = {
   id: string;
   name: string;
@@ -10,11 +10,18 @@ export type LodgingLike = {
 };
 
 const INF = Number.POSITIVE_INFINITY;
+const BUILDING_ORDER = ["교육관", "본당", "기타"];
 
 export function extractNum(s: string | null | undefined): number {
   if (s == null) return INF;
   const m = String(s).match(/-?\d+/);
   return m ? parseInt(m[0], 10) : INF;
+}
+
+function buildingRank(b: string | null | undefined): number {
+  const key = b ?? "기타";
+  const i = BUILDING_ORDER.indexOf(key);
+  return i === -1 ? 999 : i;
 }
 
 export function sortLodgings<T extends LodgingLike>(list: T[], manual: boolean): T[] {
@@ -24,6 +31,13 @@ export function sortLodgings<T extends LodgingLike>(list: T[], manual: boolean):
     return arr;
   }
   arr.sort((a, b) => {
+    const ba = buildingRank(a.building);
+    const bb = buildingRank(b.building);
+    if (ba !== bb) return ba - bb;
+    if (ba === 999) {
+      const cmp = String(a.building ?? "").localeCompare(String(b.building ?? ""), "ko");
+      if (cmp !== 0) return cmp;
+    }
     const fa = extractNum(a.floor);
     const fb = extractNum(b.floor);
     if (fa !== fb) return fa - fb;
