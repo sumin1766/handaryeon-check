@@ -767,8 +767,22 @@ function OnsitePage() {
           })()}
 
           {(() => {
+          {(() => {
             const churches = list.data?.churches ?? [];
             const peopleAll = list.data?.people ?? [];
+            const payments = list.data?.payments ?? [];
+            const paymentByChurch = new Map<string, any>();
+            for (const p of payments) paymentByChurch.set(p.church_id, p);
+            const adultChurchId = segueAdultChurch.data?.id ?? null;
+            const feeOf = (churchId: string) => {
+              const ps = peopleAll.filter((p: any) => p.church_id === churchId);
+              let sum = 0;
+              for (const p of ps) {
+                const isAdultSegue = adultChurchId && p.church_id === adultChurchId && p.age_group === "adult";
+                sum += isAdultSegue ? ADULT_UNIT : DEFAULT_UNIT;
+              }
+              return sum;
+            };
             const latestByChurch = new Map<string, string | null>();
             for (const p of peopleAll) {
               const cur = latestByChurch.get(p.church_id);
@@ -799,6 +813,7 @@ function OnsitePage() {
             if (churches.length === 0) {
               return <div className="px-4 py-10 text-center text-sm text-muted-foreground">현장접수 내역이 없습니다.</div>;
             }
+            const colCount = canManage ? 11 : 10;
             return (
               <>
                 {(trimmed || segueOnly || sortMode !== "default") && (
@@ -818,16 +833,21 @@ function OnsitePage() {
                     <button onClick={() => { setListSearch(""); setSegueOnly(false); setSortMode("default"); }} className="ml-auto underline hover:text-foreground">초기화</button>
                   </div>
                 )}
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto">
+                <table className="w-full min-w-[1100px] text-sm">
                   <thead className="bg-muted/30 text-xs">
                     <tr>
                       <th className="text-left px-3 py-2">교회</th>
                       <th className="text-left px-3 py-2">담당자 / 연락처</th>
-                      <th className="text-left px-3 py-2 w-44">등록시각</th>
-                      <th className="text-right px-3 py-2">숙박</th>
-                      <th className="text-right px-3 py-2">비숙박</th>
-                      <th className="text-right px-3 py-2 bg-primary/5">총인원</th>
-                      {canManage && <th className="px-2 py-2 w-28"></th>}
+                      <th className="text-left px-3 py-2 w-40">등록시각</th>
+                      <th className="text-right px-2 py-2">숙박</th>
+                      <th className="text-right px-2 py-2">비숙박</th>
+                      <th className="text-right px-2 py-2 bg-primary/5">총인원</th>
+                      <th className="text-right px-2 py-2 w-24">예상회비</th>
+                      <th className="text-right px-2 py-2 w-28">실입금</th>
+                      <th className="text-center px-2 py-2 w-32">입금 / 송금시각</th>
+                      <th className="text-center px-2 py-2 w-32">현금 / 납부시각</th>
+                      {canManage && <th className="px-2 py-2 w-24"></th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -835,6 +855,19 @@ function OnsitePage() {
                       const ps = peopleAll.filter((p: any) => p.church_id === c.id);
                       const lo = ps.filter((p: any) => p.lodging).length;
                       const no = ps.length - lo;
+                      const expected = feeOf(c.id);
+                      const pay = paymentByChurch.get(c.id);
+                      const amount = pay?.amount ?? 0;
+                      const matched = amount === expected && expected > 0;
+                      const shortage = amount > 0 && amount < expected;
+                      const overpaid = amount > expected && expected > 0;
+                      const amountClass = matched
+                        ? "text-emerald-600 dark:text-emerald-400 font-semibold"
+                        : shortage
+                          ? "text-amber-600 dark:text-amber-400 font-semibold"
+                          : overpaid
+                            ? "text-sky-600 dark:text-sky-400 font-semibold"
+                            : "";
                       return (
                         <tr key={c.id} className="border-t">
                           <td className="px-3 py-2 font-medium">
@@ -848,9 +881,51 @@ function OnsitePage() {
                           <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums">
                             {formatKst(latestByChurch.get(c.id) ?? null)}
                           </td>
-                          <td className="text-right px-3 py-2 tabular-nums">{lo}</td>
-                          <td className="text-right px-3 py-2 tabular-nums">{no}</td>
-                          <td className="text-right px-3 py-2 font-semibold tabular-nums bg-primary/5">{ps.length}</td>
+                          <td className="text-right px-2 py-2 tabular-nums">{lo}</td>
+                          <td className="text-right px-2 py-2 tabular-nums">{no}</td>
+                          <td className="text-right px-2 py-2 font-semibold tabular-nums bg-primary/5">{ps.length}</td>
+                          <td className="text-right px-2 py-2 tabular-nums text-xs">{krw(expected)}</td>
+                          <td className="text-right px-2 py-2">
+                            <Input
+                              type="number"
+                              defaultValue={amount || ""}
+                              key={`${c.id}-${amount}`}
+                              onBlur={(e) => {
+                                const v = parseInt(e.target.value) || 0;
+                                if (v !== amount) upsertPayment.mutate({ church_id: c.id, patch: { amount: v } });
+                              }}
+                              className={`h-8 w-full text-right tabular-nums ${amountClass}`}
+                              placeholder="0"
+                            />
+                          </td>
+                          <td className="px-2 py-2">
+                            <div className="flex flex-col items-center gap-1">
+                              <Checkbox
+                                checked={!!pay?.paid_transfer}
+                                onCheckedChange={(v) => upsertPayment.mutate({
+                                  church_id: c.id,
+                                  patch: { paid_transfer: !!v, transfer_at: v ? new Date().toISOString() : null },
+                                })}
+                              />
+                              <span className="text-[10px] text-muted-foreground tabular-nums">
+                                {formatKst(pay?.transfer_at ?? null)}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-2 py-2">
+                            <div className="flex flex-col items-center gap-1">
+                              <Checkbox
+                                checked={!!pay?.paid_cash}
+                                onCheckedChange={(v) => upsertPayment.mutate({
+                                  church_id: c.id,
+                                  patch: { paid_cash: !!v, cash_at: v ? new Date().toISOString() : null },
+                                })}
+                              />
+                              <span className="text-[10px] text-muted-foreground tabular-nums">
+                                {formatKst(pay?.cash_at ?? null)}
+                              </span>
+                            </div>
+                          </td>
                           {canManage && (
                             <td className="px-2 py-2">
                               <div className="flex gap-1 justify-end">
@@ -873,10 +948,11 @@ function OnsitePage() {
                       );
                     })}
                     {sorted.length === 0 && (
-                      <tr><td colSpan={canManage ? 7 : 6} className="text-center py-10 text-sm text-muted-foreground">검색 결과가 없습니다.</td></tr>
+                      <tr><td colSpan={colCount} className="text-center py-10 text-sm text-muted-foreground">검색 결과가 없습니다.</td></tr>
                     )}
                   </tbody>
                 </table>
+                </div>
               </>
             );
           })()}
