@@ -17,6 +17,7 @@ export const DEFAULT_NAV_ORDER: string[] = [
   "/registry",
   "/onsite",
   "/lodgings",
+  "/places",
   "/nametags",
   "/rosters",
   "/bath-coupons",

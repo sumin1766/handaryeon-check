@@ -331,6 +331,33 @@ export type Database = {
           },
         ]
       }
+      places: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          note: string | null
+          purpose: string | null
+          season_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          note?: string | null
+          purpose?: string | null
+          season_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          note?: string | null
+          purpose?: string | null
+          season_id?: string
+        }
+        Relationships: []
+      }
       receipt_layout: {
         Row: {
           id: number

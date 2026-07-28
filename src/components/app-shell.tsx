@@ -40,6 +40,7 @@ const TABS = [
   { to: "/registry", label: "접수 명단", icon: Users, roles: STAFF },
   { to: "/onsite", label: "현장접수", icon: UserPlus, roles: ALL },
   { to: "/lodgings", label: "숙소배치", icon: Building2, roles: STAFF },
+  { to: "/places", label: "장소배치", icon: Building2, roles: STAFF },
   { to: "/nametags", label: "이름표 출력", icon: Tag, roles: STAFF },
   { to: "/rosters", label: "명단 출력", icon: ClipboardList, roles: STAFF },
   { to: "/bath-coupons", label: "목욕쿠폰", icon: Bath, roles: STAFF },
