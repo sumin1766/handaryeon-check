@@ -371,7 +371,33 @@ function LodgingsSection() {
     },
   });
   const manualOrder = !!settingsRow?.lodging_manual_order;
-  const lodgings = useMemo(() => sortLodgings(rawLodgings as any[], manualOrder), [rawLodgings, manualOrder]);
+  const sorted = useMemo(() => sortLodgings(rawLodgings as any[], manualOrder), [rawLodgings, manualOrder]);
+
+  // 순서 편집 모드 (명시적 저장)
+  const [orderEditMode, setOrderEditMode] = useState(false);
+  const [orderDraft, setOrderDraft] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (orderEditMode && !orderDraft) {
+      setOrderDraft(sorted.map((l: any) => l.id));
+    }
+    if (!orderEditMode && orderDraft) {
+      setOrderDraft(null);
+    }
+  }, [orderEditMode, orderDraft, sorted]);
+
+  const lodgings = useMemo(() => {
+    if (orderEditMode && orderDraft) {
+      const map = new Map((rawLodgings as any[]).map((l) => [l.id, l]));
+      const out: any[] = [];
+      for (const id of orderDraft) {
+        const l = map.get(id);
+        if (l) { out.push(l); map.delete(id); }
+      }
+      if (map.size > 0) out.push(...sortLodgings(Array.from(map.values()), false));
+      return out;
+    }
+    return sorted;
+  }, [rawLodgings, sorted, orderEditMode, orderDraft]);
 
   const bulkReorder = useMutation({
     mutationFn: async (orderedIds: string[]) => {
@@ -385,7 +411,9 @@ function LodgingsSection() {
       if (upErr) throw upErr;
     },
     onSuccess: () => {
-      toast.success("숙소 순서 저장됨");
+      toast.success("숙소 순서가 저장되었습니다.");
+      setOrderEditMode(false);
+      setOrderDraft(null);
       qc.invalidateQueries({ queryKey: ["lodgings-settings-full"] });
       qc.invalidateQueries({ queryKey: ["app_settings-lodging-order"] });
       qc.invalidateQueries({ queryKey: ["lodgings-page"] });
@@ -407,20 +435,20 @@ function LodgingsSection() {
     onError: (e: any) => toast.error(e.message ?? "실패"),
   });
 
-  const moveRow = (id: string, dir: -1 | 1) => {
-    const ids = lodgings.map((l: any) => l.id);
-    const idx = ids.indexOf(id);
-    const target = idx + dir;
-    if (idx === -1 || target < 0 || target >= ids.length) return;
-    const cur = lodgings[idx] as any;
-    const other = lodgings[target] as any;
-    if ((cur.building ?? "기타") !== (other.building ?? "기타") || (cur.floor ?? "-") !== (other.floor ?? "-")) {
-      toast.info("같은 층 내에서만 순서를 조정할 수 있습니다.");
-      return;
-    }
-    [ids[idx], ids[target]] = [ids[target], ids[idx]];
-    bulkReorder.mutate(ids);
+  const moveDraft = (id: string, dir: -1 | 1) => {
+    setOrderDraft((prev) => {
+      if (!prev) return prev;
+      const idx = prev.indexOf(id);
+      if (idx === -1) return prev;
+      const target = idx + dir;
+      if (target < 0 || target >= prev.length) return prev;
+      // 층/건물 경계 없이 전체 리스트에서 자유 스왑
+      const next = [...prev];
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next;
+    });
   };
+
   const { data: assignedMap = {} } = useQuery({
     queryKey: ["lodgings-assigned-count", season?.id],
     enabled: !!season?.id,
