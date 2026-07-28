@@ -77,6 +77,8 @@ function OnsitePage() {
   const [adultName, setAdultName] = useState("");
   const [adultGender, setAdultGender] = useState<"M" | "F">("M");
   const [listSearch, setListSearch] = useState("");
+  const [segueOnly, setSegueOnly] = useState(false);
+  const [sortMode, setSortMode] = useState<"default" | "latest" | "oldest">("default");
 
   useRealtimeInvalidate(
     ["churches", "people", "lodgings"],
