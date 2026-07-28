@@ -77,6 +77,8 @@ function OnsitePage() {
   const [adultName, setAdultName] = useState("");
   const [adultGender, setAdultGender] = useState<"M" | "F">("M");
   const [listSearch, setListSearch] = useState("");
+  const [segueOnly, setSegueOnly] = useState(false);
+  const [sortMode, setSortMode] = useState<"default" | "latest" | "oldest">("default");
 
   useRealtimeInvalidate(
     ["churches", "people", "lodgings"],
@@ -651,21 +653,54 @@ function OnsitePage() {
             }
             return (
               <>
-                <div className="bg-muted/40 px-4 py-3 border-b flex items-center justify-between gap-3 flex-wrap">
-                  <div>
-                    <h2 className="text-sm font-semibold">
-                      현장접수 등록 명단 ({list.data?.churches.length ?? 0}교회 · {totalPeople}명)
-                    </h2>
-                    <p className="text-xs text-muted-foreground">
-                      숙박 {totalLodging}명 · 비숙박 {totalPeople - totalLodging}명 · 상세 수정은 "접수 명단" 페이지에서 가능합니다.
-                    </p>
+                <div className="bg-muted/40 px-4 py-3 border-b flex flex-col gap-3">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                      <h2 className="text-sm font-semibold">
+                        현장접수 등록 명단 ({list.data?.churches.length ?? 0}교회 · {totalPeople}명)
+                      </h2>
+                      <p className="text-xs text-muted-foreground">
+                        숙박 {totalLodging}명 · 비숙박 {totalPeople - totalLodging}명 · 상세 수정은 "접수 명단" 페이지에서 가능합니다.
+                      </p>
+                    </div>
+                    <Input
+                      value={listSearch}
+                      onChange={(e) => setListSearch(e.target.value)}
+                      placeholder="교회명 / 담당자 / 전화번호"
+                      className="h-8 w-full sm:w-64 text-sm"
+                    />
                   </div>
-                  <Input
-                    value={listSearch}
-                    onChange={(e) => setListSearch(e.target.value)}
-                    placeholder="교회명 / 담당자 / 전화번호"
-                    className="h-8 w-full sm:w-64 text-sm"
-                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="inline-flex items-center gap-1.5 rounded border px-2 py-1 text-xs cursor-pointer hover:bg-muted/40 transition">
+                      <input
+                        type="checkbox"
+                        checked={segueOnly}
+                        onChange={(e) => setSegueOnly(e.target.checked)}
+                        className="h-3.5 w-3.5 accent-primary"
+                      />
+                      세계로교회만 보기
+                    </label>
+                    <div className="flex items-center gap-1">
+                      {[
+                        { key: "default", label: "기본순" },
+                        { key: "latest", label: "최신 등록 순" },
+                        { key: "oldest", label: "오래된 등록 순" },
+                      ].map((opt) => (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => setSortMode(opt.key as typeof sortMode)}
+                          className={`rounded border px-2 py-1 text-xs transition ${
+                            sortMode === opt.key
+                              ? "border-primary bg-primary/10 text-foreground font-semibold"
+                              : "hover:bg-muted/40"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <div className="px-4 py-2 border-b bg-background/50 flex flex-wrap gap-1.5">
                   {seasonDates.length === 0 ? (
@@ -711,22 +746,41 @@ function OnsitePage() {
             const searchDigits = digitsOnly(trimmed);
             const isDigit = trimmed.length > 0 && searchDigits.length > 0 && /^[\d\s-]+$/.test(trimmed);
             const filtered = churches.filter((c: any) => {
+              if (segueOnly && !c.name?.includes("세계로")) return false;
               if (!trimmed) return true;
               if (c.name?.includes(trimmed)) return true;
               if (c.contact_name?.includes(trimmed)) return true;
               if (isDigit && c.phone && digitsOnly(c.phone).includes(searchDigits)) return true;
               return false;
             });
+            const sorted = [...filtered].sort((a: any, b: any) => {
+              if (sortMode === "default") {
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+              }
+              const ta = latestByChurch.get(a.id) ?? "";
+              const tb = latestByChurch.get(b.id) ?? "";
+              return sortMode === "latest" ? tb.localeCompare(ta) : ta.localeCompare(tb);
+            });
             if (churches.length === 0) {
               return <div className="px-4 py-10 text-center text-sm text-muted-foreground">현장접수 내역이 없습니다.</div>;
             }
             return (
               <>
-                {trimmed && (
-                  <div className="px-4 py-2 text-xs text-muted-foreground border-b bg-muted/20">
-                    검색 결과 <b className="text-foreground">{filtered.length}</b>교회
-                    {isDigit && <span className="ml-1">· 전화번호는 숫자만 비교</span>}
-                    <button onClick={() => setListSearch("")} className="ml-2 underline hover:text-foreground">초기화</button>
+                {(trimmed || segueOnly || sortMode !== "default") && (
+                  <div className="px-4 py-2 text-xs text-muted-foreground border-b bg-muted/20 flex flex-wrap items-center gap-2">
+                    <span>
+                      검색 결과 <b className="text-foreground">{sorted.length}</b>교회
+                    </span>
+                    {isDigit && <span>· 전화번호는 숫자만 비교</span>}
+                    {(segueOnly || sortMode !== "default") && (
+                      <span className="text-[11px]">
+                        {segueOnly && "세계로교회만"}
+                        {segueOnly && sortMode !== "default" && " · "}
+                        {sortMode === "latest" && "최신 등록 순"}
+                        {sortMode === "oldest" && "오래된 등록 순"}
+                      </span>
+                    )}
+                    <button onClick={() => { setListSearch(""); setSegueOnly(false); setSortMode("default"); }} className="ml-auto underline hover:text-foreground">초기화</button>
                   </div>
                 )}
                 <table className="w-full text-sm">
@@ -742,7 +796,7 @@ function OnsitePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((c: any) => {
+                    {sorted.map((c: any) => {
                       const ps = peopleAll.filter((p: any) => p.church_id === c.id);
                       const lo = ps.filter((p: any) => p.lodging).length;
                       const no = ps.length - lo;
@@ -783,7 +837,7 @@ function OnsitePage() {
                         </tr>
                       );
                     })}
-                    {filtered.length === 0 && (
+                    {sorted.length === 0 && (
                       <tr><td colSpan={canManage ? 7 : 6} className="text-center py-10 text-sm text-muted-foreground">검색 결과가 없습니다.</td></tr>
                     )}
                   </tbody>
