@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const PAGE = 1000;
 
-type Table = "people" | "churches" | "lodgings" | "bath_coupons" | "duplicate_dismissals";
+type Table = "people" | "churches" | "lodgings" | "bath_coupons" | "duplicate_dismissals" | "places";
 
 export async function fetchAll<T = any>(
   table: Table,
