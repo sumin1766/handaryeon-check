@@ -861,124 +861,31 @@ function LodgingsPage() {
             </Card>
           )}
 
-          {Object.entries(groups).map(([building, floors]) => (
-            <section key={building}>
-              <h2 className="text-base font-semibold mb-2">{building}</h2>
-              <div className="space-y-3">
-                {Object.entries(floors).map(([floor, items]) => (
-                  <div key={floor}>
-                    <div className="text-xs font-semibold text-muted-foreground mb-1.5">{floor}</div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-                      {items.map((l: any) => {
-                        const ps = peopleByLodging.get(l.id) ?? [];
-                        const pctRaw = l.capacity ? (ps.length / l.capacity) * 100 : 0;
-                        const pct = Math.min(100, pctRaw);
-                        const over = l.capacity > 0 && ps.length > l.capacity;
-                        const overBy = over ? ps.length - l.capacity : 0;
-                        const cls = l.gender === "M" ? "lodging-male" : l.gender === "F" ? "lodging-female" : "lodging-none";
-                        const isDragOver = dragOver === l.id;
-                        const canPick = pickMode && (l.capacity ?? 0) - ps.length > 0;
-                        const blink = pickMode ? canPick ? "lodging-blink" : "" : "";
-                        const dim =
-                          (nameSearchHits && !nameSearchHits.roomIds.has(l.id)) ||
-                          (pickMode && !canPick);
-                        const highlight =
-                          highlightId === l.id ||
-                          (nameSearchHits && nameSearchHits.roomIds.has(l.id))
-                            ? "lodging-highlight"
-                            : "";
-                        return (
-                          <button
-                            key={l.id}
-                            ref={(el) => { if (el) roomRefs.current.set(l.id, el); else roomRefs.current.delete(l.id); }}
-                            onClick={() => {
-                              if (orderEditMode) return;
-                              if (pickMode) {
-                                if (!canPick) return;
-                                performAssign(pickMode, l);
-                                setPickMode(null);
-                                setFlipped(null);
-                              } else {
-                                setSelected(l.id);
-                              }
-                            }}
-                            onDragOver={(e) => { if (orderEditMode) return; e.preventDefault(); setDragOver(l.id); }}
-                            onDragLeave={() => { if (orderEditMode) return; setDragOver((d) => (d === l.id ? null : d)); }}
-                            onDrop={(e) => {
-                              if (orderEditMode) return;
-                              e.preventDefault();
-                              setDragOver(null);
-                              try {
-                                const raw = e.dataTransfer.getData("application/json");
-                                if (!raw) return;
-                                const parsed = JSON.parse(raw) as DragPayload | MultiDragPayload;
-                                if ((parsed as MultiDragPayload).multi) {
-                                  performAssignMulti((parsed as MultiDragPayload).items, l);
-                                } else {
-                                  performAssign(parsed as DragPayload, l);
-                                }
-                              } catch { /* ignore */ }
-                            }}
-
-                            className={`group relative rounded-md border-2 p-3 text-left transition hover:shadow-md ${cls} ${!l.active ? "opacity-40" : ""} ${isDragOver ? "ring-2 ring-primary" : ""} ${blink} ${highlight} ${dim ? "opacity-40" : ""} ${orderEditMode ? "ring-2 ring-primary/40 cursor-default" : ""}`}
-                          >
-                            {orderEditMode && (
-                              <div className="absolute top-1 right-1 flex gap-0.5 z-10">
-                                <span
-                                  role="button"
-                                  tabIndex={0}
-                                  onClick={(e) => { e.stopPropagation(); moveDraft(l.id, -1); }}
-                                  className="inline-flex items-center justify-center h-6 w-6 rounded border bg-background hover:bg-accent"
-                                  aria-label="위로"
-                                >
-                                  <ArrowUp className="h-3.5 w-3.5" />
-                                </span>
-                                <span
-                                  role="button"
-                                  tabIndex={0}
-                                  onClick={(e) => { e.stopPropagation(); moveDraft(l.id, 1); }}
-                                  className="inline-flex items-center justify-center h-6 w-6 rounded border bg-background hover:bg-accent"
-                                  aria-label="아래로"
-                                >
-                                  <ArrowDown className="h-3.5 w-3.5" />
-                                </span>
-                              </div>
-                            )}
-                            <div className="flex items-center justify-between">
-                              <div className="font-semibold text-sm truncate">{l.name}</div>
-                              <GenderBadge gender={l.gender} />
-                            </div>
-                            <div className="mt-1 flex items-baseline gap-1 tabular-nums">
-                              <span className={`text-lg font-bold ${over ? "text-destructive" : ""}`}>{ps.length}</span>
-                              <span className="text-xs text-muted-foreground">/ {l.capacity}</span>
-                              {l.capacity > 0 ? (
-                                <span className={`text-xs font-semibold ${over ? "text-destructive" : pctRaw >= 100 ? "text-emerald-600" : "text-foreground"}`}>
-                                  {pctRaw.toFixed(1)}%
-                                </span>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">-</span>
-                              )}
-                            </div>
-                            <div className="mt-1 h-1.5 w-full overflow-hidden rounded bg-background/60">
-                              <div className={`h-full ${over ? "bg-destructive" : "bg-primary"}`} style={{ width: `${pct}%` }} />
-                            </div>
-                            <div className="mt-1 text-[10px] text-muted-foreground">
-                              {over ? (
-                                <span className="text-destructive font-semibold">초과 {overBy}명</span>
-                              ) : (
-                                <>남은 {Math.max(0, l.capacity - ps.length)}</>
-                              )}
-                              {l.note && <span className="ml-1">· {l.note}</span>}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+          {orderEditMode ? (
+            <section>
+              <h2 className="text-base font-semibold mb-2">전체 숙소 순서 편집 ({lodgings.length}개) — 층/건물 경계 없이 자유롭게 이동</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                {lodgings.map((l: any) => renderRoom(l))}
               </div>
             </section>
-          ))}
+          ) : (
+            Object.entries(groups).map(([building, floors]) => (
+              <section key={building}>
+                <h2 className="text-base font-semibold mb-2">{building}</h2>
+                <div className="space-y-3">
+                  {Object.entries(floors).map(([floor, items]) => (
+                    <div key={floor}>
+                      <div className="text-xs font-semibold text-muted-foreground mb-1.5">{floor}</div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                        {items.map((l: any) => renderRoom(l))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ))
+          )}
+
         </div>
 
         {/* RIGHT 30% — Unassigned panel */}
