@@ -982,18 +982,22 @@ function OnsitePage() {
                           </td>
                           {canManage && (
                             <td className="px-2 py-2">
-                              <div className="flex gap-1 justify-end">
-                                <Link to="/registry" search={{ openChurch: c.id, from: "onsite" }} className="inline-flex h-7 px-2 items-center rounded border text-xs hover:bg-muted">
-                                  <Pencil className="h-3 w-3 mr-1" />수정
+                              <div className="flex gap-1.5 justify-end items-center">
+                                <Link
+                                  to="/registry"
+                                  search={{ openChurch: c.id, from: "onsite" }}
+                                  className="inline-flex h-8 px-3 items-center rounded border text-xs whitespace-nowrap hover:bg-muted"
+                                >
+                                  <Pencil className="h-3.5 w-3.5 mr-1" />수정
                                 </Link>
                                 <button
                                   type="button"
                                   onClick={() => {
                                     if (confirm(`'${c.name}' 현장접수를 삭제하시겠습니까?`)) remove.mutate(c.id);
                                   }}
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded border text-destructive hover:bg-destructive/10"
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded border text-destructive hover:bg-destructive/10"
                                 >
-                                  <Trash2 className="h-3 w-3" />
+                                  <Trash2 className="h-3.5 w-3.5" />
                                 </button>
                               </div>
                             </td>
