@@ -350,7 +350,7 @@ function LodgingsSection() {
   const { season } = useActiveSeason();
   const qc = useQueryClient();
   useRealtimeInvalidate(["lodgings", "people"], [["lodgings-settings"], ["lodgings-settings-full"]]);
-  const { data: lodgings = [] } = useQuery({
+  const { data: rawLodgings = [] } = useQuery({
     queryKey: ["lodgings-settings-full", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
@@ -358,6 +358,68 @@ function LodgingsSection() {
       return data ?? [];
     },
   });
+  const { data: settingsRow } = useQuery({
+    queryKey: ["app_settings-lodging-order", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data } = await (supabase.from as any)("app_settings")
+        .select("season_id, lodging_manual_order")
+        .eq("season_id", season!.id)
+        .maybeSingle();
+      return data as { season_id: string; lodging_manual_order: boolean } | null;
+    },
+  });
+  const manualOrder = !!settingsRow?.lodging_manual_order;
+  const lodgings = useMemo(() => sortLodgings(rawLodgings as any[], manualOrder), [rawLodgings, manualOrder]);
+
+  const bulkReorder = useMutation({
+    mutationFn: async (orderedIds: string[]) => {
+      if (!season) return;
+      for (let i = 0; i < orderedIds.length; i++) {
+        const { error } = await supabase.from("lodgings").update({ sort_order: i + 1 }).eq("id", orderedIds[i]);
+        if (error) throw error;
+      }
+      const { error: upErr } = await (supabase.from as any)("app_settings")
+        .upsert({ season_id: season.id, lodging_manual_order: true }, { onConflict: "season_id" });
+      if (upErr) throw upErr;
+    },
+    onSuccess: () => {
+      toast.success("숙소 순서 저장됨");
+      qc.invalidateQueries({ queryKey: ["lodgings-settings-full"] });
+      qc.invalidateQueries({ queryKey: ["app_settings-lodging-order"] });
+      qc.invalidateQueries({ queryKey: ["lodgings-page"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "저장 실패"),
+  });
+  const resetAuto = useMutation({
+    mutationFn: async () => {
+      if (!season) return;
+      const { error } = await (supabase.from as any)("app_settings")
+        .upsert({ season_id: season.id, lodging_manual_order: false }, { onConflict: "season_id" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("자동 정렬로 되돌림");
+      qc.invalidateQueries({ queryKey: ["app_settings-lodging-order"] });
+      qc.invalidateQueries({ queryKey: ["lodgings-page"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "실패"),
+  });
+
+  const moveRow = (id: string, dir: -1 | 1) => {
+    const ids = lodgings.map((l: any) => l.id);
+    const idx = ids.indexOf(id);
+    const target = idx + dir;
+    if (idx === -1 || target < 0 || target >= ids.length) return;
+    const cur = lodgings[idx] as any;
+    const other = lodgings[target] as any;
+    if ((cur.building ?? "기타") !== (other.building ?? "기타") || (cur.floor ?? "-") !== (other.floor ?? "-")) {
+      toast.info("같은 층 내에서만 순서를 조정할 수 있습니다.");
+      return;
+    }
+    [ids[idx], ids[target]] = [ids[target], ids[idx]];
+    bulkReorder.mutate(ids);
+  };
   const { data: assignedMap = {} } = useQuery({
     queryKey: ["lodgings-assigned-count", season?.id],
     enabled: !!season?.id,
