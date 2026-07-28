@@ -20,7 +20,8 @@ import {
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { useAuthRole } from "@/lib/use-auth-role";
 import { num, formatKst } from "@/lib/format";
-import { Plus, Trash2, Pencil, X, Save, Search } from "lucide-react";
+import { Plus, Trash2, Pencil, X, Save, Search, Merge } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { findDuplicateGroups, type DuplicateGroup } from "@/lib/duplicate-check";
