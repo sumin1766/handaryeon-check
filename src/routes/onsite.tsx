@@ -355,6 +355,61 @@ function OnsitePage() {
           <p className="text-sm text-muted-foreground">이름 입력 → 인원 자동 카운트. 공백/쉼표/줄바꿈으로 구분.</p>
         </header>
 
+        {(() => {
+          const churchesAll = list.data?.churches ?? [];
+          const peopleAll = list.data?.people ?? [];
+          const paymentsAll = list.data?.payments ?? [];
+          const adultChurchId = segueAdultChurch.data?.id;
+          const unitFor = (p: any) =>
+            p.age_group === "adult" && p.church_id === adultChurchId ? ADULT_UNIT : DEFAULT_UNIT;
+          const totalExpected = peopleAll.reduce((s: number, p: any) => s + unitFor(p), 0);
+          const paymentByChurch = new Map<string, any>();
+          for (const pay of paymentsAll) paymentByChurch.set(pay.church_id, pay);
+          const totalRecorded = paymentsAll.reduce((s: number, p: any) => s + (p.amount ?? 0), 0);
+          const totalTransfer = paymentsAll
+            .filter((p: any) => p.paid_transfer)
+            .reduce((s: number, p: any) => s + (p.amount ?? 0), 0);
+          const totalCash = paymentsAll
+            .filter((p: any) => p.paid_cash)
+            .reduce((s: number, p: any) => s + (p.amount ?? 0), 0);
+
+          const BATH_WEEKDAYS = ["월", "화", "수", "목"] as const;
+          const weekdayAgg = BATH_WEEKDAYS.map((w) => {
+            const inDay = peopleAll.filter((p: any) => weekdayOf(p.created_at) === w);
+            return {
+              w,
+              people: inDay.length,
+              amount: inDay.reduce((s: number, p: any) => s + unitFor(p), 0),
+            };
+          });
+
+          return (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                <SummaryStat label="총 등록 인원" v={num(peopleAll.length)} unit="명" />
+                <SummaryStat label="총 교회 수" v={num(churchesAll.length)} unit="교회" />
+                <SummaryStat label="예상 회비 합계" v={krw(totalExpected)} />
+                <SummaryStat label="실입금 합계" v={krw(totalRecorded)} />
+                <SummaryStat label="입금 / 현금" v={`${krw(totalTransfer)} / ${krw(totalCash)}`} />
+              </div>
+
+              <Card className="p-3">
+                <div className="text-lg font-bold mb-3">요일별 등록현황</div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {weekdayAgg.map((d) => (
+                    <div key={d.w} className="rounded border p-2 text-xs tabular-nums">
+                      <div className="font-semibold text-sm">{d.w}요일</div>
+                      <div>인원 {d.people}명</div>
+                      <div>회비 {krw(d.amount)}</div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          );
+        })()}
+
+
         <Card className="p-5 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
