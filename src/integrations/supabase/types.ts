@@ -126,6 +126,53 @@ export type Database = {
           },
         ]
       }
+      church_payments: {
+        Row: {
+          amount: number
+          cash_at: string | null
+          church_id: string
+          created_at: string
+          id: string
+          paid_cash: boolean
+          paid_transfer: boolean
+          season_id: string
+          transfer_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          cash_at?: string | null
+          church_id: string
+          created_at?: string
+          id?: string
+          paid_cash?: boolean
+          paid_transfer?: boolean
+          season_id: string
+          transfer_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          cash_at?: string | null
+          church_id?: string
+          created_at?: string
+          id?: string
+          paid_cash?: boolean
+          paid_transfer?: boolean
+          season_id?: string
+          transfer_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "church_payments_church_id_fkey"
+            columns: ["church_id"]
+            isOneToOne: true
+            referencedRelation: "churches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       churches: {
         Row: {
           actual_count: number | null
