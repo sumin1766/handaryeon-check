@@ -227,9 +227,21 @@ function PlacesPage() {
 
         {/* 리포트: 숙소 + 장소 통합 집계 */}
         <section className="mt-8">
-          <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
-            <Building2 className="h-5 w-5" /> 시즌 공간 통합 리포트
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Building2 className="h-5 w-5" /> 시즌 공간 통합 리포트
+            </h2>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={copyCsv} disabled={reportRows.length === 0}>
+                {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+                {copied ? "복사됨" : "CSV 복사"}
+              </Button>
+              <Button size="sm" onClick={downloadXlsx} disabled={reportRows.length === 0}>
+                <Download className="h-4 w-4 mr-1" />
+                엑셀 다운로드(.xlsx)
+              </Button>
+            </div>
+          </div>
           <p className="text-xs text-muted-foreground mb-3">
             이 시즌에 등록된 숙소와 장소를 함께 나열합니다. (조회 전용)
           </p>
