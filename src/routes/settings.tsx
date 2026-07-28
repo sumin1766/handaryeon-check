@@ -82,6 +82,13 @@ function SettingsPage() {
             <LodgingsSection />
           </SettingsCard>
           <SettingsCard
+            icon={<Building2 className="h-5 w-5" />}
+            title="장소 설정"
+            summary={<PlacesSummary />}
+          >
+            <PlacesSection />
+          </SettingsCard>
+          <SettingsCard
             icon={<Bath className="h-5 w-5" />}
             title="목욕쿠폰 단가"
             summary={<BathPriceSummary />}
