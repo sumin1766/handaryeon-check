@@ -1,0 +1,1 @@
+ALTER TABLE public.app_settings ADD COLUMN IF NOT EXISTS lodging_manual_order boolean NOT NULL DEFAULT false;

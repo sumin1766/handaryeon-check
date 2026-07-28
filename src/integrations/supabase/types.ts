@@ -19,6 +19,7 @@ export type Database = {
           bath_unit_price: number
           created_at: string
           dashboard_section_order: string[]
+          lodging_manual_order: boolean
           nav_menu_hidden: string[]
           nav_menu_order: string[]
           ocr_enabled: boolean
@@ -28,6 +29,7 @@ export type Database = {
           bath_unit_price?: number
           created_at?: string
           dashboard_section_order?: string[]
+          lodging_manual_order?: boolean
           nav_menu_hidden?: string[]
           nav_menu_order?: string[]
           ocr_enabled?: boolean
@@ -37,6 +39,7 @@ export type Database = {
           bath_unit_price?: number
           created_at?: string
           dashboard_section_order?: string[]
+          lodging_manual_order?: boolean
           nav_menu_hidden?: string[]
           nav_menu_order?: string[]
           ocr_enabled?: boolean
