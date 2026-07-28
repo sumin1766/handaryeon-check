@@ -73,9 +73,115 @@ function LodgingsPage() {
     ...resilientQueryCache<LodgingsPageData>(lodgingsKey),
   });
 
-  const lodgings: any[] = data?.lodgings ?? [];
+  const rawLodgings: any[] = data?.lodgings ?? [];
   const churches: any[] = data?.churches ?? [];
   const people: any[] = data?.people ?? [];
+
+  // 시즌별 "숙소 순서 수동 지정 여부" 플래그
+  const { data: settingsRow } = useQuery({
+    queryKey: ["app_settings-lodging-order", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data } = await (supabase.from as any)("app_settings")
+        .select("season_id, lodging_manual_order")
+        .eq("season_id", season!.id)
+        .maybeSingle();
+      return data as { season_id: string; lodging_manual_order: boolean } | null;
+    },
+  });
+  const manualOrder = !!settingsRow?.lodging_manual_order;
+
+  // 편집 모드 (숙소 순서 조정)
+  const [orderEditMode, setOrderEditMode] = useState(false);
+  const [orderDraft, setOrderDraft] = useState<string[] | null>(null);
+
+  // 편집 모드에서는 draft 순서로 정렬. 아니면 manual 여부에 따라 자동/수동.
+  const lodgings: any[] = useMemo(() => {
+    if (orderEditMode && orderDraft) {
+      const map = new Map(rawLodgings.map((l: any) => [l.id, l]));
+      const out: any[] = [];
+      for (const id of orderDraft) {
+        const l = map.get(id);
+        if (l) { out.push(l); map.delete(id); }
+      }
+      // 새로 추가된 항목이 있으면 뒤에 파생 정렬로 붙임
+      if (map.size > 0) out.push(...sortLodgings(Array.from(map.values()), false));
+      return out;
+    }
+    return sortLodgings(rawLodgings, manualOrder);
+  }, [rawLodgings, manualOrder, orderEditMode, orderDraft]);
+
+  // 편집 진입 시 현재 순서를 draft로 스냅샷
+  useEffect(() => {
+    if (orderEditMode && !orderDraft) {
+      setOrderDraft(sortLodgings(rawLodgings, manualOrder).map((l: any) => l.id));
+    }
+    if (!orderEditMode && orderDraft) {
+      setOrderDraft(null);
+    }
+  }, [orderEditMode, orderDraft, rawLodgings, manualOrder]);
+
+  const moveDraft = (id: string, dir: -1 | 1) => {
+    setOrderDraft((prev) => {
+      if (!prev) return prev;
+      const idx = prev.indexOf(id);
+      if (idx === -1) return prev;
+      const target = idx + dir;
+      if (target < 0 || target >= prev.length) return prev;
+      // 같은 (building, floor) 그룹 내에서만 이동
+      const cur = rawLodgings.find((l: any) => l.id === id);
+      const other = rawLodgings.find((l: any) => l.id === prev[target]);
+      if (!cur || !other) return prev;
+      if ((cur.building ?? "기타") !== (other.building ?? "기타") || (cur.floor ?? "-") !== (other.floor ?? "-")) {
+        toast.info("같은 층 내에서만 순서를 조정할 수 있습니다.");
+        return prev;
+      }
+      const next = [...prev];
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next;
+    });
+  };
+
+  const saveOrder = useMutation({
+    mutationFn: async () => {
+      if (!orderDraft || !season) return;
+      // 각 숙소에 sort_order = 인덱스+1 부여
+      for (let i = 0; i < orderDraft.length; i++) {
+        const id = orderDraft[i];
+        const { error } = await supabase.from("lodgings").update({ sort_order: i + 1 }).eq("id", id);
+        if (error) throw error;
+      }
+      // upsert app_settings row (season_id PK)
+      const { error: upErr } = await (supabase.from as any)("app_settings")
+        .upsert({ season_id: season.id, lodging_manual_order: true }, { onConflict: "season_id" });
+      if (upErr) throw upErr;
+    },
+    onSuccess: () => {
+      toast.success("숙소 순서가 저장되었습니다.");
+      setOrderEditMode(false);
+      setOrderDraft(null);
+      qc.invalidateQueries({ queryKey: ["lodgings-page"] });
+      qc.invalidateQueries({ queryKey: ["app_settings-lodging-order"] });
+      qc.invalidateQueries({ queryKey: ["lodgings-settings-full"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "저장 실패"),
+  });
+
+  const resetOrderAuto = useMutation({
+    mutationFn: async () => {
+      if (!season) return;
+      const { error } = await (supabase.from as any)("app_settings")
+        .upsert({ season_id: season.id, lodging_manual_order: false }, { onConflict: "season_id" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("자동 정렬로 되돌렸습니다.");
+      setOrderEditMode(false);
+      setOrderDraft(null);
+      qc.invalidateQueries({ queryKey: ["app_settings-lodging-order"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "실패"),
+  });
   const churchMap = useMemo(
     () => new Map<string, string>(churches.map((c: any) => [c.id, c.denomination ? `${c.name}(${c.denomination})` : c.name])),
     [churches],
