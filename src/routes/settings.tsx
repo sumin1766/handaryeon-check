@@ -1080,6 +1080,7 @@ const NAV_LABEL: Record<string, string> = {
   "/registry": "접수 명단",
   "/onsite": "현장접수",
   "/lodgings": "숙소배치",
+  "/places": "장소배치",
   "/nametags": "이름표 출력",
   "/rosters": "명단 출력",
   "/bath-coupons": "목욕쿠폰",
