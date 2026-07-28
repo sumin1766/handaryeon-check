@@ -21,7 +21,7 @@ import {
 } from "@/lib/receipt-layout";
 import { ReceiptLayoutEditor, type ReceiptData, type ReceiptMode } from "@/components/receipt-document";
 import { toast } from "sonner";
-import { Plus, Star, Calendar, Building2, Bath, Maximize2, Trash2, FileText, Lock, ScanText, CheckCircle2, XCircle, Loader2, LayoutDashboard, ChevronUp, ChevronDown, Menu as MenuIcon, Eye, EyeOff } from "lucide-react";
+import { Plus, Star, Calendar, Building2, Bath, Maximize2, Trash2, FileText, Lock, ScanText, CheckCircle2, XCircle, Loader2, LayoutDashboard, ChevronUp, ChevronDown, Menu as MenuIcon, Eye, EyeOff, Save } from "lucide-react";
 import {
   useDashboardOrder, useSaveDashboardOrder, DEFAULT_DASHBOARD_ORDER,
   DASHBOARD_SECTION_LABEL, type DashboardSectionKey,
@@ -371,7 +371,33 @@ function LodgingsSection() {
     },
   });
   const manualOrder = !!settingsRow?.lodging_manual_order;
-  const lodgings = useMemo(() => sortLodgings(rawLodgings as any[], manualOrder), [rawLodgings, manualOrder]);
+  const sorted = useMemo(() => sortLodgings(rawLodgings as any[], manualOrder), [rawLodgings, manualOrder]);
+
+  // 순서 편집 모드 (명시적 저장)
+  const [orderEditMode, setOrderEditMode] = useState(false);
+  const [orderDraft, setOrderDraft] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (orderEditMode && !orderDraft) {
+      setOrderDraft(sorted.map((l: any) => l.id));
+    }
+    if (!orderEditMode && orderDraft) {
+      setOrderDraft(null);
+    }
+  }, [orderEditMode, orderDraft, sorted]);
+
+  const lodgings = useMemo(() => {
+    if (orderEditMode && orderDraft) {
+      const map = new Map((rawLodgings as any[]).map((l) => [l.id, l]));
+      const out: any[] = [];
+      for (const id of orderDraft) {
+        const l = map.get(id);
+        if (l) { out.push(l); map.delete(id); }
+      }
+      if (map.size > 0) out.push(...sortLodgings(Array.from(map.values()), false));
+      return out;
+    }
+    return sorted;
+  }, [rawLodgings, sorted, orderEditMode, orderDraft]);
 
   const bulkReorder = useMutation({
     mutationFn: async (orderedIds: string[]) => {
@@ -385,7 +411,9 @@ function LodgingsSection() {
       if (upErr) throw upErr;
     },
     onSuccess: () => {
-      toast.success("숙소 순서 저장됨");
+      toast.success("숙소 순서가 저장되었습니다.");
+      setOrderEditMode(false);
+      setOrderDraft(null);
       qc.invalidateQueries({ queryKey: ["lodgings-settings-full"] });
       qc.invalidateQueries({ queryKey: ["app_settings-lodging-order"] });
       qc.invalidateQueries({ queryKey: ["lodgings-page"] });
@@ -407,20 +435,20 @@ function LodgingsSection() {
     onError: (e: any) => toast.error(e.message ?? "실패"),
   });
 
-  const moveRow = (id: string, dir: -1 | 1) => {
-    const ids = lodgings.map((l: any) => l.id);
-    const idx = ids.indexOf(id);
-    const target = idx + dir;
-    if (idx === -1 || target < 0 || target >= ids.length) return;
-    const cur = lodgings[idx] as any;
-    const other = lodgings[target] as any;
-    if ((cur.building ?? "기타") !== (other.building ?? "기타") || (cur.floor ?? "-") !== (other.floor ?? "-")) {
-      toast.info("같은 층 내에서만 순서를 조정할 수 있습니다.");
-      return;
-    }
-    [ids[idx], ids[target]] = [ids[target], ids[idx]];
-    bulkReorder.mutate(ids);
+  const moveDraft = (id: string, dir: -1 | 1) => {
+    setOrderDraft((prev) => {
+      if (!prev) return prev;
+      const idx = prev.indexOf(id);
+      if (idx === -1) return prev;
+      const target = idx + dir;
+      if (target < 0 || target >= prev.length) return prev;
+      // 층/건물 경계 없이 전체 리스트에서 자유 스왑
+      const next = [...prev];
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next;
+    });
   };
+
   const { data: assignedMap = {} } = useQuery({
     queryKey: ["lodgings-assigned-count", season?.id],
     enabled: !!season?.id,
@@ -559,22 +587,24 @@ function LodgingsSection() {
           <TableBody>
             {lodgings.map((l: any, idx: number) => {
               const assigned = (assignedMap as Record<string, number>)[l.id] ?? 0;
-              const prev = lodgings[idx - 1] as any | undefined;
-              const next = lodgings[idx + 1] as any | undefined;
-              const sameGroup = (a: any, b: any) => a && b && (a.building ?? "기타") === (b.building ?? "기타") && (a.floor ?? "-") === (b.floor ?? "-");
-              const canUp = sameGroup(l, prev);
-              const canDown = sameGroup(l, next);
+              const canUp = orderEditMode && idx > 0;
+              const canDown = orderEditMode && idx < lodgings.length - 1;
               return (
                 <TableRow key={l.id}>
                   <TableCell>
-                    <div className="flex gap-0.5">
-                      <Button size="icon" variant="ghost" className="h-7 w-7" disabled={!canUp || bulkReorder.isPending} onClick={() => moveRow(l.id, -1)} aria-label="위로">
-                        <ChevronUp className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" disabled={!canDown || bulkReorder.isPending} onClick={() => moveRow(l.id, 1)} aria-label="아래로">
-                        <ChevronDown className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    {orderEditMode ? (
+                      <div className="flex items-center gap-0.5">
+                        <span className="text-[10px] text-muted-foreground w-5 text-right tabular-nums">{idx + 1}</span>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" disabled={!canUp} onClick={() => moveDraft(l.id, -1)} aria-label="위로">
+                          <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" disabled={!canDown} onClick={() => moveDraft(l.id, 1)} aria-label="아래로">
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground tabular-nums">{idx + 1}</span>
+                    )}
                   </TableCell>
                   <TableCell><Input defaultValue={l.name} onBlur={(e) => update.mutate({ ...l, name: e.target.value })} className="h-8" /></TableCell>
                   <TableCell>
@@ -626,18 +656,41 @@ function LodgingsSection() {
           </TableBody>
         </Table>
       </div>
-      <div className="mt-3 flex items-center gap-2 text-xs">
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
         <span className="text-muted-foreground">현재 정렬:</span>
         <b>{manualOrder ? "수동" : "자동 (건물→층→방번호)"}</b>
-        {manualOrder && (
-          <Button size="sm" variant="outline" className="h-7" onClick={() => resetAuto.mutate()} disabled={resetAuto.isPending}>
-            자동 정렬로 되돌리기
-          </Button>
+        {!orderEditMode ? (
+          <>
+            <Button size="sm" variant="outline" className="h-8" onClick={() => setOrderEditMode(true)}>
+              순서 편집 시작
+            </Button>
+            {manualOrder && (
+              <Button size="sm" variant="ghost" className="h-8" onClick={() => resetAuto.mutate()} disabled={resetAuto.isPending}>
+                자동 정렬로 되돌리기
+              </Button>
+            )}
+          </>
+        ) : (
+          <>
+            <span className="text-primary font-semibold">· 순서 편집 중 (층/건물 경계 없이 이동 가능)</span>
+            <Button
+              size="sm"
+              className="h-8"
+              onClick={() => orderDraft && bulkReorder.mutate(orderDraft)}
+              disabled={bulkReorder.isPending || !orderDraft}
+            >
+              <Save className="h-4 w-4 mr-1" />저장
+            </Button>
+            <Button size="sm" variant="outline" className="h-8" onClick={() => { setOrderEditMode(false); setOrderDraft(null); }}>
+              취소
+            </Button>
+          </>
         )}
       </div>
     </div>
   );
 }
+
 
 function BathPriceSection() {
   const { season } = useActiveSeason();
