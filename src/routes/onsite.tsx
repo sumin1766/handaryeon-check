@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetch-all";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { num, krw, formatKst, kstDateOf, weekdayOfDate, eachKstDateBetween, shortDate } from "@/lib/format";
+import { num, krw, formatKst, kstDateOf, weekdayOf, weekdayOfDate, eachKstDateBetween, shortDate } from "@/lib/format";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { useAuthRole } from "@/lib/use-auth-role";
 import { Checkbox } from "@/components/ui/checkbox";
