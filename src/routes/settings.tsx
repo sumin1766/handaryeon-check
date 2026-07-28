@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DEFAULT_LODGINGS } from "@/lib/default-lodgings";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { sortLodgings } from "@/lib/lodging-sort";
 import {
   useReceiptLayout, useSaveReceiptLayout, DEFAULT_LAYOUT, RECEIPT_ELEMENTS,
   type ReceiptLayout,
@@ -350,7 +351,7 @@ function LodgingsSection() {
   const { season } = useActiveSeason();
   const qc = useQueryClient();
   useRealtimeInvalidate(["lodgings", "people"], [["lodgings-settings"], ["lodgings-settings-full"]]);
-  const { data: lodgings = [] } = useQuery({
+  const { data: rawLodgings = [] } = useQuery({
     queryKey: ["lodgings-settings-full", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
@@ -358,6 +359,68 @@ function LodgingsSection() {
       return data ?? [];
     },
   });
+  const { data: settingsRow } = useQuery({
+    queryKey: ["app_settings-lodging-order", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data } = await (supabase.from as any)("app_settings")
+        .select("season_id, lodging_manual_order")
+        .eq("season_id", season!.id)
+        .maybeSingle();
+      return data as { season_id: string; lodging_manual_order: boolean } | null;
+    },
+  });
+  const manualOrder = !!settingsRow?.lodging_manual_order;
+  const lodgings = useMemo(() => sortLodgings(rawLodgings as any[], manualOrder), [rawLodgings, manualOrder]);
+
+  const bulkReorder = useMutation({
+    mutationFn: async (orderedIds: string[]) => {
+      if (!season) return;
+      for (let i = 0; i < orderedIds.length; i++) {
+        const { error } = await supabase.from("lodgings").update({ sort_order: i + 1 }).eq("id", orderedIds[i]);
+        if (error) throw error;
+      }
+      const { error: upErr } = await (supabase.from as any)("app_settings")
+        .upsert({ season_id: season.id, lodging_manual_order: true }, { onConflict: "season_id" });
+      if (upErr) throw upErr;
+    },
+    onSuccess: () => {
+      toast.success("숙소 순서 저장됨");
+      qc.invalidateQueries({ queryKey: ["lodgings-settings-full"] });
+      qc.invalidateQueries({ queryKey: ["app_settings-lodging-order"] });
+      qc.invalidateQueries({ queryKey: ["lodgings-page"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "저장 실패"),
+  });
+  const resetAuto = useMutation({
+    mutationFn: async () => {
+      if (!season) return;
+      const { error } = await (supabase.from as any)("app_settings")
+        .upsert({ season_id: season.id, lodging_manual_order: false }, { onConflict: "season_id" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("자동 정렬로 되돌림");
+      qc.invalidateQueries({ queryKey: ["app_settings-lodging-order"] });
+      qc.invalidateQueries({ queryKey: ["lodgings-page"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "실패"),
+  });
+
+  const moveRow = (id: string, dir: -1 | 1) => {
+    const ids = lodgings.map((l: any) => l.id);
+    const idx = ids.indexOf(id);
+    const target = idx + dir;
+    if (idx === -1 || target < 0 || target >= ids.length) return;
+    const cur = lodgings[idx] as any;
+    const other = lodgings[target] as any;
+    if ((cur.building ?? "기타") !== (other.building ?? "기타") || (cur.floor ?? "-") !== (other.floor ?? "-")) {
+      toast.info("같은 층 내에서만 순서를 조정할 수 있습니다.");
+      return;
+    }
+    [ids[idx], ids[target]] = [ids[target], ids[idx]];
+    bulkReorder.mutate(ids);
+  };
   const { data: assignedMap = {} } = useQuery({
     queryKey: ["lodgings-assigned-count", season?.id],
     enabled: !!season?.id,
@@ -481,6 +544,7 @@ function LodgingsSection() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-20">순서</TableHead>
               <TableHead>숙소명</TableHead>
               <TableHead>건물</TableHead>
               <TableHead>층</TableHead>
@@ -493,10 +557,25 @@ function LodgingsSection() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {lodgings.map((l: any) => {
+            {lodgings.map((l: any, idx: number) => {
               const assigned = (assignedMap as Record<string, number>)[l.id] ?? 0;
+              const prev = lodgings[idx - 1] as any | undefined;
+              const next = lodgings[idx + 1] as any | undefined;
+              const sameGroup = (a: any, b: any) => a && b && (a.building ?? "기타") === (b.building ?? "기타") && (a.floor ?? "-") === (b.floor ?? "-");
+              const canUp = sameGroup(l, prev);
+              const canDown = sameGroup(l, next);
               return (
                 <TableRow key={l.id}>
+                  <TableCell>
+                    <div className="flex gap-0.5">
+                      <Button size="icon" variant="ghost" className="h-7 w-7" disabled={!canUp || bulkReorder.isPending} onClick={() => moveRow(l.id, -1)} aria-label="위로">
+                        <ChevronUp className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" disabled={!canDown || bulkReorder.isPending} onClick={() => moveRow(l.id, 1)} aria-label="아래로">
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
                   <TableCell><Input defaultValue={l.name} onBlur={(e) => update.mutate({ ...l, name: e.target.value })} className="h-8" /></TableCell>
                   <TableCell>
                     <Select defaultValue={l.building} onValueChange={(v) => update.mutate({ ...l, building: v })}>
@@ -546,6 +625,15 @@ function LodgingsSection() {
             })}
           </TableBody>
         </Table>
+      </div>
+      <div className="mt-3 flex items-center gap-2 text-xs">
+        <span className="text-muted-foreground">현재 정렬:</span>
+        <b>{manualOrder ? "수동" : "자동 (건물→층→방번호)"}</b>
+        {manualOrder && (
+          <Button size="sm" variant="outline" className="h-7" onClick={() => resetAuto.mutate()} disabled={resetAuto.isPending}>
+            자동 정렬로 되돌리기
+          </Button>
+        )}
       </div>
     </div>
   );

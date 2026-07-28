@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell, GenderBadge } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetch-all";
 import { resilientQueryCache, writeCachedData } from "@/lib/query-session-cache";
@@ -10,12 +10,13 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { useMemo, useRef, useState, useCallback } from "react";
+import { useMemo, useRef, useState, useCallback, useEffect } from "react";
 import { num } from "@/lib/format";
-import { X, ChevronDown, ChevronUp, Download, Copy, Check } from "lucide-react";
+import { X, ChevronDown, ChevronUp, Download, Copy, Check, Pencil, ArrowUp, ArrowDown, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { downloadRowsAsXlsx } from "@/lib/export-xlsx";
+import { sortLodgings } from "@/lib/lodging-sort";
 
 // 배치률 1차 목표선 — 필요 시 여기만 조정
 const TARGET_PCT = 80;
@@ -72,9 +73,115 @@ function LodgingsPage() {
     ...resilientQueryCache<LodgingsPageData>(lodgingsKey),
   });
 
-  const lodgings: any[] = data?.lodgings ?? [];
+  const rawLodgings: any[] = data?.lodgings ?? [];
   const churches: any[] = data?.churches ?? [];
   const people: any[] = data?.people ?? [];
+
+  // 시즌별 "숙소 순서 수동 지정 여부" 플래그
+  const { data: settingsRow } = useQuery({
+    queryKey: ["app_settings-lodging-order", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data } = await (supabase.from as any)("app_settings")
+        .select("season_id, lodging_manual_order")
+        .eq("season_id", season!.id)
+        .maybeSingle();
+      return data as { season_id: string; lodging_manual_order: boolean } | null;
+    },
+  });
+  const manualOrder = !!settingsRow?.lodging_manual_order;
+
+  // 편집 모드 (숙소 순서 조정)
+  const [orderEditMode, setOrderEditMode] = useState(false);
+  const [orderDraft, setOrderDraft] = useState<string[] | null>(null);
+
+  // 편집 모드에서는 draft 순서로 정렬. 아니면 manual 여부에 따라 자동/수동.
+  const lodgings: any[] = useMemo(() => {
+    if (orderEditMode && orderDraft) {
+      const map = new Map(rawLodgings.map((l: any) => [l.id, l]));
+      const out: any[] = [];
+      for (const id of orderDraft) {
+        const l = map.get(id);
+        if (l) { out.push(l); map.delete(id); }
+      }
+      // 새로 추가된 항목이 있으면 뒤에 파생 정렬로 붙임
+      if (map.size > 0) out.push(...sortLodgings(Array.from(map.values()), false));
+      return out;
+    }
+    return sortLodgings(rawLodgings, manualOrder);
+  }, [rawLodgings, manualOrder, orderEditMode, orderDraft]);
+
+  // 편집 진입 시 현재 순서를 draft로 스냅샷
+  useEffect(() => {
+    if (orderEditMode && !orderDraft) {
+      setOrderDraft(sortLodgings(rawLodgings, manualOrder).map((l: any) => l.id));
+    }
+    if (!orderEditMode && orderDraft) {
+      setOrderDraft(null);
+    }
+  }, [orderEditMode, orderDraft, rawLodgings, manualOrder]);
+
+  const moveDraft = (id: string, dir: -1 | 1) => {
+    setOrderDraft((prev) => {
+      if (!prev) return prev;
+      const idx = prev.indexOf(id);
+      if (idx === -1) return prev;
+      const target = idx + dir;
+      if (target < 0 || target >= prev.length) return prev;
+      // 같은 (building, floor) 그룹 내에서만 이동
+      const cur = rawLodgings.find((l: any) => l.id === id);
+      const other = rawLodgings.find((l: any) => l.id === prev[target]);
+      if (!cur || !other) return prev;
+      if ((cur.building ?? "기타") !== (other.building ?? "기타") || (cur.floor ?? "-") !== (other.floor ?? "-")) {
+        toast.info("같은 층 내에서만 순서를 조정할 수 있습니다.");
+        return prev;
+      }
+      const next = [...prev];
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next;
+    });
+  };
+
+  const saveOrder = useMutation({
+    mutationFn: async () => {
+      if (!orderDraft || !season) return;
+      // 각 숙소에 sort_order = 인덱스+1 부여
+      for (let i = 0; i < orderDraft.length; i++) {
+        const id = orderDraft[i];
+        const { error } = await supabase.from("lodgings").update({ sort_order: i + 1 }).eq("id", id);
+        if (error) throw error;
+      }
+      // upsert app_settings row (season_id PK)
+      const { error: upErr } = await (supabase.from as any)("app_settings")
+        .upsert({ season_id: season.id, lodging_manual_order: true }, { onConflict: "season_id" });
+      if (upErr) throw upErr;
+    },
+    onSuccess: () => {
+      toast.success("숙소 순서가 저장되었습니다.");
+      setOrderEditMode(false);
+      setOrderDraft(null);
+      qc.invalidateQueries({ queryKey: ["lodgings-page"] });
+      qc.invalidateQueries({ queryKey: ["app_settings-lodging-order"] });
+      qc.invalidateQueries({ queryKey: ["lodgings-settings-full"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "저장 실패"),
+  });
+
+  const resetOrderAuto = useMutation({
+    mutationFn: async () => {
+      if (!season) return;
+      const { error } = await (supabase.from as any)("app_settings")
+        .upsert({ season_id: season.id, lodging_manual_order: false }, { onConflict: "season_id" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("자동 정렬로 되돌렸습니다.");
+      setOrderEditMode(false);
+      setOrderDraft(null);
+      qc.invalidateQueries({ queryKey: ["app_settings-lodging-order"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "실패"),
+  });
   const churchMap = useMemo(
     () => new Map<string, string>(churches.map((c: any) => [c.id, c.denomination ? `${c.name}(${c.denomination})` : c.name])),
     [churches],
@@ -510,18 +617,43 @@ function LodgingsPage() {
           )}
           <header className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="text-2xl font-bold">숙소배치</h1>
-              <p className="text-sm text-muted-foreground">우측 카드 드래그 또는 더블클릭 → 방 선택</p>
+              <h1 className="text-2xl font-bold">숙소배치 {orderEditMode && <span className="ml-2 text-sm font-semibold text-primary">· 순서 편집 모드</span>}</h1>
+              <p className="text-sm text-muted-foreground">
+                {orderEditMode
+                  ? "각 방의 ▲▼ 버튼으로 같은 층 안에서 순서를 조정한 뒤 저장하세요. 인원 이동은 이 모드에서 비활성입니다."
+                  : `우측 카드 드래그 또는 더블클릭 → 방 선택 · 현재 정렬: ${manualOrder ? "수동" : "자동(층→방번호)"}`}
+              </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Input placeholder="이름/교회 검색…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-56" />
-              <Button variant="outline" size="sm" onClick={copyCsv}>
-                {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
-                {copied ? "복사됨" : "CSV 복사"}
-              </Button>
-              <Button size="sm" onClick={downloadExcel}>
-                <Download className="h-4 w-4 mr-1" />엑셀 다운로드
-              </Button>
+              {!orderEditMode ? (
+                <>
+                  <Input placeholder="이름/교회 검색…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-56" />
+                  <Button variant="outline" size="sm" onClick={copyCsv}>
+                    {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+                    {copied ? "복사됨" : "CSV 복사"}
+                  </Button>
+                  <Button size="sm" onClick={downloadExcel}>
+                    <Download className="h-4 w-4 mr-1" />엑셀 다운로드
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setOrderEditMode(true)}>
+                    <Pencil className="h-4 w-4 mr-1" />순서 편집
+                  </Button>
+                  {manualOrder && (
+                    <Button variant="ghost" size="sm" onClick={() => resetOrderAuto.mutate()} disabled={resetOrderAuto.isPending}>
+                      자동 정렬로
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => { setOrderEditMode(false); setOrderDraft(null); }}>
+                    취소
+                  </Button>
+                  <Button size="sm" onClick={() => saveOrder.mutate()} disabled={saveOrder.isPending}>
+                    <Save className="h-4 w-4 mr-1" />순서 저장
+                  </Button>
+                </>
+              )}
             </div>
           </header>
 
@@ -657,6 +789,7 @@ function LodgingsPage() {
                             key={l.id}
                             ref={(el) => { if (el) roomRefs.current.set(l.id, el); else roomRefs.current.delete(l.id); }}
                             onClick={() => {
+                              if (orderEditMode) return;
                               if (pickMode) {
                                 if (!canPick) return;
                                 performAssign(pickMode, l);
@@ -666,9 +799,10 @@ function LodgingsPage() {
                                 setSelected(l.id);
                               }
                             }}
-                            onDragOver={(e) => { e.preventDefault(); setDragOver(l.id); }}
-                            onDragLeave={() => setDragOver((d) => (d === l.id ? null : d))}
+                            onDragOver={(e) => { if (orderEditMode) return; e.preventDefault(); setDragOver(l.id); }}
+                            onDragLeave={() => { if (orderEditMode) return; setDragOver((d) => (d === l.id ? null : d)); }}
                             onDrop={(e) => {
+                              if (orderEditMode) return;
                               e.preventDefault();
                               setDragOver(null);
                               try {
@@ -683,8 +817,30 @@ function LodgingsPage() {
                               } catch { /* ignore */ }
                             }}
 
-                            className={`group rounded-md border-2 p-3 text-left transition hover:shadow-md ${cls} ${!l.active ? "opacity-40" : ""} ${isDragOver ? "ring-2 ring-primary" : ""} ${blink} ${highlight} ${dim ? "opacity-40" : ""}`}
+                            className={`group relative rounded-md border-2 p-3 text-left transition hover:shadow-md ${cls} ${!l.active ? "opacity-40" : ""} ${isDragOver ? "ring-2 ring-primary" : ""} ${blink} ${highlight} ${dim ? "opacity-40" : ""} ${orderEditMode ? "ring-2 ring-primary/40 cursor-default" : ""}`}
                           >
+                            {orderEditMode && (
+                              <div className="absolute top-1 right-1 flex gap-0.5 z-10">
+                                <span
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={(e) => { e.stopPropagation(); moveDraft(l.id, -1); }}
+                                  className="inline-flex items-center justify-center h-6 w-6 rounded border bg-background hover:bg-accent"
+                                  aria-label="위로"
+                                >
+                                  <ArrowUp className="h-3.5 w-3.5" />
+                                </span>
+                                <span
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={(e) => { e.stopPropagation(); moveDraft(l.id, 1); }}
+                                  className="inline-flex items-center justify-center h-6 w-6 rounded border bg-background hover:bg-accent"
+                                  aria-label="아래로"
+                                >
+                                  <ArrowDown className="h-3.5 w-3.5" />
+                                </span>
+                              </div>
+                            )}
                             <div className="flex items-center justify-between">
                               <div className="font-semibold text-sm truncate">{l.name}</div>
                               <GenderBadge gender={l.gender} />
