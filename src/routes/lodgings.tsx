@@ -614,8 +614,9 @@ function LodgingsPage() {
               <h1 className="text-2xl font-bold">숙소배치 {orderEditMode && <span className="ml-2 text-sm font-semibold text-primary">· 순서 편집 모드</span>}</h1>
               <p className="text-sm text-muted-foreground">
                 {orderEditMode
-                  ? "각 방의 ▲▼ 버튼으로 같은 층 안에서 순서를 조정한 뒤 저장하세요. 인원 이동은 이 모드에서 비활성입니다."
+                  ? "층 경계 없이 전체 리스트에서 ▲▼ 로 자유롭게 순서를 조정한 뒤 저장하세요. 인원 이동은 이 모드에서 비활성입니다."
                   : `우측 카드 드래그 또는 더블클릭 → 방 선택 · 현재 정렬: ${manualOrder ? "수동" : "자동(층→방번호)"}`}
+
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
