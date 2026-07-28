@@ -653,21 +653,54 @@ function OnsitePage() {
             }
             return (
               <>
-                <div className="bg-muted/40 px-4 py-3 border-b flex items-center justify-between gap-3 flex-wrap">
-                  <div>
-                    <h2 className="text-sm font-semibold">
-                      현장접수 등록 명단 ({list.data?.churches.length ?? 0}교회 · {totalPeople}명)
-                    </h2>
-                    <p className="text-xs text-muted-foreground">
-                      숙박 {totalLodging}명 · 비숙박 {totalPeople - totalLodging}명 · 상세 수정은 "접수 명단" 페이지에서 가능합니다.
-                    </p>
+                <div className="bg-muted/40 px-4 py-3 border-b flex flex-col gap-3">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                      <h2 className="text-sm font-semibold">
+                        현장접수 등록 명단 ({list.data?.churches.length ?? 0}교회 · {totalPeople}명)
+                      </h2>
+                      <p className="text-xs text-muted-foreground">
+                        숙박 {totalLodging}명 · 비숙박 {totalPeople - totalLodging}명 · 상세 수정은 "접수 명단" 페이지에서 가능합니다.
+                      </p>
+                    </div>
+                    <Input
+                      value={listSearch}
+                      onChange={(e) => setListSearch(e.target.value)}
+                      placeholder="교회명 / 담당자 / 전화번호"
+                      className="h-8 w-full sm:w-64 text-sm"
+                    />
                   </div>
-                  <Input
-                    value={listSearch}
-                    onChange={(e) => setListSearch(e.target.value)}
-                    placeholder="교회명 / 담당자 / 전화번호"
-                    className="h-8 w-full sm:w-64 text-sm"
-                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="inline-flex items-center gap-1.5 rounded border px-2 py-1 text-xs cursor-pointer hover:bg-muted/40 transition">
+                      <input
+                        type="checkbox"
+                        checked={segueOnly}
+                        onChange={(e) => setSegueOnly(e.target.checked)}
+                        className="h-3.5 w-3.5 accent-primary"
+                      />
+                      세계로교회만 보기
+                    </label>
+                    <div className="flex items-center gap-1">
+                      {[
+                        { key: "default", label: "기본순" },
+                        { key: "latest", label: "최신 등록 순" },
+                        { key: "oldest", label: "오래된 등록 순" },
+                      ].map((opt) => (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => setSortMode(opt.key as typeof sortMode)}
+                          className={`rounded border px-2 py-1 text-xs transition ${
+                            sortMode === opt.key
+                              ? "border-primary bg-primary/10 text-foreground font-semibold"
+                              : "hover:bg-muted/40"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <div className="px-4 py-2 border-b bg-background/50 flex flex-wrap gap-1.5">
                   {seasonDates.length === 0 ? (
