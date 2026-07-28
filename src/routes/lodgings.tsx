@@ -128,19 +128,13 @@ function LodgingsPage() {
       if (idx === -1) return prev;
       const target = idx + dir;
       if (target < 0 || target >= prev.length) return prev;
-      // 같은 (building, floor) 그룹 내에서만 이동
-      const cur = rawLodgings.find((l: any) => l.id === id);
-      const other = rawLodgings.find((l: any) => l.id === prev[target]);
-      if (!cur || !other) return prev;
-      if ((cur.building ?? "기타") !== (other.building ?? "기타") || (cur.floor ?? "-") !== (other.floor ?? "-")) {
-        toast.info("같은 층 내에서만 순서를 조정할 수 있습니다.");
-        return prev;
-      }
+      // 층/건물 경계 없이 전체 리스트에서 자유롭게 스왑
       const next = [...prev];
       [next[idx], next[target]] = [next[target], next[idx]];
       return next;
     });
   };
+
 
   const saveOrder = useMutation({
     mutationFn: async () => {
