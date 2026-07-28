@@ -587,22 +587,24 @@ function LodgingsSection() {
           <TableBody>
             {lodgings.map((l: any, idx: number) => {
               const assigned = (assignedMap as Record<string, number>)[l.id] ?? 0;
-              const prev = lodgings[idx - 1] as any | undefined;
-              const next = lodgings[idx + 1] as any | undefined;
-              const sameGroup = (a: any, b: any) => a && b && (a.building ?? "기타") === (b.building ?? "기타") && (a.floor ?? "-") === (b.floor ?? "-");
-              const canUp = sameGroup(l, prev);
-              const canDown = sameGroup(l, next);
+              const canUp = orderEditMode && idx > 0;
+              const canDown = orderEditMode && idx < lodgings.length - 1;
               return (
                 <TableRow key={l.id}>
                   <TableCell>
-                    <div className="flex gap-0.5">
-                      <Button size="icon" variant="ghost" className="h-7 w-7" disabled={!canUp || bulkReorder.isPending} onClick={() => moveRow(l.id, -1)} aria-label="위로">
-                        <ChevronUp className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" disabled={!canDown || bulkReorder.isPending} onClick={() => moveRow(l.id, 1)} aria-label="아래로">
-                        <ChevronDown className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    {orderEditMode ? (
+                      <div className="flex items-center gap-0.5">
+                        <span className="text-[10px] text-muted-foreground w-5 text-right tabular-nums">{idx + 1}</span>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" disabled={!canUp} onClick={() => moveDraft(l.id, -1)} aria-label="위로">
+                          <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" disabled={!canDown} onClick={() => moveDraft(l.id, 1)} aria-label="아래로">
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground tabular-nums">{idx + 1}</span>
+                    )}
                   </TableCell>
                   <TableCell><Input defaultValue={l.name} onBlur={(e) => update.mutate({ ...l, name: e.target.value })} className="h-8" /></TableCell>
                   <TableCell>
@@ -654,18 +656,41 @@ function LodgingsSection() {
           </TableBody>
         </Table>
       </div>
-      <div className="mt-3 flex items-center gap-2 text-xs">
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
         <span className="text-muted-foreground">현재 정렬:</span>
         <b>{manualOrder ? "수동" : "자동 (건물→층→방번호)"}</b>
-        {manualOrder && (
-          <Button size="sm" variant="outline" className="h-7" onClick={() => resetAuto.mutate()} disabled={resetAuto.isPending}>
-            자동 정렬로 되돌리기
-          </Button>
+        {!orderEditMode ? (
+          <>
+            <Button size="sm" variant="outline" className="h-8" onClick={() => setOrderEditMode(true)}>
+              순서 편집 시작
+            </Button>
+            {manualOrder && (
+              <Button size="sm" variant="ghost" className="h-8" onClick={() => resetAuto.mutate()} disabled={resetAuto.isPending}>
+                자동 정렬로 되돌리기
+              </Button>
+            )}
+          </>
+        ) : (
+          <>
+            <span className="text-primary font-semibold">· 순서 편집 중 (층/건물 경계 없이 이동 가능)</span>
+            <Button
+              size="sm"
+              className="h-8"
+              onClick={() => orderDraft && bulkReorder.mutate(orderDraft)}
+              disabled={bulkReorder.isPending || !orderDraft}
+            >
+              <Save className="h-4 w-4 mr-1" />저장
+            </Button>
+            <Button size="sm" variant="outline" className="h-8" onClick={() => { setOrderEditMode(false); setOrderDraft(null); }}>
+              취소
+            </Button>
+          </>
         )}
       </div>
     </div>
   );
 }
+
 
 function BathPriceSection() {
   const { season } = useActiveSeason();
