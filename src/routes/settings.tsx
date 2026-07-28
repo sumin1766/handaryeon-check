@@ -1227,3 +1227,141 @@ function NavMenuSection() {
   );
 }
 
+
+// ----- Places (신규 장소 관리) -----
+
+function PlacesSummary() {
+  const { season } = useActiveSeason();
+  const { data: places = [] } = useQuery({
+    queryKey: ["places-summary", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data } = await (supabase.from as any)("places")
+        .select("id, purpose").eq("season_id", season!.id);
+      return data ?? [];
+    },
+  });
+  const withPurpose = places.filter((p: any) => p.purpose && String(p.purpose).trim() !== "").length;
+  return (
+    <div className="tabular-nums">
+      <div>총 <b className="text-foreground">{places.length}</b>개 장소</div>
+      <div>용도 지정 <b className="text-foreground">{withPurpose}</b> / {places.length}</div>
+    </div>
+  );
+}
+
+function PlacesSection() {
+  const { season } = useActiveSeason();
+  const qc = useQueryClient();
+  useRealtimeInvalidate(["places"], [["places-summary"], ["places-full"], ["places-view"]]);
+  const { data: places = [] } = useQuery({
+    queryKey: ["places-full", season?.id],
+    enabled: !!season?.id,
+    queryFn: async () => {
+      const { data } = await (supabase.from as any)("places")
+        .select("*").eq("season_id", season!.id).order("created_at");
+      return data ?? [];
+    },
+  });
+  const update = useMutation({
+    mutationFn: async (row: any) => {
+      const { error } = await (supabase.from as any)("places").update({
+        name: row.name, purpose: row.purpose, note: row.note,
+      }).eq("id", row.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["places-full"] }),
+  });
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase.from as any)("places").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("장소 삭제됨");
+      qc.invalidateQueries({ queryKey: ["places-full"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "삭제 실패"),
+  });
+  const [form, setForm] = useState({ name: "", purpose: "", note: "" });
+  const add = useMutation({
+    mutationFn: async () => {
+      if (!form.name.trim()) throw new Error("장소명을 입력하세요");
+      const { error } = await (supabase.from as any)("places").insert({
+        season_id: season!.id,
+        name: form.name.trim(),
+        purpose: form.purpose.trim() || null,
+        note: form.note.trim() || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("장소 추가됨");
+      setForm({ name: "", purpose: "", note: "" });
+      qc.invalidateQueries({ queryKey: ["places-full"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "추가 실패"),
+  });
+
+  if (!season) return <div className="text-sm text-muted-foreground">시즌이 없습니다.</div>;
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground mb-3">
+        장소는 숙소와 분리된 자유 공간(예: 세미나실, 식당, 카페)입니다. 용도는 자유롭게 입력하세요.
+      </p>
+      <Card className="p-3 mb-4 bg-muted/30">
+        <div className="text-xs font-semibold mb-2">장소 추가</div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+          <div>
+            <Label className="text-[11px]">장소명</Label>
+            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="h-8" placeholder="예: 대세미나실" />
+          </div>
+          <div>
+            <Label className="text-[11px]">용도</Label>
+            <Input value={form.purpose} onChange={(e) => setForm({ ...form, purpose: e.target.value })} className="h-8" placeholder="예: 청년부 예배" />
+          </div>
+          <div>
+            <Label className="text-[11px]">비고</Label>
+            <Input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} className="h-8" />
+          </div>
+          <div className="flex justify-end">
+            <Button size="sm" onClick={() => add.mutate()} disabled={add.isPending}>
+              <Plus className="h-3 w-3 mr-1" /> 장소 추가
+            </Button>
+          </div>
+        </div>
+      </Card>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>장소명</TableHead>
+              <TableHead>용도</TableHead>
+              <TableHead>비고</TableHead>
+              <TableHead></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {places.map((p: any) => (
+              <TableRow key={p.id}>
+                <TableCell><Input defaultValue={p.name} onBlur={(e) => update.mutate({ ...p, name: e.target.value })} className="h-8" /></TableCell>
+                <TableCell><Input defaultValue={p.purpose ?? ""} onBlur={(e) => update.mutate({ ...p, purpose: e.target.value || null })} className="h-8" /></TableCell>
+                <TableCell><Input defaultValue={p.note ?? ""} onBlur={(e) => update.mutate({ ...p, note: e.target.value || null })} className="h-8" /></TableCell>
+                <TableCell>
+                  <Button size="icon" variant="ghost" onClick={() => {
+                    if (confirm(`'${p.name}'을(를) 삭제할까요?`)) remove.mutate(p.id);
+                  }}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+            {places.length === 0 && (
+              <TableRow><TableCell colSpan={4} className="text-center text-xs text-muted-foreground py-6">등록된 장소가 없습니다.</TableCell></TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
