@@ -617,18 +617,43 @@ function LodgingsPage() {
           )}
           <header className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="text-2xl font-bold">숙소배치</h1>
-              <p className="text-sm text-muted-foreground">우측 카드 드래그 또는 더블클릭 → 방 선택</p>
+              <h1 className="text-2xl font-bold">숙소배치 {orderEditMode && <span className="ml-2 text-sm font-semibold text-primary">· 순서 편집 모드</span>}</h1>
+              <p className="text-sm text-muted-foreground">
+                {orderEditMode
+                  ? "각 방의 ▲▼ 버튼으로 같은 층 안에서 순서를 조정한 뒤 저장하세요. 인원 이동은 이 모드에서 비활성입니다."
+                  : `우측 카드 드래그 또는 더블클릭 → 방 선택 · 현재 정렬: ${manualOrder ? "수동" : "자동(층→방번호)"}`}
+              </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Input placeholder="이름/교회 검색…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-56" />
-              <Button variant="outline" size="sm" onClick={copyCsv}>
-                {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
-                {copied ? "복사됨" : "CSV 복사"}
-              </Button>
-              <Button size="sm" onClick={downloadExcel}>
-                <Download className="h-4 w-4 mr-1" />엑셀 다운로드
-              </Button>
+              {!orderEditMode ? (
+                <>
+                  <Input placeholder="이름/교회 검색…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-56" />
+                  <Button variant="outline" size="sm" onClick={copyCsv}>
+                    {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+                    {copied ? "복사됨" : "CSV 복사"}
+                  </Button>
+                  <Button size="sm" onClick={downloadExcel}>
+                    <Download className="h-4 w-4 mr-1" />엑셀 다운로드
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setOrderEditMode(true)}>
+                    <Pencil className="h-4 w-4 mr-1" />순서 편집
+                  </Button>
+                  {manualOrder && (
+                    <Button variant="ghost" size="sm" onClick={() => resetOrderAuto.mutate()} disabled={resetOrderAuto.isPending}>
+                      자동 정렬로
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => { setOrderEditMode(false); setOrderDraft(null); }}>
+                    취소
+                  </Button>
+                  <Button size="sm" onClick={() => saveOrder.mutate()} disabled={saveOrder.isPending}>
+                    <Save className="h-4 w-4 mr-1" />순서 저장
+                  </Button>
+                </>
+              )}
             </div>
           </header>
 
