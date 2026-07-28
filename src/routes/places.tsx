@@ -11,9 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Badge } from "@/components/ui/badge";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Building2, MapPin, Search, X } from "lucide-react";
+import { Building2, MapPin, Search, X, Copy, Check, Download } from "lucide-react";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { cn } from "@/lib/utils";
+import { downloadRowsAsXlsx } from "@/lib/export-xlsx";
 
 export const Route = createFileRoute("/places")({
   head: () => ({ meta: [{ title: "장소배치 — 한다련 캠프" }] }),
@@ -68,6 +69,57 @@ function PlacesPage() {
   const [editing, setEditing] = useState<Place | null>(null);
   const [purposeDraft, setPurposeDraft] = useState("");
   const [noteDraft, setNoteDraft] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const reportRows = useMemo(() => {
+    const out: { 구분: string; 이름: string; "용도 / 세부": string; 비고: string }[] = [];
+    for (const l of lodgings) {
+      out.push({
+        구분: "숙소",
+        이름: l.name,
+        "용도 / 세부": [l.building, l.floor].filter(Boolean).join(" · ") + (l.active ? "" : " (비활성)"),
+        비고: l.note ?? "",
+      });
+    }
+    for (const p of places) {
+      out.push({ 구분: "장소", 이름: p.name, "용도 / 세부": p.purpose ?? "", 비고: p.note ?? "" });
+    }
+    return out;
+  }, [lodgings, places]);
+
+  const copyCsv = async () => {
+    const esc = (v: string) => String(v ?? "").replace(/\t/g, " ").replace(/\r?\n/g, " ");
+    const header = ["구분", "이름", "용도 / 세부", "비고"].join("\t");
+    const body = reportRows
+      .map((r) => [esc(r.구분), esc(r.이름), esc(r["용도 / 세부"]), esc(r.비고)].join("\t"))
+      .join("\n");
+    const text = `${header}\n${body}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toast.success("복사됨 — 시트에 붙여넣으세요");
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        setCopied(true);
+        toast.success("복사됨");
+        setTimeout(() => setCopied(false), 1800);
+      } catch {
+        toast.error("복사 실패");
+      } finally {
+        document.body.removeChild(ta);
+      }
+    }
+  };
+
+  const downloadXlsx = () => {
+    downloadRowsAsXlsx(reportRows, "공간 통합 리포트", `공간통합리포트_${season?.name ?? "시즌"}.xlsx`);
+  };
 
   const save = useMutation({
     mutationFn: async () => {
@@ -175,9 +227,21 @@ function PlacesPage() {
 
         {/* 리포트: 숙소 + 장소 통합 집계 */}
         <section className="mt-8">
-          <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
-            <Building2 className="h-5 w-5" /> 시즌 공간 통합 리포트
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Building2 className="h-5 w-5" /> 시즌 공간 통합 리포트
+            </h2>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={copyCsv} disabled={reportRows.length === 0}>
+                {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+                {copied ? "복사됨" : "CSV 복사"}
+              </Button>
+              <Button size="sm" onClick={downloadXlsx} disabled={reportRows.length === 0}>
+                <Download className="h-4 w-4 mr-1" />
+                엑셀 다운로드(.xlsx)
+              </Button>
+            </div>
+          </div>
           <p className="text-xs text-muted-foreground mb-3">
             이 시즌에 등록된 숙소와 장소를 함께 나열합니다. (조회 전용)
           </p>
