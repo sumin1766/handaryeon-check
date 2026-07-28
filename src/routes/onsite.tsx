@@ -85,7 +85,7 @@ function OnsitePage() {
   const [sortMode, setSortMode] = useState<"default" | "latest" | "oldest">("default");
 
   useRealtimeInvalidate(
-    ["churches", "people", "lodgings"],
+    ["churches", "people", "lodgings", "church_payments"],
     [["onsite-list", season?.id], ["onsite-lodgings", season?.id]],
   );
 
