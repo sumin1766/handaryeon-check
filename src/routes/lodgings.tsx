@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell, GenderBadge } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetch-all";
 import { resilientQueryCache, writeCachedData } from "@/lib/query-session-cache";
@@ -10,12 +10,13 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { useMemo, useRef, useState, useCallback } from "react";
+import { useMemo, useRef, useState, useCallback, useEffect } from "react";
 import { num } from "@/lib/format";
-import { X, ChevronDown, ChevronUp, Download, Copy, Check } from "lucide-react";
+import { X, ChevronDown, ChevronUp, Download, Copy, Check, Pencil, ArrowUp, ArrowDown, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { downloadRowsAsXlsx } from "@/lib/export-xlsx";
+import { sortLodgings } from "@/lib/lodging-sort";
 
 // 배치률 1차 목표선 — 필요 시 여기만 조정
 const TARGET_PCT = 80;
