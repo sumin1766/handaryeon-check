@@ -192,10 +192,41 @@ function OnsitePage() {
         .from("churches").select("*").eq("season_id", season!.id).eq("source", "onsite").order("created_at", { ascending: false });
       const ids = (churches ?? []).map((c: any) => c.id);
       const people = ids.length
-        ? await fetchAll<any>("people", (q) => q.select("church_id, lodging, created_at").in("church_id", ids))
+        ? await fetchAll<any>("people", (q) => q.select("church_id, lodging, age_group, created_at").in("church_id", ids))
         : [];
-      return { churches: churches ?? [], people };
+      const { data: payments } = await supabase
+        .from("church_payments").select("*").eq("season_id", season!.id);
+      return { churches: churches ?? [], people, payments: payments ?? [] };
     },
+  });
+
+  const upsertPayment = useMutation({
+    mutationFn: async (payload: {
+      church_id: string;
+      patch: Partial<{
+        paid_transfer: boolean; transfer_at: string | null;
+        paid_cash: boolean; cash_at: string | null;
+        amount: number;
+      }>;
+    }) => {
+      const existing = (list.data?.payments ?? []).find((p: any) => p.church_id === payload.church_id);
+      if (existing) {
+        const { error } = await supabase.from("church_payments")
+          .update({ ...payload.patch, updated_at: new Date().toISOString() })
+          .eq("id", existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("church_payments").insert({
+          church_id: payload.church_id,
+          season_id: season!.id,
+          paid_transfer: false, paid_cash: false, amount: 0,
+          ...payload.patch,
+        });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["onsite-list"] }),
+    onError: (e: any) => toast.error(e.message ?? "결제 저장 실패"),
   });
 
   const remove = useMutation({
