@@ -1015,3 +1015,16 @@ function OnsitePage() {
     </AppShell>
   );
 }
+
+function SummaryStat({ label, v, unit }: { label: string; v: any; unit?: string }) {
+  return (
+    <Card className="p-3">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 flex items-baseline gap-1">
+        <span className="text-lg font-bold tabular-nums">{v}</span>
+        {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
+      </div>
+    </Card>
+  );
+}
+
