@@ -393,11 +393,14 @@ function OnsitePage() {
           const churchesAll = list.data?.churches ?? [];
           const peopleAll = list.data?.people ?? [];
           const paymentsAll = list.data?.payments ?? [];
-          const segueChurchIds = new Set(
-            churchesAll.filter((c: any) => (c.name ?? "").includes("세계로")).map((c: any) => c.id),
+          // 어른 회비(1만원) 판정: 어른 빠른 등록 경로로 생성된 건만.
+          // 어른 빠른 등록은 church 이름을 정확히 "세계로교회(이름)" 패턴으로 저장하고 age_group='adult'.
+          // 교육부서 건은 부서명이 앞에 붙어 이 접두사와 매칭되지 않으므로 2만원으로 계산됨.
+          const adultQuickChurchIds = new Set(
+            churchesAll.filter((c: any) => (c.name ?? "").startsWith("세계로교회(")).map((c: any) => c.id),
           );
           const unitFor = (p: any) =>
-            p.age_group === "adult" && segueChurchIds.has(p.church_id) ? ADULT_UNIT : DEFAULT_UNIT;
+            p.age_group === "adult" && adultQuickChurchIds.has(p.church_id) ? ADULT_UNIT : DEFAULT_UNIT;
           const totalExpected = peopleAll.reduce((s: number, p: any) => s + unitFor(p), 0);
           const paymentByChurch = new Map<string, any>();
           for (const pay of paymentsAll) paymentByChurch.set(pay.church_id, pay);
