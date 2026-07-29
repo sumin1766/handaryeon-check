@@ -393,9 +393,11 @@ function OnsitePage() {
           const churchesAll = list.data?.churches ?? [];
           const peopleAll = list.data?.people ?? [];
           const paymentsAll = list.data?.payments ?? [];
-          const adultChurchId = segueAdultChurch.data?.id;
+          const segueChurchIds = new Set(
+            churchesAll.filter((c: any) => (c.name ?? "").includes("세계로")).map((c: any) => c.id),
+          );
           const unitFor = (p: any) =>
-            p.age_group === "adult" && p.church_id === adultChurchId ? ADULT_UNIT : DEFAULT_UNIT;
+            p.age_group === "adult" && segueChurchIds.has(p.church_id) ? ADULT_UNIT : DEFAULT_UNIT;
           const totalExpected = peopleAll.reduce((s: number, p: any) => s + unitFor(p), 0);
           const paymentByChurch = new Map<string, any>();
           for (const pay of paymentsAll) paymentByChurch.set(pay.church_id, pay);
