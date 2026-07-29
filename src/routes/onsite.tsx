@@ -82,7 +82,17 @@ function OnsitePage() {
   const [adultGender, setAdultGender] = useState<"M" | "F">("M");
   const [listSearch, setListSearch] = useState("");
   const [segueOnly, setSegueOnly] = useState(false);
-  const [sortMode, setSortMode] = useState<"default" | "latest" | "oldest">("default");
+  type SortMode = "default" | "latest" | "oldest";
+  const SORT_STORAGE_KEY = "onsite-sort-order";
+  const [sortMode, setSortModeState] = useState<SortMode>(() => {
+    if (typeof window === "undefined") return "default";
+    const v = window.localStorage.getItem(SORT_STORAGE_KEY);
+    return v === "latest" || v === "oldest" || v === "default" ? v : "default";
+  });
+  const setSortMode = (v: SortMode) => {
+    setSortModeState(v);
+    try { window.localStorage.setItem(SORT_STORAGE_KEY, v); } catch {}
+  };
 
   useRealtimeInvalidate(
     ["churches", "people", "lodgings", "church_payments"],
@@ -283,16 +293,31 @@ function OnsitePage() {
       if (!segueDeptId) throw new Error("부서를 선택하세요");
       const nm = segueName.trim();
       if (!nm) throw new Error("이름을 입력하세요");
+      const dept = (segueDepts.data ?? []).find((d: any) => d.id === segueDeptId);
+      if (!dept) throw new Error("부서 정보 조회 실패");
+      // 등록 건마다 새 세계로 계열 교회 레코드를 생성 (수동 취합 대상).
+      const perChurchName = `${dept.name}(${nm})`;
+      const { data: church, error: cErr } = await supabase.from("churches").insert({
+        season_id: season!.id,
+        name: perChurchName,
+        denomination: dept.denomination ?? null,
+        contact_name: dept.contact_name ?? null,
+        phone: dept.phone ?? null,
+        source: "onsite",
+        is_checked_in: true,
+        checked_in_at: new Date().toISOString(),
+        actual_count: 1,
+      }).select("id").single();
+      if (cErr) throw cErr;
       const { data, error } = await supabase.from("people").insert({
-        church_id: segueDeptId,
+        church_id: church.id,
         name: nm,
         gender: segueGender,
         age_group: "student",
         lodging: segueLodging,
       }).select("id, gender, lodging").single();
       if (error) throw error;
-      const dept = (segueDepts.data ?? []).find((d: any) => d.id === segueDeptId);
-      return { inserted: data, churchName: dept?.name ?? "세계로" };
+      return { inserted: data, churchName: perChurchName };
     },
     onSuccess: ({ inserted, churchName }) => {
       toast.success("추가됨");
@@ -322,12 +347,21 @@ function OnsitePage() {
 
   const adultAdd = useMutation({
     mutationFn: async () => {
-      const churchId = segueAdultChurch.data?.id;
-      if (!churchId) throw new Error("'세계로교회' 통합 레코드가 없습니다. 관리자에게 문의하세요.");
       const nm = adultName.trim();
       if (!nm) throw new Error("이름을 입력하세요");
+      // 등록 건마다 새 "세계로교회(이름)" 레코드를 만든다. 통합은 취합 화면에서 수동 진행.
+      const perChurchName = `세계로교회(${nm})`;
+      const { data: church, error: cErr } = await supabase.from("churches").insert({
+        season_id: season!.id,
+        name: perChurchName,
+        source: "onsite",
+        is_checked_in: true,
+        checked_in_at: new Date().toISOString(),
+        actual_count: 1,
+      }).select("id").single();
+      if (cErr) throw cErr;
       const { error } = await supabase.from("people").insert({
-        church_id: churchId,
+        church_id: church.id,
         name: nm,
         gender: adultGender,
         age_group: "adult",
@@ -359,9 +393,11 @@ function OnsitePage() {
           const churchesAll = list.data?.churches ?? [];
           const peopleAll = list.data?.people ?? [];
           const paymentsAll = list.data?.payments ?? [];
-          const adultChurchId = segueAdultChurch.data?.id;
+          const segueChurchIds = new Set(
+            churchesAll.filter((c: any) => (c.name ?? "").includes("세계로")).map((c: any) => c.id),
+          );
           const unitFor = (p: any) =>
-            p.age_group === "adult" && p.church_id === adultChurchId ? ADULT_UNIT : DEFAULT_UNIT;
+            p.age_group === "adult" && segueChurchIds.has(p.church_id) ? ADULT_UNIT : DEFAULT_UNIT;
           const totalExpected = peopleAll.reduce((s: number, p: any) => s + unitFor(p), 0);
           const paymentByChurch = new Map<string, any>();
           for (const pay of paymentsAll) paymentByChurch.set(pay.church_id, pay);
@@ -827,12 +863,14 @@ function OnsitePage() {
             const payments = list.data?.payments ?? [];
             const paymentByChurch = new Map<string, any>();
             for (const p of payments) paymentByChurch.set(p.church_id, p);
-            const adultChurchId = segueAdultChurch.data?.id ?? null;
+            const segueChurchIds = new Set(
+              churches.filter((c: any) => (c.name ?? "").includes("세계로")).map((c: any) => c.id),
+            );
             const feeOf = (churchId: string) => {
               const ps = peopleAll.filter((p: any) => p.church_id === churchId);
               let sum = 0;
               for (const p of ps) {
-                const isAdultSegue = adultChurchId && p.church_id === adultChurchId && p.age_group === "adult";
+                const isAdultSegue = segueChurchIds.has(churchId) && p.age_group === "adult";
                 sum += isAdultSegue ? ADULT_UNIT : DEFAULT_UNIT;
               }
               return sum;
