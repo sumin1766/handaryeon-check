@@ -866,15 +866,16 @@ function OnsitePage() {
             const payments = list.data?.payments ?? [];
             const paymentByChurch = new Map<string, any>();
             for (const p of payments) paymentByChurch.set(p.church_id, p);
-            const segueChurchIds = new Set(
-              churches.filter((c: any) => (c.name ?? "").includes("세계로")).map((c: any) => c.id),
+            // 어른 회비(1만원) 판정: 어른 빠른 등록으로 생성된 "세계로교회(이름)" 접두사 church만.
+            const adultQuickChurchIds = new Set(
+              churches.filter((c: any) => (c.name ?? "").startsWith("세계로교회(")).map((c: any) => c.id),
             );
             const feeOf = (churchId: string) => {
               const ps = peopleAll.filter((p: any) => p.church_id === churchId);
               let sum = 0;
               for (const p of ps) {
-                const isAdultSegue = segueChurchIds.has(churchId) && p.age_group === "adult";
-                sum += isAdultSegue ? ADULT_UNIT : DEFAULT_UNIT;
+                const isAdultQuick = adultQuickChurchIds.has(churchId) && p.age_group === "adult";
+                sum += isAdultQuick ? ADULT_UNIT : DEFAULT_UNIT;
               }
               return sum;
             };
