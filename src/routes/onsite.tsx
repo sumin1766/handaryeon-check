@@ -293,16 +293,31 @@ function OnsitePage() {
       if (!segueDeptId) throw new Error("부서를 선택하세요");
       const nm = segueName.trim();
       if (!nm) throw new Error("이름을 입력하세요");
+      const dept = (segueDepts.data ?? []).find((d: any) => d.id === segueDeptId);
+      if (!dept) throw new Error("부서 정보 조회 실패");
+      // 등록 건마다 새 세계로 계열 교회 레코드를 생성 (수동 취합 대상).
+      const perChurchName = `${dept.name}(${nm})`;
+      const { data: church, error: cErr } = await supabase.from("churches").insert({
+        season_id: season!.id,
+        name: perChurchName,
+        denomination: dept.denomination ?? null,
+        contact_name: dept.contact_name ?? null,
+        phone: dept.phone ?? null,
+        source: "onsite",
+        is_checked_in: true,
+        checked_in_at: new Date().toISOString(),
+        actual_count: 1,
+      }).select("id").single();
+      if (cErr) throw cErr;
       const { data, error } = await supabase.from("people").insert({
-        church_id: segueDeptId,
+        church_id: church.id,
         name: nm,
         gender: segueGender,
         age_group: "student",
         lodging: segueLodging,
       }).select("id, gender, lodging").single();
       if (error) throw error;
-      const dept = (segueDepts.data ?? []).find((d: any) => d.id === segueDeptId);
-      return { inserted: data, churchName: dept?.name ?? "세계로" };
+      return { inserted: data, churchName: perChurchName };
     },
     onSuccess: ({ inserted, churchName }) => {
       toast.success("추가됨");
@@ -332,12 +347,21 @@ function OnsitePage() {
 
   const adultAdd = useMutation({
     mutationFn: async () => {
-      const churchId = segueAdultChurch.data?.id;
-      if (!churchId) throw new Error("'세계로교회' 통합 레코드가 없습니다. 관리자에게 문의하세요.");
       const nm = adultName.trim();
       if (!nm) throw new Error("이름을 입력하세요");
+      // 등록 건마다 새 "세계로교회(이름)" 레코드를 만든다. 통합은 취합 화면에서 수동 진행.
+      const perChurchName = `세계로교회(${nm})`;
+      const { data: church, error: cErr } = await supabase.from("churches").insert({
+        season_id: season!.id,
+        name: perChurchName,
+        source: "onsite",
+        is_checked_in: true,
+        checked_in_at: new Date().toISOString(),
+        actual_count: 1,
+      }).select("id").single();
+      if (cErr) throw cErr;
       const { error } = await supabase.from("people").insert({
-        church_id: churchId,
+        church_id: church.id,
         name: nm,
         gender: adultGender,
         age_group: "adult",
