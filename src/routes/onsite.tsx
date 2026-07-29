@@ -82,7 +82,17 @@ function OnsitePage() {
   const [adultGender, setAdultGender] = useState<"M" | "F">("M");
   const [listSearch, setListSearch] = useState("");
   const [segueOnly, setSegueOnly] = useState(false);
-  const [sortMode, setSortMode] = useState<"default" | "latest" | "oldest">("default");
+  type SortMode = "default" | "latest" | "oldest";
+  const SORT_STORAGE_KEY = "onsite-sort-order";
+  const [sortMode, setSortModeState] = useState<SortMode>(() => {
+    if (typeof window === "undefined") return "default";
+    const v = window.localStorage.getItem(SORT_STORAGE_KEY);
+    return v === "latest" || v === "oldest" || v === "default" ? v : "default";
+  });
+  const setSortMode = (v: SortMode) => {
+    setSortModeState(v);
+    try { window.localStorage.setItem(SORT_STORAGE_KEY, v); } catch {}
+  };
 
   useRealtimeInvalidate(
     ["churches", "people", "lodgings", "church_payments"],
