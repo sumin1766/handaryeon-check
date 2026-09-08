@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuthRole } from "@/lib/use-auth-role";
 
 const SEASON_CACHE_KEY = "handaryeon:last-good-seasons";
 
