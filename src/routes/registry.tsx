@@ -367,7 +367,7 @@ function RegistryPage() {
             } else if (from === "intake-sheet") {
               navigate({ to: "/intake-sheet", search: {} as any, hash: row ? `church-row-${row}` : undefined, replace: true });
             } else if (openChurch) {
-              navigate({ search: {}, replace: true });
+              navigate({ search: {} as any, replace: true });
             }
           }}
         />

@@ -1027,7 +1027,7 @@ function OnsitePage() {
                               <div className="flex gap-1.5 justify-end items-center">
                                 <Link
                                   to="/registry"
-                                  search={{ openChurch: c.id, from: "onsite" }}
+                                  search={{ openChurch: c.id, from: "onsite", row: undefined }}
                                   className="inline-flex h-8 px-3 items-center rounded border text-xs whitespace-nowrap hover:bg-muted"
                                 >
                                   <Pencil className="h-3.5 w-3.5 mr-1" />수정
