@@ -182,24 +182,24 @@ function ApplyPage() {
 
       <Card className="mt-5 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">참석자 명단 ({rows.length}명)</h2>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setRows((p) => p.map((r) => ({ ...r, lodging_type: "church" })))}
-            >
-              전체 교회 숙박
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setRows((p) => p.map((r) => ({ ...r, lodging_type: "external" })))}
-            >
-              전체 외부 숙박
-            </Button>
+          <div>
+            <h2 className="text-lg font-semibold">참석자 명단 ({rows.length}명)</h2>
+            <p className="text-sm text-muted-foreground">
+              숙박 {lodgingCount}명 · 비숙박 {noneCount}명 · 합계 {rows.length}명
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {LODGING_OPTIONS.map((o) => (
+              <Button
+                key={o.value}
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setRows((p) => p.map((r) => ({ ...r, lodging_type: o.value })))}
+              >
+                전체 {o.label}
+              </Button>
+            ))}
           </div>
         </div>
 
@@ -230,23 +230,18 @@ function ApplyPage() {
 
                 onChange={(e) => setRow(i, { phone: e.target.value })}
               />
-              <div className="flex gap-1">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={r.lodging_type === "church" ? "default" : "outline"}
-                  onClick={() => setRow(i, { lodging_type: "church" })}
-                >
-                  교회 숙박
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={r.lodging_type === "external" ? "default" : "outline"}
-                  onClick={() => setRow(i, { lodging_type: "external" })}
-                >
-                  외부 숙박
-                </Button>
+              <div className="flex flex-wrap gap-1">
+                {LODGING_OPTIONS.map((o) => (
+                  <Button
+                    key={o.value}
+                    type="button"
+                    size="sm"
+                    variant={r.lodging_type === o.value ? "default" : "outline"}
+                    onClick={() => setRow(i, { lodging_type: o.value })}
+                  >
+                    {o.label}
+                  </Button>
+                ))}
               </div>
               <Button
                 type="button"
