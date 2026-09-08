@@ -43,10 +43,11 @@ export const Route = createFileRoute("/apply")({
 
 const EXTERNAL_NOTICE = "외부 숙박 관련 문의는 추후 안내문에 따라 별도로 문의해 주세요.";
 
+type LodgingType = "church" | "external" | "none";
 type Row = {
   name: string;
   phone: string;
-  lodging_type: "church" | "external";
+  lodging_type: LodgingType;
   category: MemberCategory;
 };
 const emptyRow = (): Row => ({ name: "", phone: "", lodging_type: "church", category: "male_student" });
