@@ -19,6 +19,7 @@ import {
 import {
   submitPreRegistration,
   type SubmitPreRegistrationResult,
+  type SubmitPreRegistrationInput,
 } from "@/lib/pre-registration-public.functions";
 import { krw } from "@/lib/format";
 
