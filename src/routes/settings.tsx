@@ -72,6 +72,7 @@ function SettingsPage() {
           <p className="text-sm text-muted-foreground">카드를 클릭하면 전체 내용을 팝업으로 열어볼 수 있습니다.</p>
         </header>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <ApplyQuickLinkCard />
           <SettingsCard
             icon={<Calendar className="h-5 w-5" />}
             title="시즌 관리"
