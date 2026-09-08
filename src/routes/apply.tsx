@@ -109,6 +109,9 @@ function ApplyPage() {
     onError: (e: Error) => toast.error(e.message || "제출에 실패했습니다."),
   });
 
+  const noneCount = rows.filter((r) => r.lodging_type === "none").length;
+  const lodgingCount = rows.length - noneCount;
+
   const setRow = (i: number, patch: Partial<Row>) =>
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
 
