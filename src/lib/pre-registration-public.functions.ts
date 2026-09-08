@@ -122,10 +122,12 @@ export const submitPreRegistration = createServerFn({ method: "POST" })
       data.members.map((m) => ({
         pre_registration_id: created.id,
         name: m.name,
-        phone: m.phone,
+        phone: m.phone.trim() ? m.phone.trim() : null,
         lodging_type: m.lodging_type,
+        category: m.category,
       })),
     );
+
     if (memberErr) throw new Error("명단 저장에 실패했습니다. 담당자에게 문의해 주세요.");
 
     const origin = new URL(req.url).origin;
