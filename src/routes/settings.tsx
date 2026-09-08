@@ -37,6 +37,10 @@ import { krw } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useAuthRole } from "@/lib/use-auth-role";
 import { useChangePasswords } from "@/lib/auth-config";
+import {
+  useFeeConfig, useSaveFeeConfig,
+  DEFAULT_PRE_REG_FEE, DEFAULT_SEGUE_MEMBER_FEE,
+} from "@/lib/pre-registration-config";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "설정 — 한다련 캠프" }] }),
