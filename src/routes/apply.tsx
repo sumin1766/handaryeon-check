@@ -18,9 +18,13 @@ import {
 } from "@/lib/pre-registration-config";
 import {
   submitPreRegistration,
+  MEMBER_CATEGORIES,
+  PHONE_OPTIONAL_CATEGORIES,
+  type MemberCategory,
   type SubmitPreRegistrationResult,
   type SubmitPreRegistrationInput,
 } from "@/lib/pre-registration-public.functions";
+
 import { krw } from "@/lib/format";
 
 export const Route = createFileRoute("/apply")({
@@ -39,8 +43,24 @@ export const Route = createFileRoute("/apply")({
 
 const EXTERNAL_NOTICE = "외부 숙박 관련 문의는 추후 안내문에 따라 별도로 문의해 주세요.";
 
-type Row = { name: string; phone: string; lodging_type: "church" | "external" };
-const emptyRow = (): Row => ({ name: "", phone: "", lodging_type: "church" });
+type Row = {
+  name: string;
+  phone: string;
+  lodging_type: "church" | "external";
+  category: MemberCategory;
+};
+const emptyRow = (): Row => ({ name: "", phone: "", lodging_type: "church", category: "male_student" });
+
+const CATEGORY_LABELS: Record<MemberCategory, string> = {
+  male_student: "남학생",
+  male_adult: "남자어른",
+  female_student: "여학생",
+  female_adult: "여자어른",
+  male_child: "남자유아초등",
+  female_child: "여자유아초등",
+};
+const phoneOptional = (c: MemberCategory) => PHONE_OPTIONAL_CATEGORIES.includes(c);
+
 
 function ApplyPage() {
   const [churchName, setChurchName] = useState("");
@@ -94,10 +114,15 @@ function ApplyPage() {
       toast.error("참석자를 1명 이상 입력해 주세요.");
       return;
     }
-    if (cleaned.some((r) => !r.name || !r.phone)) {
-      toast.error("모든 참석자의 이름과 전화번호를 입력해 주세요.");
+    if (cleaned.some((r) => !r.name)) {
+      toast.error("모든 참석자의 이름을 입력해 주세요.");
       return;
     }
+    if (cleaned.some((r) => !r.phone && !phoneOptional(r.category))) {
+      toast.error("유아·초등을 제외한 모든 참석자는 전화번호가 필수입니다.");
+      return;
+    }
+
     submit.mutate({
       churchName: churchName.trim(),
       managerName: managerName.trim(),
@@ -168,16 +193,29 @@ function ApplyPage() {
 
         <div className="mt-3 space-y-2">
           {rows.map((r, i) => (
-            <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto_auto]">
+            <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_1fr_auto_auto]">
               <Input
                 placeholder="이름"
                 value={r.name}
                 onChange={(e) => setRow(i, { name: e.target.value })}
               />
+              <select
+                aria-label="분류"
+                className="h-10 rounded-md border border-input bg-background px-2 text-sm"
+                value={r.category}
+                onChange={(e) => setRow(i, { category: e.target.value as MemberCategory })}
+              >
+                {MEMBER_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {CATEGORY_LABELS[c]}
+                  </option>
+                ))}
+              </select>
               <Input
-                placeholder="전화번호"
+                placeholder={phoneOptional(r.category) ? "전화번호 (선택)" : "전화번호"}
                 inputMode="tel"
                 value={r.phone}
+
                 onChange={(e) => setRow(i, { phone: e.target.value })}
               />
               <div className="flex gap-1">

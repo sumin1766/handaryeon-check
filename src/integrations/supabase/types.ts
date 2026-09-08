@@ -460,27 +460,30 @@ export type Database = {
       }
       pre_registration_members: {
         Row: {
+          category: string
           created_at: string
           id: string
           lodging_type: string
           name: string
-          phone: string
+          phone: string | null
           pre_registration_id: string
         }
         Insert: {
+          category?: string
           created_at?: string
           id?: string
           lodging_type?: string
           name: string
-          phone: string
+          phone?: string | null
           pre_registration_id: string
         }
         Update: {
+          category?: string
           created_at?: string
           id?: string
           lodging_type?: string
           name?: string
-          phone?: string
+          phone?: string | null
           pre_registration_id?: string
         }
         Relationships: [

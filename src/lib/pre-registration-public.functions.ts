@@ -7,11 +7,31 @@ import { z } from "zod";
 
 const DEFAULT_PRE_REG_FEE = 20000;
 
-const memberSchema = z.object({
-  name: z.string().trim().min(1).max(50),
-  phone: z.string().trim().min(1).max(30),
-  lodging_type: z.enum(["church", "external"]),
-});
+/** 참석자 분류 6종 (DB 저장은 영문 코드) */
+export const MEMBER_CATEGORIES = [
+  "male_student",
+  "male_adult",
+  "female_student",
+  "female_adult",
+  "male_child",
+  "female_child",
+] as const;
+export type MemberCategory = (typeof MEMBER_CATEGORIES)[number];
+/** 유아·초등은 전화번호 선택 입력 */
+export const PHONE_OPTIONAL_CATEGORIES: MemberCategory[] = ["male_child", "female_child"];
+
+const memberSchema = z
+  .object({
+    name: z.string().trim().min(1).max(50),
+    phone: z.string().trim().max(30).optional().default(""),
+    lodging_type: z.enum(["church", "external"]),
+    category: z.enum(MEMBER_CATEGORIES),
+  })
+  .refine(
+    (m) => PHONE_OPTIONAL_CATEGORIES.includes(m.category) || m.phone.trim().length > 0,
+    { message: "유아·초등을 제외한 참석자는 전화번호가 필수입니다.", path: ["phone"] },
+  );
+
 
 const submitSchema = z.object({
   churchName: z.string().trim().min(1).max(100),
@@ -102,10 +122,12 @@ export const submitPreRegistration = createServerFn({ method: "POST" })
       data.members.map((m) => ({
         pre_registration_id: created.id,
         name: m.name,
-        phone: m.phone,
+        phone: m.phone.trim() ? m.phone.trim() : null,
         lodging_type: m.lodging_type,
+        category: m.category,
       })),
     );
+
     if (memberErr) throw new Error("명단 저장에 실패했습니다. 담당자에게 문의해 주세요.");
 
     const origin = new URL(req.url).origin;
