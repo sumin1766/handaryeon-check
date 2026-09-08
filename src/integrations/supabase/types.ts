@@ -502,6 +502,7 @@ export type Database = {
           applied_at: string | null
           church_name: string
           created_at: string
+          denomination: string | null
           expected_fee: number
           head_count: number
           id: string
@@ -516,6 +517,7 @@ export type Database = {
           applied_at?: string | null
           church_name: string
           created_at?: string
+          denomination?: string | null
           expected_fee?: number
           head_count?: number
           id?: string
@@ -530,6 +532,7 @@ export type Database = {
           applied_at?: string | null
           church_name?: string
           created_at?: string
+          denomination?: string | null
           expected_fee?: number
           head_count?: number
           id?: string
