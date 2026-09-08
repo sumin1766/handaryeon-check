@@ -21,7 +21,7 @@ import {
 } from "@/lib/receipt-layout";
 import { ReceiptLayoutEditor, type ReceiptData, type ReceiptMode } from "@/components/receipt-document";
 import { toast } from "sonner";
-import { Plus, Star, Calendar, Building2, Bath, Maximize2, Trash2, FileText, Lock, ScanText, CheckCircle2, XCircle, Loader2, LayoutDashboard, ChevronUp, ChevronDown, Menu as MenuIcon, Eye, EyeOff, Save } from "lucide-react";
+import { Plus, Star, Calendar, Building2, Bath, Maximize2, Trash2, FileText, Lock, ScanText, CheckCircle2, XCircle, Loader2, LayoutDashboard, ChevronUp, ChevronDown, Menu as MenuIcon, Eye, EyeOff, Save, ExternalLink } from "lucide-react";
 import {
   useDashboardOrder, useSaveDashboardOrder, DEFAULT_DASHBOARD_ORDER,
   DASHBOARD_SECTION_LABEL, type DashboardSectionKey,
@@ -72,6 +72,7 @@ function SettingsPage() {
           <p className="text-sm text-muted-foreground">카드를 클릭하면 전체 내용을 팝업으로 열어볼 수 있습니다.</p>
         </header>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <ApplyQuickLinkCard />
           <SettingsCard
             icon={<Calendar className="h-5 w-5" />}
             title="시즌 관리"
@@ -182,6 +183,33 @@ function SettingsCard({
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function ApplyQuickLinkCard() {
+  return (
+    <a
+      href="/apply"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block text-left w-full"
+    >
+      <Card className="p-4 transition hover:shadow-md hover:border-primary/50 cursor-pointer h-full">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <ExternalLink className="h-5 w-5" />
+            </div>
+            <h2 className="text-base font-semibold truncate">사전접수 폼 바로가기</h2>
+          </div>
+          <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </div>
+        <div className="mt-3 text-sm text-muted-foreground">
+          공개 사전접수 폼(<span className="text-foreground font-medium">/apply</span>)을 새 탭에서 엽니다.
+        </div>
+        <div className="mt-3 text-xs text-primary font-medium">새 탭에서 열기 →</div>
+      </Card>
+    </a>
   );
 }
 
