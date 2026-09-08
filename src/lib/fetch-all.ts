@@ -12,7 +12,18 @@ import { supabase } from "@/integrations/supabase/client";
 
 const PAGE = 1000;
 
-type Table = "people" | "churches" | "lodgings" | "bath_coupons" | "duplicate_dismissals" | "places" | "church_payments";
+type Table =
+  | "people"
+  | "churches"
+  | "lodgings"
+  | "bath_coupons"
+  | "duplicate_dismissals"
+  | "places"
+  | "church_payments"
+  // 사전접수(참석자 사전신청) — 관리자 조회용
+  | "pre_registrations"
+  | "pre_registration_members"
+  | "pre_registration_changes";
 
 export async function fetchAll<T = any>(
   table: Table,
