@@ -699,6 +699,59 @@ function LodgingsSection() {
 }
 
 
+function FeeSummary() {
+  const { season } = useActiveSeason();
+  const { data } = useFeeConfig(season?.id);
+  return (
+    <div className="tabular-nums">
+      <div>사전접수 일괄 회비 <b className="text-foreground">{krw(data?.preRegFee ?? DEFAULT_PRE_REG_FEE)}</b></div>
+      <div>세계로 성도 회비 <b className="text-foreground">{krw(data?.segueMemberFee ?? DEFAULT_SEGUE_MEMBER_FEE)}</b></div>
+    </div>
+  );
+}
+
+function FeeSection() {
+  const { season } = useActiveSeason();
+  const { data } = useFeeConfig(season?.id);
+  const save = useSaveFeeConfig(season?.id);
+  const [preRegFee, setPreRegFee] = useState<number | null>(null);
+  const [segueFee, setSegueFee] = useState<number | null>(null);
+  if (!season) return <div className="text-sm text-muted-foreground">시즌이 없습니다.</div>;
+  const pre = preRegFee ?? data?.preRegFee ?? DEFAULT_PRE_REG_FEE;
+  const seg = segueFee ?? data?.segueMemberFee ?? DEFAULT_SEGUE_MEMBER_FEE;
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        시즌별로 저장됩니다. 사전접수 예상 회비 = 인원수 × 사전접수 일괄 회비. 세계로 성도 회비는 참고용으로 저장만 됩니다.
+      </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="w-full sm:w-52">
+          <Label className="text-xs">사전접수 일괄 회비 (원/인)</Label>
+          <Input type="number" value={pre} onChange={(e) => setPreRegFee(parseInt(e.target.value) || 0)} className="tabular-nums" />
+        </div>
+        <div className="w-full sm:w-52">
+          <Label className="text-xs">세계로 성도 회비 (원/인, 참고용)</Label>
+          <Input type="number" value={seg} onChange={(e) => setSegueFee(parseInt(e.target.value) || 0)} className="tabular-nums" />
+        </div>
+        <Button
+          disabled={save.isPending}
+          onClick={() =>
+            save.mutate(
+              { preRegFee: pre, segueMemberFee: seg },
+              { onSuccess: () => toast.success("저장됨"), onError: (e: any) => toast.error(e.message ?? "저장 실패") },
+            )
+          }
+        >
+          <Save className="h-4 w-4 mr-1" />저장
+        </Button>
+      </div>
+      <div className="text-sm text-muted-foreground tabular-nums">
+        현재 저장값: 사전접수 {krw(data?.preRegFee ?? DEFAULT_PRE_REG_FEE)} · 세계로 성도 {krw(data?.segueMemberFee ?? DEFAULT_SEGUE_MEMBER_FEE)}
+      </div>
+    </div>
+  );
+}
+
 function BathPriceSection() {
   const { season } = useActiveSeason();
   const qc = useQueryClient();
