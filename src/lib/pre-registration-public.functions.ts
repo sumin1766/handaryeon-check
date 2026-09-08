@@ -24,7 +24,7 @@ const memberSchema = z
   .object({
     name: z.string().trim().min(1).max(50),
     phone: z.string().trim().max(30).optional().default(""),
-    lodging_type: z.enum(["church", "external"]),
+    lodging_type: z.enum(["church", "external", "none"]),
     category: z.enum(MEMBER_CATEGORIES),
   })
   .refine(
@@ -35,6 +35,7 @@ const memberSchema = z
 
 const submitSchema = z.object({
   churchName: z.string().trim().min(1).max(100),
+  denomination: z.string().trim().max(100).optional().default(""),
   managerName: z.string().trim().min(1).max(50),
   managerPhone: z.string().trim().min(1).max(30),
   members: z.array(memberSchema).min(1).max(300),
@@ -108,6 +109,7 @@ export const submitPreRegistration = createServerFn({ method: "POST" })
       .insert({
         season_id: season.id,
         church_name: data.churchName,
+        denomination: data.denomination?.trim() ? data.denomination.trim() : null,
         manager_name: data.managerName,
         manager_phone: data.managerPhone,
         head_count: headCount,

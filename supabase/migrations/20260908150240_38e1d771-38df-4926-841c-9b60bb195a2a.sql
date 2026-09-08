@@ -1,0 +1,1 @@
+ALTER TABLE public.pre_registrations ADD COLUMN IF NOT EXISTS denomination text;

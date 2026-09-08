@@ -43,10 +43,11 @@ export const Route = createFileRoute("/apply")({
 
 const EXTERNAL_NOTICE = "외부 숙박 관련 문의는 추후 안내문에 따라 별도로 문의해 주세요.";
 
+type LodgingType = "church" | "external" | "none";
 type Row = {
   name: string;
   phone: string;
-  lodging_type: "church" | "external";
+  lodging_type: LodgingType;
   category: MemberCategory;
 };
 const emptyRow = (): Row => ({ name: "", phone: "", lodging_type: "church", category: "male_student" });
@@ -61,9 +62,16 @@ const CATEGORY_LABELS: Record<MemberCategory, string> = {
 };
 const phoneOptional = (c: MemberCategory) => PHONE_OPTIONAL_CATEGORIES.includes(c);
 
+const LODGING_OPTIONS: { value: LodgingType; label: string }[] = [
+  { value: "church", label: "교회 숙박" },
+  { value: "external", label: "외부 숙박" },
+  { value: "none", label: "비숙박" },
+];
+
 
 function ApplyPage() {
   const [churchName, setChurchName] = useState("");
+  const [denomination, setDenomination] = useState("");
   const [managerName, setManagerName] = useState("");
   const [managerPhone, setManagerPhone] = useState("");
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
@@ -101,6 +109,9 @@ function ApplyPage() {
     onError: (e: Error) => toast.error(e.message || "제출에 실패했습니다."),
   });
 
+  const noneCount = rows.filter((r) => r.lodging_type === "none").length;
+  const lodgingCount = rows.length - noneCount;
+
   const setRow = (i: number, patch: Partial<Row>) =>
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
 
@@ -125,6 +136,7 @@ function ApplyPage() {
 
     submit.mutate({
       churchName: churchName.trim(),
+      denomination: denomination.trim(),
       managerName: managerName.trim(),
       managerPhone: managerPhone.trim(),
       members: cleaned,
@@ -147,10 +159,19 @@ function ApplyPage() {
       </Card>
 
       <Card className="mt-5 space-y-3 p-4">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <label className="space-y-1">
             <span className="text-sm font-medium">교회명</span>
             <Input value={churchName} onChange={(e) => setChurchName(e.target.value)} maxLength={100} />
+          </label>
+          <label className="space-y-1">
+            <span className="text-sm font-medium">교단명 (선택)</span>
+            <Input
+              value={denomination}
+              onChange={(e) => setDenomination(e.target.value)}
+              maxLength={100}
+              placeholder="예: 예장합동 (선택 입력)"
+            />
           </label>
           <label className="space-y-1">
             <span className="text-sm font-medium">담당자명</span>
@@ -170,24 +191,24 @@ function ApplyPage() {
 
       <Card className="mt-5 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">참석자 명단 ({rows.length}명)</h2>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setRows((p) => p.map((r) => ({ ...r, lodging_type: "church" })))}
-            >
-              전체 교회 숙박
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setRows((p) => p.map((r) => ({ ...r, lodging_type: "external" })))}
-            >
-              전체 외부 숙박
-            </Button>
+          <div>
+            <h2 className="text-lg font-semibold">참석자 명단 ({rows.length}명)</h2>
+            <p className="text-sm text-muted-foreground">
+              숙박 {lodgingCount}명 · 비숙박 {noneCount}명 · 합계 {rows.length}명
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {LODGING_OPTIONS.map((o) => (
+              <Button
+                key={o.value}
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setRows((p) => p.map((r) => ({ ...r, lodging_type: o.value })))}
+              >
+                전체 {o.label}
+              </Button>
+            ))}
           </div>
         </div>
 
@@ -218,23 +239,18 @@ function ApplyPage() {
 
                 onChange={(e) => setRow(i, { phone: e.target.value })}
               />
-              <div className="flex gap-1">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={r.lodging_type === "church" ? "default" : "outline"}
-                  onClick={() => setRow(i, { lodging_type: "church" })}
-                >
-                  교회 숙박
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={r.lodging_type === "external" ? "default" : "outline"}
-                  onClick={() => setRow(i, { lodging_type: "external" })}
-                >
-                  외부 숙박
-                </Button>
+              <div className="flex flex-wrap gap-1">
+                {LODGING_OPTIONS.map((o) => (
+                  <Button
+                    key={o.value}
+                    type="button"
+                    size="sm"
+                    variant={r.lodging_type === o.value ? "default" : "outline"}
+                    onClick={() => setRow(i, { lodging_type: o.value })}
+                  >
+                    {o.label}
+                  </Button>
+                ))}
               </div>
               <Button
                 type="button"
