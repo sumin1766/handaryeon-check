@@ -1,5 +1,5 @@
 // 공개 사전접수 폼 (로그인/비밀번호 불필요). 제출은 서버 함수만 사용한다.
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -312,10 +312,12 @@ function DoneScreen({ result }: { result: SubmitPreRegistrationResult }) {
           이 QR을 반드시 저장하거나 캡처해 주세요.
         </p>
         <p className="text-sm text-muted-foreground">
-          분실하더라도 추후 교회명·담당자명·전화번호로 본인확인 후 다시 조회할 수 있습니다.
-          (재조회 기능은 준비 중입니다.)
+          분실하더라도 교회명·담당자명·전화번호로 본인확인 후 다시 조회·수정할 수 있습니다.
         </p>
         <p className="break-all text-xs text-muted-foreground">{result.accessUrl}</p>
+        <Link className="text-sm underline" to="/apply/lookup">
+          본인확인으로 다시 조회하기
+        </Link>
       </Card>
     </div>
   );
