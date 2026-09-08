@@ -23,7 +23,9 @@ export type Database = {
           nav_menu_hidden: string[]
           nav_menu_order: string[]
           ocr_enabled: boolean
+          pre_reg_fee: number
           season_id: string
+          segue_member_fee: number
         }
         Insert: {
           bath_unit_price?: number
@@ -33,7 +35,9 @@ export type Database = {
           nav_menu_hidden?: string[]
           nav_menu_order?: string[]
           ocr_enabled?: boolean
+          pre_reg_fee?: number
           season_id: string
+          segue_member_fee?: number
         }
         Update: {
           bath_unit_price?: number
@@ -43,7 +47,9 @@ export type Database = {
           nav_menu_hidden?: string[]
           nav_menu_order?: string[]
           ocr_enabled?: boolean
+          pre_reg_fee?: number
           season_id?: string
+          segue_member_fee?: number
         }
         Relationships: [
           {
@@ -408,6 +414,138 @@ export type Database = {
         }
         Relationships: []
       }
+      pre_registration_changes: {
+        Row: {
+          after_count: number
+          before_count: number
+          change_type: string
+          created_at: string
+          fee_delta: number
+          id: string
+          note: string | null
+          pre_registration_id: string
+          resolved: boolean
+        }
+        Insert: {
+          after_count?: number
+          before_count?: number
+          change_type: string
+          created_at?: string
+          fee_delta?: number
+          id?: string
+          note?: string | null
+          pre_registration_id: string
+          resolved?: boolean
+        }
+        Update: {
+          after_count?: number
+          before_count?: number
+          change_type?: string
+          created_at?: string
+          fee_delta?: number
+          id?: string
+          note?: string | null
+          pre_registration_id?: string
+          resolved?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pre_registration_changes_pre_registration_id_fkey"
+            columns: ["pre_registration_id"]
+            isOneToOne: false
+            referencedRelation: "pre_registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pre_registration_members: {
+        Row: {
+          created_at: string
+          id: string
+          lodging_type: string
+          name: string
+          phone: string
+          pre_registration_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lodging_type?: string
+          name: string
+          phone: string
+          pre_registration_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lodging_type?: string
+          name?: string
+          phone?: string
+          pre_registration_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pre_registration_members_pre_registration_id_fkey"
+            columns: ["pre_registration_id"]
+            isOneToOne: false
+            referencedRelation: "pre_registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pre_registrations: {
+        Row: {
+          access_token: string
+          applied_at: string | null
+          church_name: string
+          created_at: string
+          expected_fee: number
+          head_count: number
+          id: string
+          manager_name: string
+          manager_phone: string
+          season_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string
+          applied_at?: string | null
+          church_name: string
+          created_at?: string
+          expected_fee?: number
+          head_count?: number
+          id?: string
+          manager_name: string
+          manager_phone: string
+          season_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          applied_at?: string | null
+          church_name?: string
+          created_at?: string
+          expected_fee?: number
+          head_count?: number
+          id?: string
+          manager_name?: string
+          manager_phone?: string
+          season_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pre_registrations_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       receipt_layout: {
         Row: {
           id: number
@@ -494,6 +632,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      gen_pre_reg_token: { Args: never; Returns: string }
       ocr_backup_key_update: {
         Args: { current_admin: string; new_key: string }
         Returns: Json
