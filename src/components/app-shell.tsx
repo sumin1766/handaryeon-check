@@ -141,6 +141,26 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
             </div>
           </Link>
           <div className="flex items-center gap-2 text-xs">
+            {isAdmin && allSeasons.length > 0 && (
+              <select
+                value={season?.id ?? ""}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  if (!id || id === activeSeason?.id) clearSelection();
+                  else selectSeason(id);
+                }}
+                className="rounded-full border bg-muted/40 px-2.5 py-1 text-[11px] font-medium max-w-[180px]"
+                title="조회할 시즌 선택"
+                aria-label="조회할 시즌 선택"
+              >
+                {allSeasons.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                    {s.id === activeSeason?.id ? " (현재)" : ""}
+                  </option>
+                ))}
+              </select>
+            )}
             {season && (
               <div className="hidden md:flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 tabular-nums">
                 <span className="text-muted-foreground">접수기간</span>
