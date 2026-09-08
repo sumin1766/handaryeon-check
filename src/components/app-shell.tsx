@@ -101,6 +101,9 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   const roleTabs = TABS.filter((t) => role !== null && (t.roles as readonly AuthRole[]).includes(role));
   const visibleTabs = applyNavConfig(roleTabs, navCfg);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // While an admin is intentionally browsing a finished season, keep every tab
+  // reachable (read-only browsing). Normal end-of-season locking is unchanged.
+  const isEnded = seasonEnded && !isViewingPast;
 
   // Close mobile menu on route change
   useEffect(() => {
