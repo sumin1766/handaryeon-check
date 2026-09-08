@@ -17,7 +17,9 @@ export type FeeConfig = {
 export const PRE_REG_FORM_NOTICES = {
   student:
     "학생은 성별과 관계없이 중등·고등·청년을 의미합니다. 단, 청년부라도 인솔(담당자·어린 학생 인솔 등) 목적으로 참석하는 경우 어른으로 등록할 수 있습니다.",
-  phone: "모든 참석자의 전화번호는 필수 입력입니다.",
+  phone:
+    "전화번호는 남자유아초등·여자유아초등을 제외한 모든 참석자에게 필수입니다. (유아·초등은 생략 가능)",
+
 } as const;
 
 export function useFeeConfig(seasonId?: string) {
