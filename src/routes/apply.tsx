@@ -39,8 +39,24 @@ export const Route = createFileRoute("/apply")({
 
 const EXTERNAL_NOTICE = "외부 숙박 관련 문의는 추후 안내문에 따라 별도로 문의해 주세요.";
 
-type Row = { name: string; phone: string; lodging_type: "church" | "external" };
-const emptyRow = (): Row => ({ name: "", phone: "", lodging_type: "church" });
+type Row = {
+  name: string;
+  phone: string;
+  lodging_type: "church" | "external";
+  category: MemberCategory;
+};
+const emptyRow = (): Row => ({ name: "", phone: "", lodging_type: "church", category: "male_student" });
+
+const CATEGORY_LABELS: Record<MemberCategory, string> = {
+  male_student: "남학생",
+  male_adult: "남자어른",
+  female_student: "여학생",
+  female_adult: "여자어른",
+  male_child: "남자유아초등",
+  female_child: "여자유아초등",
+};
+const phoneOptional = (c: MemberCategory) => PHONE_OPTIONAL_CATEGORIES.includes(c);
+
 
 function ApplyPage() {
   const [churchName, setChurchName] = useState("");
