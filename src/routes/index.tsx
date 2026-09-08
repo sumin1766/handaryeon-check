@@ -209,7 +209,7 @@ function DashboardPage() {
     segue: (
       <section key="segue">
         <h2 className="lumina-section-title font-semibold mb-5">세계로교회 · 외부교회 집계</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-4">
           {SEGUE_DEPTS.map((d) => (
             <MiniStat
               key={d.key}
