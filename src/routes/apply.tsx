@@ -62,6 +62,12 @@ const CATEGORY_LABELS: Record<MemberCategory, string> = {
 };
 const phoneOptional = (c: MemberCategory) => PHONE_OPTIONAL_CATEGORIES.includes(c);
 
+const LODGING_OPTIONS: { value: LodgingType; label: string }[] = [
+  { value: "church", label: "교회 숙박" },
+  { value: "external", label: "외부 숙박" },
+  { value: "none", label: "비숙박" },
+];
+
 
 function ApplyPage() {
   const [churchName, setChurchName] = useState("");
