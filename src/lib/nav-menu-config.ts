@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const DEFAULT_NAV_ORDER: string[] = [
   "/",
   "/pre-registration",
+  "/pre-registration-admin",
   "/intake-sheet",
   "/registry",
   "/onsite",

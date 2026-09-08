@@ -14,6 +14,7 @@ import { Route as SegueMergeRouteImport } from './routes/segue-merge'
 import { Route as RostersRouteImport } from './routes/rosters'
 import { Route as RegistryRouteImport } from './routes/registry'
 import { Route as ReceiptRouteImport } from './routes/receipt'
+import { Route as PreRegistrationAdminRouteImport } from './routes/pre-registration-admin'
 import { Route as PreRegistrationRouteImport } from './routes/pre-registration'
 import { Route as PlacesRouteImport } from './routes/places'
 import { Route as OnsiteRouteImport } from './routes/onsite'
@@ -47,6 +48,11 @@ const RegistryRoute = RegistryRouteImport.update({
 const ReceiptRoute = ReceiptRouteImport.update({
   id: '/receipt',
   path: '/receipt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreRegistrationAdminRoute = PreRegistrationAdminRouteImport.update({
+  id: '/pre-registration-admin',
+  path: '/pre-registration-admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PreRegistrationRoute = PreRegistrationRouteImport.update({
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/onsite': typeof OnsiteRoute
   '/places': typeof PlacesRoute
   '/pre-registration': typeof PreRegistrationRoute
+  '/pre-registration-admin': typeof PreRegistrationAdminRoute
   '/receipt': typeof ReceiptRoute
   '/registry': typeof RegistryRoute
   '/rosters': typeof RostersRoute
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/onsite': typeof OnsiteRoute
   '/places': typeof PlacesRoute
   '/pre-registration': typeof PreRegistrationRoute
+  '/pre-registration-admin': typeof PreRegistrationAdminRoute
   '/receipt': typeof ReceiptRoute
   '/registry': typeof RegistryRoute
   '/rosters': typeof RostersRoute
@@ -138,6 +146,7 @@ export interface FileRoutesById {
   '/onsite': typeof OnsiteRoute
   '/places': typeof PlacesRoute
   '/pre-registration': typeof PreRegistrationRoute
+  '/pre-registration-admin': typeof PreRegistrationAdminRoute
   '/receipt': typeof ReceiptRoute
   '/registry': typeof RegistryRoute
   '/rosters': typeof RostersRoute
@@ -156,6 +165,7 @@ export interface FileRouteTypes {
     | '/onsite'
     | '/places'
     | '/pre-registration'
+    | '/pre-registration-admin'
     | '/receipt'
     | '/registry'
     | '/rosters'
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/onsite'
     | '/places'
     | '/pre-registration'
+    | '/pre-registration-admin'
     | '/receipt'
     | '/registry'
     | '/rosters'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/onsite'
     | '/places'
     | '/pre-registration'
+    | '/pre-registration-admin'
     | '/receipt'
     | '/registry'
     | '/rosters'
@@ -205,6 +217,7 @@ export interface RootRouteChildren {
   OnsiteRoute: typeof OnsiteRoute
   PlacesRoute: typeof PlacesRoute
   PreRegistrationRoute: typeof PreRegistrationRoute
+  PreRegistrationAdminRoute: typeof PreRegistrationAdminRoute
   ReceiptRoute: typeof ReceiptRoute
   RegistryRoute: typeof RegistryRoute
   RostersRoute: typeof RostersRoute
@@ -247,6 +260,13 @@ declare module '@tanstack/react-router' {
       path: '/receipt'
       fullPath: '/receipt'
       preLoaderRoute: typeof ReceiptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pre-registration-admin': {
+      id: '/pre-registration-admin'
+      path: '/pre-registration-admin'
+      fullPath: '/pre-registration-admin'
+      preLoaderRoute: typeof PreRegistrationAdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pre-registration': {
@@ -325,6 +345,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnsiteRoute: OnsiteRoute,
   PlacesRoute: PlacesRoute,
   PreRegistrationRoute: PreRegistrationRoute,
+  PreRegistrationAdminRoute: PreRegistrationAdminRoute,
   ReceiptRoute: ReceiptRoute,
   RegistryRoute: RegistryRoute,
   RostersRoute: RostersRoute,
