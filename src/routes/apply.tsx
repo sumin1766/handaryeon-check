@@ -150,10 +150,19 @@ function ApplyPage() {
       </Card>
 
       <Card className="mt-5 space-y-3 p-4">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <label className="space-y-1">
             <span className="text-sm font-medium">교회명</span>
             <Input value={churchName} onChange={(e) => setChurchName(e.target.value)} maxLength={100} />
+          </label>
+          <label className="space-y-1">
+            <span className="text-sm font-medium">교단명 (선택)</span>
+            <Input
+              value={denomination}
+              onChange={(e) => setDenomination(e.target.value)}
+              maxLength={100}
+              placeholder="예: 예장합동 (선택 입력)"
+            />
           </label>
           <label className="space-y-1">
             <span className="text-sm font-medium">담당자명</span>
