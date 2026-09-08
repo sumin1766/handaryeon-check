@@ -97,6 +97,13 @@ function SettingsPage() {
             <BathPriceSection />
           </SettingsCard>
           <SettingsCard
+            icon={<Bath className="h-5 w-5" />}
+            title="회비 관리"
+            summary={<FeeSummary />}
+          >
+            <FeeSection />
+          </SettingsCard>
+          <SettingsCard
             icon={<FileText className="h-5 w-5" />}
             title="영수증 서식 설정"
             summary={<ReceiptLayoutSummary />}
