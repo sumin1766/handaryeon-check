@@ -21,6 +21,7 @@ import { Route as NametagsRouteImport } from './routes/nametags'
 import { Route as LodgingsRouteImport } from './routes/lodgings'
 import { Route as IntakeSheetRouteImport } from './routes/intake-sheet'
 import { Route as BathCouponsRouteImport } from './routes/bath-coupons'
+import { Route as ApplyRouteImport } from './routes/apply'
 import { Route as IndexRouteImport } from './routes/index'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -83,6 +84,11 @@ const BathCouponsRoute = BathCouponsRouteImport.update({
   path: '/bath-coupons',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApplyRoute = ApplyRouteImport.update({
+  id: '/apply',
+  path: '/apply',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -91,6 +97,7 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/apply': typeof ApplyRoute
   '/bath-coupons': typeof BathCouponsRoute
   '/intake-sheet': typeof IntakeSheetRoute
   '/lodgings': typeof LodgingsRoute
@@ -106,6 +113,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/apply': typeof ApplyRoute
   '/bath-coupons': typeof BathCouponsRoute
   '/intake-sheet': typeof IntakeSheetRoute
   '/lodgings': typeof LodgingsRoute
@@ -122,6 +130,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/apply': typeof ApplyRoute
   '/bath-coupons': typeof BathCouponsRoute
   '/intake-sheet': typeof IntakeSheetRoute
   '/lodgings': typeof LodgingsRoute
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/apply'
     | '/bath-coupons'
     | '/intake-sheet'
     | '/lodgings'
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/apply'
     | '/bath-coupons'
     | '/intake-sheet'
     | '/lodgings'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/apply'
     | '/bath-coupons'
     | '/intake-sheet'
     | '/lodgings'
@@ -185,6 +197,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApplyRoute: typeof ApplyRoute
   BathCouponsRoute: typeof BathCouponsRoute
   IntakeSheetRoute: typeof IntakeSheetRoute
   LodgingsRoute: typeof LodgingsRoute
@@ -285,6 +298,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BathCouponsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/apply': {
+      id: '/apply'
+      path: '/apply'
+      fullPath: '/apply'
+      preLoaderRoute: typeof ApplyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -297,6 +317,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApplyRoute: ApplyRoute,
   BathCouponsRoute: BathCouponsRoute,
   IntakeSheetRoute: IntakeSheetRoute,
   LodgingsRoute: LodgingsRoute,

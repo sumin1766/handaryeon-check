@@ -70,7 +70,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/** 로그인/비밀번호 없이 접근하는 공개 경로 (사전접수 폼 등) */
+const PUBLIC_PATHS = ["/apply"];
+
 export function AppLayout({ children }: { children: ReactNode }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  if (isPublic) return <>{children}</>;
   return (
     <PasswordGate>
       <AppLayoutInner>{children}</AppLayoutInner>
