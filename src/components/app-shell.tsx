@@ -25,6 +25,7 @@ import { formatDate } from "@/lib/format";
 import { PasswordGate } from "@/components/password-gate";
 import { useAuthRole, setAuthRole, type AuthRole } from "@/lib/use-auth-role";
 import { useTheme } from "@/lib/use-theme";
+import { setReadOnlyMode } from "@/lib/read-only";
 import { useNavMenuConfig, applyNavConfig } from "@/lib/nav-menu-config";
 import logoAsset from "@/assets/handaryeon-symbol.png.asset.json";
 
@@ -101,9 +102,15 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   const roleTabs = TABS.filter((t) => role !== null && (t.roles as readonly AuthRole[]).includes(role));
   const visibleTabs = applyNavConfig(roleTabs, navCfg);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  // While an admin is intentionally browsing a finished season, keep every tab
-  // reachable (read-only browsing). Normal end-of-season locking is unchanged.
-  const isEnded = seasonEnded && !isViewingPast;
+  // While the full admin browses a finished season (the active one after it
+  // ends, or an explicitly selected past season), keep every tab reachable but
+  // read-only. Locking for staff/general users is unchanged.
+  const isEnded = seasonEnded && !isAdmin;
+  const readOnly = isAdmin && (seasonEnded || isViewingPast);
+
+  useEffect(() => {
+    setReadOnlyMode(readOnly);
+  }, [readOnly]);
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -209,23 +216,26 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
         />
       </header>
 
-      {isViewingPast && season && (
+      {readOnly && season && (
         <div className="mx-auto max-w-[1600px] px-6 pt-6">
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-sky-400/40 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:bg-sky-900/20 dark:text-sky-100">
             <AlertCircle className="h-4 w-4" />
             <div className="flex-1 min-w-[200px]">
-              <span className="font-semibold">조회 전용 — 과거 시즌</span>
+              <span className="font-semibold">조회 전용 — 지난 시즌</span>
               <span className="ml-2 text-xs">
-                지금 보고 있는 자료는 「{season.name}」의 지난 기록입니다. 새로 등록·수정하지 마세요.
+                「{season.name}」은 종료된 시즌이라 보기만 가능합니다. 등록·수정·삭제는 현재
+                시즌으로 돌아온 뒤에 하세요.
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => clearSelection()}
-              className="rounded-md border border-sky-400/50 bg-white/60 px-2.5 py-1 text-xs font-medium hover:bg-white dark:bg-transparent dark:hover:bg-sky-900/30"
-            >
-              현재 시즌으로 돌아가기
-            </button>
+            {isViewingPast && (
+              <button
+                type="button"
+                onClick={() => clearSelection()}
+                className="rounded-md border border-sky-400/50 bg-white/60 px-2.5 py-1 text-xs font-medium hover:bg-white dark:bg-transparent dark:hover:bg-sky-900/30"
+              >
+                현재 시즌으로 돌아가기
+              </button>
+            )}
           </div>
         </div>
       )}
