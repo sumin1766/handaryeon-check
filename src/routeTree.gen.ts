@@ -24,6 +24,8 @@ import { Route as IntakeSheetRouteImport } from './routes/intake-sheet'
 import { Route as BathCouponsRouteImport } from './routes/bath-coupons'
 import { Route as ApplyRouteImport } from './routes/apply'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApplyLookupRouteImport } from './routes/apply_.lookup'
+import { Route as ApplyTokenRouteImport } from './routes/apply_.$token'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -100,6 +102,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApplyLookupRoute = ApplyLookupRouteImport.update({
+  id: '/apply_/lookup',
+  path: '/apply/lookup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApplyTokenRoute = ApplyTokenRouteImport.update({
+  id: '/apply_/$token',
+  path: '/apply/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -117,6 +129,8 @@ export interface FileRoutesByFullPath {
   '/rosters': typeof RostersRoute
   '/segue-merge': typeof SegueMergeRoute
   '/settings': typeof SettingsRoute
+  '/apply/$token': typeof ApplyTokenRoute
+  '/apply/lookup': typeof ApplyLookupRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -134,6 +148,8 @@ export interface FileRoutesByTo {
   '/rosters': typeof RostersRoute
   '/segue-merge': typeof SegueMergeRoute
   '/settings': typeof SettingsRoute
+  '/apply/$token': typeof ApplyTokenRoute
+  '/apply/lookup': typeof ApplyLookupRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -152,6 +168,8 @@ export interface FileRoutesById {
   '/rosters': typeof RostersRoute
   '/segue-merge': typeof SegueMergeRoute
   '/settings': typeof SettingsRoute
+  '/apply_/$token': typeof ApplyTokenRoute
+  '/apply_/lookup': typeof ApplyLookupRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -171,6 +189,8 @@ export interface FileRouteTypes {
     | '/rosters'
     | '/segue-merge'
     | '/settings'
+    | '/apply/$token'
+    | '/apply/lookup'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -188,6 +208,8 @@ export interface FileRouteTypes {
     | '/rosters'
     | '/segue-merge'
     | '/settings'
+    | '/apply/$token'
+    | '/apply/lookup'
   id:
     | '__root__'
     | '/'
@@ -205,6 +227,8 @@ export interface FileRouteTypes {
     | '/rosters'
     | '/segue-merge'
     | '/settings'
+    | '/apply_/$token'
+    | '/apply_/lookup'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -223,6 +247,8 @@ export interface RootRouteChildren {
   RostersRoute: typeof RostersRoute
   SegueMergeRoute: typeof SegueMergeRoute
   SettingsRoute: typeof SettingsRoute
+  ApplyTokenRoute: typeof ApplyTokenRoute
+  ApplyLookupRoute: typeof ApplyLookupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -332,6 +358,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/apply_/lookup': {
+      id: '/apply_/lookup'
+      path: '/apply/lookup'
+      fullPath: '/apply/lookup'
+      preLoaderRoute: typeof ApplyLookupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/apply_/$token': {
+      id: '/apply_/$token'
+      path: '/apply/$token'
+      fullPath: '/apply/$token'
+      preLoaderRoute: typeof ApplyTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -351,6 +391,8 @@ const rootRouteChildren: RootRouteChildren = {
   RostersRoute: RostersRoute,
   SegueMergeRoute: SegueMergeRoute,
   SettingsRoute: SettingsRoute,
+  ApplyTokenRoute: ApplyTokenRoute,
+  ApplyLookupRoute: ApplyLookupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
