@@ -78,7 +78,18 @@ export function AppLayout({ children }: { children: ReactNode }) {
 }
 
 function AppLayoutInner({ children }: { children: ReactNode }) {
-  const { season, isEnded, isSuccess, isError, refetch } = useActiveSeason();
+  const {
+    season,
+    isEnded: seasonEnded,
+    isSuccess,
+    isError,
+    refetch,
+    all: allSeasons,
+    activeSeason,
+    isViewingPast,
+    selectSeason,
+    clearSelection,
+  } = useActiveSeason();
   const { failing, failures } = useBackendKeepalive();
   const backendDown = failing || (isError && !season);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -90,6 +101,9 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   const roleTabs = TABS.filter((t) => role !== null && (t.roles as readonly AuthRole[]).includes(role));
   const visibleTabs = applyNavConfig(roleTabs, navCfg);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // While an admin is intentionally browsing a finished season, keep every tab
+  // reachable (read-only browsing). Normal end-of-season locking is unchanged.
+  const isEnded = seasonEnded && !isViewingPast;
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -127,6 +141,26 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
             </div>
           </Link>
           <div className="flex items-center gap-2 text-xs">
+            {isAdmin && allSeasons.length > 0 && (
+              <select
+                value={season?.id ?? ""}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  if (!id || id === activeSeason?.id) clearSelection();
+                  else selectSeason(id);
+                }}
+                className="rounded-full border bg-muted/40 px-2.5 py-1 text-[11px] font-medium max-w-[180px]"
+                title="조회할 시즌 선택"
+                aria-label="조회할 시즌 선택"
+              >
+                {allSeasons.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                    {s.id === activeSeason?.id ? " (현재)" : ""}
+                  </option>
+                ))}
+              </select>
+            )}
             {season && (
               <div className="hidden md:flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 tabular-nums">
                 <span className="text-muted-foreground">접수기간</span>
@@ -175,6 +209,26 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
         />
       </header>
 
+      {isViewingPast && season && (
+        <div className="mx-auto max-w-[1600px] px-6 pt-6">
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-sky-400/40 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:bg-sky-900/20 dark:text-sky-100">
+            <AlertCircle className="h-4 w-4" />
+            <div className="flex-1 min-w-[200px]">
+              <span className="font-semibold">조회 전용 — 과거 시즌</span>
+              <span className="ml-2 text-xs">
+                지금 보고 있는 자료는 「{season.name}」의 지난 기록입니다. 새로 등록·수정하지 마세요.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => clearSelection()}
+              className="rounded-md border border-sky-400/50 bg-white/60 px-2.5 py-1 text-xs font-medium hover:bg-white dark:bg-transparent dark:hover:bg-sky-900/30"
+            >
+              현재 시즌으로 돌아가기
+            </button>
+          </div>
+        </div>
+      )}
 
       {backendDown ? (
         <div className="mx-auto max-w-[1600px] px-6 pt-6">

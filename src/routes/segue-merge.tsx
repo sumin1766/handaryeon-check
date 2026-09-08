@@ -154,7 +154,7 @@ function SegueMergePage() {
               여러 세계로 관련 교회에 흩어진 인원을 통합 세계로교회 레코드로 이동 (소속만 변경, 삭제 아님)
             </p>
           </div>
-          <Link to="/registry" className="inline-flex h-9 items-center gap-1 rounded border px-3 text-sm hover:bg-muted">
+          <Link to="/registry" search={{} as any} className="inline-flex h-9 items-center gap-1 rounded border px-3 text-sm hover:bg-muted">
             <ArrowLeft className="h-4 w-4" />접수 명단
           </Link>
         </header>

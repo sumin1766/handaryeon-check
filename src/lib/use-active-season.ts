@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuthRole } from "@/lib/use-auth-role";
 
 const SEASON_CACHE_KEY = "handaryeon:last-good-seasons";
 
@@ -85,14 +86,68 @@ export function useSeasons() {
   return q;
 }
 
+/* ------------------------------------------------------------------ */
+/* Season viewing selection (admin-only, read-only past seasons)       */
+/* ------------------------------------------------------------------ */
+
+const VIEW_KEY = "handaryeon:viewing-season";
+const VIEW_EVT = "handaryeon-viewing-season-changed";
+
+function readViewingId(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(VIEW_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function subscribeViewing(cb: () => void) {
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === VIEW_KEY) cb();
+  };
+  window.addEventListener("storage", onStorage);
+  window.addEventListener(VIEW_EVT, cb);
+  return () => {
+    window.removeEventListener("storage", onStorage);
+    window.removeEventListener(VIEW_EVT, cb);
+  };
+}
+
+/** Select a season to view (admin only). Pass null to return to the active season. */
+export function setViewingSeasonId(id: string | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (id) window.localStorage.setItem(VIEW_KEY, id);
+    else window.localStorage.removeItem(VIEW_KEY);
+  } catch {
+    // ignore storage failures; selection just won't persist
+  }
+  window.dispatchEvent(new Event(VIEW_EVT));
+}
+
 export function useActiveSeason() {
   const { data: seasons, isLoading, isError, isSuccess, error, refetch } = useSeasons();
+  const role = useAuthRole();
+  const viewingId = useSyncExternalStore(subscribeViewing, readViewingId, () => null);
+
   const active = seasons?.find((s) => s.is_active) ?? seasons?.[0];
+  // Only the full admin may view a non-active (finished) season; everyone else
+  // always sees the active season, exactly as before.
+  const picked =
+    role === "admin" && viewingId ? seasons?.find((s) => s.id === viewingId) : undefined;
+  const season = picked ?? active;
+  const isViewingPast = !!picked && !!active && picked.id !== active.id;
+
   const isEnded = !!(
-    active?.end_date && new Date(active.end_date) < new Date(new Date().toDateString())
+    season?.end_date && new Date(season.end_date) < new Date(new Date().toDateString())
   );
   return {
-    season: active,
+    season,
+    activeSeason: active,
+    isViewingPast,
+    selectSeason: setViewingSeasonId,
+    clearSelection: () => setViewingSeasonId(null),
     isLoading,
     isError,
     isSuccess,
