@@ -18,9 +18,13 @@ import {
 } from "@/lib/pre-registration-config";
 import {
   submitPreRegistration,
+  MEMBER_CATEGORIES,
+  PHONE_OPTIONAL_CATEGORIES,
+  type MemberCategory,
   type SubmitPreRegistrationResult,
   type SubmitPreRegistrationInput,
 } from "@/lib/pre-registration-public.functions";
+
 import { krw } from "@/lib/format";
 
 export const Route = createFileRoute("/apply")({
