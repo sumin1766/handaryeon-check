@@ -216,7 +216,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
         />
       </header>
 
-      {isViewingPast && season && (
+      {readOnly && season && (
         <div className="mx-auto max-w-[1600px] px-6 pt-6">
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-sky-400/40 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:bg-sky-900/20 dark:text-sky-100">
             <AlertCircle className="h-4 w-4" />
