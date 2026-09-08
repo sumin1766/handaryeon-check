@@ -186,6 +186,33 @@ function SettingsCard({
   );
 }
 
+function ApplyQuickLinkCard() {
+  return (
+    <a
+      href="/apply"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block text-left w-full"
+    >
+      <Card className="p-4 transition hover:shadow-md hover:border-primary/50 cursor-pointer h-full">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <ExternalLink className="h-5 w-5" />
+            </div>
+            <h2 className="text-base font-semibold truncate">사전접수 폼 바로가기</h2>
+          </div>
+          <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </div>
+        <div className="mt-3 text-sm text-muted-foreground">
+          공개 사전접수 폼(<span className="text-foreground font-medium">/apply</span>)을 새 탭에서 엽니다.
+        </div>
+        <div className="mt-3 text-xs text-primary font-medium">새 탭에서 열기 →</div>
+      </Card>
+    </a>
+  );
+}
+
 // ----- Summaries -----
 
 function SeasonsSummary() {
