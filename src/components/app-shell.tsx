@@ -37,6 +37,7 @@ const ADMIN: RoleSet = ["admin"];
 const TABS = [
   { to: "/", label: "대시보드", icon: LayoutDashboard, allowEnded: true, roles: ALL },
   { to: "/pre-registration", label: "사전접수", icon: ClipboardList, roles: STAFF },
+  { to: "/pre-registration-admin", label: "사전접수 관리", icon: ClipboardList, roles: STAFF },
   { to: "/intake-sheet", label: "접수시트", icon: CheckSquare, roles: ALL },
   { to: "/registry", label: "접수 명단", icon: Users, roles: STAFF },
   { to: "/onsite", label: "현장접수", icon: UserPlus, roles: ALL },

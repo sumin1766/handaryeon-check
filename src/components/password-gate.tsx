@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Lock } from "lucide-react";
 import { useAuthRole, setAuthRole } from "@/lib/use-auth-role";
 import { verifyPassword } from "@/lib/auth-config";
+import { setSessionPassword } from "@/lib/session-password";
 
 export function PasswordGate({ children }: { children: ReactNode }) {
   const role = useAuthRole();
@@ -29,6 +30,7 @@ export function PasswordGate({ children }: { children: ReactNode }) {
         setError("비밀번호가 올바르지 않습니다.");
         return;
       }
+      setSessionPassword(pw);
       setAuthRole(verified);
     } catch (err: any) {
       setError(err?.message ?? "오류가 발생했습니다.");
