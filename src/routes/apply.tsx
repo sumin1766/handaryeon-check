@@ -193,16 +193,29 @@ function ApplyPage() {
 
         <div className="mt-3 space-y-2">
           {rows.map((r, i) => (
-            <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto_auto]">
+            <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_1fr_auto_auto]">
               <Input
                 placeholder="이름"
                 value={r.name}
                 onChange={(e) => setRow(i, { name: e.target.value })}
               />
+              <select
+                aria-label="분류"
+                className="h-10 rounded-md border border-input bg-background px-2 text-sm"
+                value={r.category}
+                onChange={(e) => setRow(i, { category: e.target.value as MemberCategory })}
+              >
+                {MEMBER_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {CATEGORY_LABELS[c]}
+                  </option>
+                ))}
+              </select>
               <Input
-                placeholder="전화번호"
+                placeholder={phoneOptional(r.category) ? "전화번호 (선택)" : "전화번호"}
                 inputMode="tel"
                 value={r.phone}
+
                 onChange={(e) => setRow(i, { phone: e.target.value })}
               />
               <div className="flex gap-1">
