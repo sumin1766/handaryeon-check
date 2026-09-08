@@ -70,7 +70,7 @@ function ApplyPage() {
 
   const submitFn = useServerFn(submitPreRegistration);
   const submit = useMutation({
-    mutationFn: (input: Parameters<typeof submitFn>[0]["data"]) => submitFn({ data: input }),
+    mutationFn: (input: SubmitPreRegistrationInput) => submitFn({ data: input }),
     onSuccess: (res) => {
       setResult(res);
       if (res.duplicateNotice) {
