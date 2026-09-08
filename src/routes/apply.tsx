@@ -114,10 +114,15 @@ function ApplyPage() {
       toast.error("참석자를 1명 이상 입력해 주세요.");
       return;
     }
-    if (cleaned.some((r) => !r.name || !r.phone)) {
-      toast.error("모든 참석자의 이름과 전화번호를 입력해 주세요.");
+    if (cleaned.some((r) => !r.name)) {
+      toast.error("모든 참석자의 이름을 입력해 주세요.");
       return;
     }
+    if (cleaned.some((r) => !r.phone && !phoneOptional(r.category))) {
+      toast.error("유아·초등을 제외한 모든 참석자는 전화번호가 필수입니다.");
+      return;
+    }
+
     submit.mutate({
       churchName: churchName.trim(),
       managerName: managerName.trim(),
