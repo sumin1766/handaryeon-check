@@ -227,13 +227,15 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
                 시즌으로 돌아온 뒤에 하세요.
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => clearSelection()}
-              className="rounded-md border border-sky-400/50 bg-white/60 px-2.5 py-1 text-xs font-medium hover:bg-white dark:bg-transparent dark:hover:bg-sky-900/30"
-            >
-              현재 시즌으로 돌아가기
-            </button>
+            {isViewingPast && (
+              <button
+                type="button"
+                onClick={() => clearSelection()}
+                className="rounded-md border border-sky-400/50 bg-white/60 px-2.5 py-1 text-xs font-medium hover:bg-white dark:bg-transparent dark:hover:bg-sky-900/30"
+              >
+                현재 시즌으로 돌아가기
+              </button>
+            )}
           </div>
         </div>
       )}
