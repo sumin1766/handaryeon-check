@@ -221,9 +221,10 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-sky-400/40 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:bg-sky-900/20 dark:text-sky-100">
             <AlertCircle className="h-4 w-4" />
             <div className="flex-1 min-w-[200px]">
-              <span className="font-semibold">조회 전용 — 과거 시즌</span>
+              <span className="font-semibold">조회 전용 — 지난 시즌</span>
               <span className="ml-2 text-xs">
-                지금 보고 있는 자료는 「{season.name}」의 지난 기록입니다. 새로 등록·수정하지 마세요.
+                「{season.name}」은 종료된 시즌이라 보기만 가능합니다. 등록·수정·삭제는 현재
+                시즌으로 돌아온 뒤에 하세요.
               </span>
             </div>
             <button
