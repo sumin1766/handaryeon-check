@@ -85,22 +85,35 @@ function DashboardPage() {
   // 세분화되어 그룹 수가 많게 나온다(예: 우남 8개 그룹). 이는 정상 동작이며 중복이나 오류가 아니다.
   // 따라서 대시보드 카드의 부서/합계 아래에는 "개 그룹"을 표시하고, 진짜 서로 다른 교회들의 합인
   // "외부교회"만 "개 교회"로 남긴다.
+  // 세계로 계열은 교단명 칸을 "교육부서명"으로 기입하므로, 대시보드 집계에서만 그렇게 해석한다.
   const SEGUE_DEPTS = [
-    { key: "중등", kw: "중등" },
-    { key: "고등", kw: "고등" },
-    { key: "3청년", kw: "3청년" },
-    { key: "2청년", kw: "2청년" },
-    { key: "1청년", kw: "1청년" },
-    { key: "우남", kw: "우남" },
+    { key: "중등부", kw: "중등" },
+    { key: "고등부", kw: "고등" },
+    { key: "3청년회", kw: "3청년" },
+    { key: "2청년회", kw: "2청년" },
+    { key: "1청년회", kw: "1청년" },
+    { key: "바른청년", kw: "바른청년" },
+    { key: "우남 학생", kw: null as string | null },
+    { key: "우남 학부모", kw: null as string | null },
+    { key: "우남 교직원", kw: null as string | null },
     { key: "일반", kw: null as string | null },
   ] as const;
   const classifySegueDept = (c: any) => {
-    const s = `${c.name ?? ""} ${c.denomination ?? ""}`;
+    const name = `${c.name ?? ""}`;
+    const dept = `${c.denomination ?? ""}`;
+    const s = `${name} ${dept}`;
+    if (name.includes("우남")) {
+      if (dept.includes("학부모")) return "우남 학부모";
+      if (dept.includes("교직원")) return "우남 교직원";
+      return "우남 학생";
+    }
+    if (s.includes("바른청년")) return "바른청년";
     for (const d of SEGUE_DEPTS) {
-      if (d.kw && s.includes(d.kw)) return d.key;
+      if (d.kw && d.kw !== "바른청년" && s.includes(d.kw)) return d.key;
     }
     return "일반";
   };
+
   const churchDept = new Map<string, string>();
   const segueChurches: any[] = [];
   const externalChurches: any[] = [];
