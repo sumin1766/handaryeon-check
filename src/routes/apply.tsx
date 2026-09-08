@@ -65,6 +65,7 @@ const phoneOptional = (c: MemberCategory) => PHONE_OPTIONAL_CATEGORIES.includes(
 
 function ApplyPage() {
   const [churchName, setChurchName] = useState("");
+  const [denomination, setDenomination] = useState("");
   const [managerName, setManagerName] = useState("");
   const [managerPhone, setManagerPhone] = useState("");
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
@@ -126,6 +127,7 @@ function ApplyPage() {
 
     submit.mutate({
       churchName: churchName.trim(),
+      denomination: denomination.trim(),
       managerName: managerName.trim(),
       managerPhone: managerPhone.trim(),
       members: cleaned,
