@@ -356,13 +356,25 @@ function DetailDialog({
   reg,
   preRegFee,
   onClose,
+  onRefresh,
+  onTogglePaid,
+  paying,
 }: {
   password: string;
   reg: AdminPreRegistration | null;
   preRegFee: number;
   onClose: () => void;
+  onRefresh: () => void;
+  onTogglePaid: (id: string, paid: boolean) => void;
+  paying: boolean;
 }) {
   const changesFn = useServerFn(getPreRegistrationChanges);
+  const candidatesFn = useServerFn(findChurchCandidates);
+  const confirmFn = useServerFn(confirmPreRegistration);
+  const [candidates, setCandidates] = useState<ChurchCandidate[] | null>(null);
+  const [mode, setMode] = useState<"link" | "new">("new");
+  const [pickedChurch, setPickedChurch] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const [qr, setQr] = useState("");
   const accessUrl =
     reg && typeof window !== "undefined" ? `${window.location.origin}/apply/${reg.access_token}` : "";
