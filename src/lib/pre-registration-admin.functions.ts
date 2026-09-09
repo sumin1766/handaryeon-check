@@ -27,6 +27,9 @@ export type AdminPreRegistration = {
   created_at: string;
   updated_at: string;
   applied_at: string | null;
+  church_id: string | null;
+  paid: boolean;
+  paid_at: string | null;
   members: AdminMember[];
 };
 
@@ -118,6 +121,9 @@ export const listPreRegistrations = createServerFn({ method: "POST" })
         created_at: r.created_at,
         updated_at: r.updated_at,
         applied_at: r.applied_at ?? null,
+        church_id: r.church_id ?? null,
+        paid: !!r.paid,
+        paid_at: r.paid_at ?? null,
         members: byReg.get(r.id) ?? [],
       })),
     };

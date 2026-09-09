@@ -465,6 +465,7 @@ export type Database = {
           id: string
           lodging_type: string
           name: string
+          person_id: string | null
           phone: string | null
           pre_registration_id: string
         }
@@ -474,6 +475,7 @@ export type Database = {
           id?: string
           lodging_type?: string
           name: string
+          person_id?: string | null
           phone?: string | null
           pre_registration_id: string
         }
@@ -483,10 +485,18 @@ export type Database = {
           id?: string
           lodging_type?: string
           name?: string
+          person_id?: string | null
           phone?: string | null
           pre_registration_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "pre_registration_members_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pre_registration_members_pre_registration_id_fkey"
             columns: ["pre_registration_id"]
@@ -500,6 +510,7 @@ export type Database = {
         Row: {
           access_token: string
           applied_at: string | null
+          church_id: string | null
           church_name: string
           created_at: string
           denomination: string | null
@@ -508,6 +519,8 @@ export type Database = {
           id: string
           manager_name: string
           manager_phone: string
+          paid: boolean
+          paid_at: string | null
           season_id: string
           status: string
           updated_at: string
@@ -515,6 +528,7 @@ export type Database = {
         Insert: {
           access_token?: string
           applied_at?: string | null
+          church_id?: string | null
           church_name: string
           created_at?: string
           denomination?: string | null
@@ -523,6 +537,8 @@ export type Database = {
           id?: string
           manager_name: string
           manager_phone: string
+          paid?: boolean
+          paid_at?: string | null
           season_id: string
           status?: string
           updated_at?: string
@@ -530,6 +546,7 @@ export type Database = {
         Update: {
           access_token?: string
           applied_at?: string | null
+          church_id?: string | null
           church_name?: string
           created_at?: string
           denomination?: string | null
@@ -538,11 +555,20 @@ export type Database = {
           id?: string
           manager_name?: string
           manager_phone?: string
+          paid?: boolean
+          paid_at?: string | null
           season_id?: string
           status?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "pre_registrations_church_id_fkey"
+            columns: ["church_id"]
+            isOneToOne: false
+            referencedRelation: "churches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pre_registrations_season_id_fkey"
             columns: ["season_id"]

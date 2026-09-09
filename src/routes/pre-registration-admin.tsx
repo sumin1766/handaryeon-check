@@ -24,6 +24,12 @@ import {
   getPreRegistrationChanges,
   type AdminPreRegistration,
 } from "@/lib/pre-registration-admin.functions";
+import {
+  findChurchCandidates,
+  confirmPreRegistration,
+  setPreRegistrationPaid,
+  type ChurchCandidate,
+} from "@/lib/pre-registration-confirm.functions";
 
 export const Route = createFileRoute("/pre-registration-admin")({
   head: () => ({
@@ -136,6 +142,8 @@ function ReAuth({ onDone }: { onDone: (pw: string) => void }) {
 
 function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuthLost: () => void }) {
   const list = useServerFn(listPreRegistrations);
+  const setPaid = useServerFn(setPreRegistrationPaid);
+  const [paying, setPaying] = useState(false);
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<"recent" | "status" | "name">("recent");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -152,6 +160,19 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
   }, [isError, error, onAuthLost]);
 
   const rows = data?.rows ?? [];
+
+  const togglePaid = async (id: string, paid: boolean) => {
+    setPaying(true);
+    try {
+      await setPaid({ data: { password, id, paid } });
+      await refetch();
+      toast.success(paid ? "납부 완료로 표시했습니다" : "미납으로 되돌렸습니다");
+    } catch (e: any) {
+      toast.error(e?.message ?? "저장 실패");
+    } finally {
+      setPaying(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -259,7 +280,7 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left">
             <tr>
-              {["교회명", "교단명", "담당자", "연락처", "인원", "확정 회비", "숙박(교회/외부/비숙박)", "상태", "제출", "수정"].map(
+              {["교회명", "교단명", "담당자", "연락처", "인원", "확정 회비", "숙박(교회/외부/비숙박)", "상태", "납부", "제출", "수정"].map(
                 (h) => (
                   <th key={h} className="px-3 py-2 whitespace-nowrap font-medium">{h}</th>
                 ),
@@ -268,10 +289,10 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
           </thead>
           <tbody>
             {isLoading && (
-              <tr><td colSpan={10} className="px-3 py-6 text-muted-foreground">불러오는 중…</td></tr>
+              <tr><td colSpan={11} className="px-3 py-6 text-muted-foreground">불러오는 중…</td></tr>
             )}
             {!isLoading && filtered.length === 0 && (
-              <tr><td colSpan={10} className="px-3 py-6 text-muted-foreground">사전접수 건이 없습니다.</td></tr>
+              <tr><td colSpan={11} className="px-3 py-6 text-muted-foreground">사전접수 건이 없습니다.</td></tr>
             )}
             {filtered.map((r) => {
               const l = lodgingCounts(r);
@@ -289,6 +310,16 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
                   <td className="px-3 py-2 whitespace-nowrap">{krw(r.expected_fee)}</td>
                   <td className="px-3 py-2 whitespace-nowrap">{l.church} / {l.external} / {l.none}</td>
                   <td className="px-3 py-2"><StatusBadge status={r.status} /></td>
+                  <td className="px-3 py-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      size="sm"
+                      variant={r.paid ? "default" : "outline"}
+                      disabled={paying}
+                      onClick={() => togglePaid(r.id, !r.paid)}
+                    >
+                      {r.paid ? "납부 완료" : "미납"}
+                    </Button>
+                  </td>
                   <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{formatKst(r.created_at)}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{formatKst(r.updated_at)}</td>
                 </tr>
@@ -303,6 +334,9 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
         reg={selected}
         preRegFee={data?.preRegFee ?? 0}
         onClose={() => setOpenId(null)}
+        onRefresh={() => refetch()}
+        onTogglePaid={togglePaid}
+        paying={paying}
       />
     </div>
   );
@@ -322,13 +356,25 @@ function DetailDialog({
   reg,
   preRegFee,
   onClose,
+  onRefresh,
+  onTogglePaid,
+  paying,
 }: {
   password: string;
   reg: AdminPreRegistration | null;
   preRegFee: number;
   onClose: () => void;
+  onRefresh: () => void;
+  onTogglePaid: (id: string, paid: boolean) => void;
+  paying: boolean;
 }) {
   const changesFn = useServerFn(getPreRegistrationChanges);
+  const candidatesFn = useServerFn(findChurchCandidates);
+  const confirmFn = useServerFn(confirmPreRegistration);
+  const [candidates, setCandidates] = useState<ChurchCandidate[] | null>(null);
+  const [mode, setMode] = useState<"link" | "new">("new");
+  const [pickedChurch, setPickedChurch] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const [qr, setQr] = useState("");
   const accessUrl =
     reg && typeof window !== "undefined" ? `${window.location.origin}/apply/${reg.access_token}` : "";
@@ -344,6 +390,51 @@ function DetailDialog({
     retry: false,
     queryFn: () => changesFn({ data: { password, id: reg!.id } }),
   });
+
+  const regId = reg?.id ?? null;
+  const alreadyLinked = !!reg?.church_id;
+  useEffect(() => {
+    setCandidates(null);
+    setPickedChurch(null);
+    setMode("new");
+    if (!regId) return;
+    let alive = true;
+    candidatesFn({ data: { password, id: regId } })
+      .then((c) => {
+        if (!alive) return;
+        setCandidates(c);
+        if (c.length) {
+          setMode("link");
+          setPickedChurch(c[0]!.id);
+        }
+      })
+      .catch(() => alive && setCandidates([]));
+    return () => {
+      alive = false;
+    };
+  }, [regId, password, candidatesFn]);
+
+  const runConfirm = async () => {
+    if (!reg) return;
+    setConfirming(true);
+    try {
+      const res = await confirmFn({
+        data: {
+          password,
+          id: reg.id,
+          mode: alreadyLinked ? "new" : mode,
+          ...(!alreadyLinked && mode === "link" && pickedChurch ? { churchId: pickedChurch } : {}),
+        },
+      });
+      toast.success(`확정 완료 — ${res.peopleCount}명 등록 · 회비 ${krw(res.amount)}`);
+      onRefresh();
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.message ?? "확정 처리에 실패했습니다.");
+    } finally {
+      setConfirming(false);
+    }
+  };
 
   const unitFee = reg && reg.head_count > 0 ? Math.round(reg.expected_fee / reg.head_count) : preRegFee;
 
@@ -372,9 +463,76 @@ function DetailDialog({
                 {reg.head_count}명 × {krw(unitFee)} = <strong>{krw(reg.expected_fee)}</strong>
               </div>
               <div className="text-muted-foreground text-xs mt-1">
-                예상 회비와 확정 회비는 현재 동일하게 표시됩니다(확정 처리는 다음 단계).
+                운영 등록 시에는 세계로 성도 1만원 규칙이 적용되어 금액이 달라질 수 있습니다.
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-muted-foreground text-xs">납부</span>
+                <Button
+                  size="sm"
+                  variant={reg.paid ? "default" : "outline"}
+                  disabled={paying}
+                  onClick={() => onTogglePaid(reg.id, !reg.paid)}
+                >
+                  {reg.paid ? "납부 완료" : "미납"}
+                </Button>
+                {reg.paid && reg.paid_at && (
+                  <span className="text-xs text-muted-foreground">{formatKst(reg.paid_at)}</span>
+                )}
               </div>
             </Card>
+
+            <Card className="p-3 space-y-3 text-sm">
+              <div className="font-medium">
+                {reg.status === "applied" ? "확정 완료" : reg.status === "needs_review" ? "재확정" : "확정"}
+              </div>
+              {alreadyLinked ? (
+                <div className="text-muted-foreground">
+                  이미 운영 명단에 연결된 건입니다. 재확정하면 이 건에서 등록된 인원만 최신 명단으로 갱신됩니다.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex gap-1">
+                    <Button size="sm" variant={mode === "new" ? "default" : "outline"} onClick={() => setMode("new")}>
+                      신규 교회 생성
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={mode === "link" ? "default" : "outline"}
+                      disabled={!candidates?.length}
+                      onClick={() => setMode("link")}
+                    >
+                      기존 교회 연결
+                    </Button>
+                  </div>
+                  {mode === "link" && (
+                    <div className="space-y-1">
+                      {!candidates?.length && <div className="text-muted-foreground">유사한 교회가 없습니다.</div>}
+                      {(candidates ?? []).map((c) => (
+                        <label key={c.id} className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="church-candidate"
+                            checked={pickedChurch === c.id}
+                            onChange={() => setPickedChurch(c.id)}
+                          />
+                          <span>
+                            {c.name} {c.denomination ? `(${c.denomination})` : ""} · {c.peopleCount}명
+                            {c.exact ? " · 이름 일치" : ""}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              <Button
+                onClick={runConfirm}
+                disabled={confirming || (!alreadyLinked && mode === "link" && !pickedChurch)}
+              >
+                {confirming ? "처리 중…" : reg.status === "submitted" ? "확정" : "재확정"}
+              </Button>
+            </Card>
+
 
             <Card className="p-3">
               <div className="font-medium text-sm mb-2">참석자 명단 ({reg.members.length}명)</div>
