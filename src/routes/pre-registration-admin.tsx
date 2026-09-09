@@ -259,7 +259,7 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left">
             <tr>
-              {["교회명", "교단명", "담당자", "연락처", "인원", "확정 회비", "숙박(교회/외부/비숙박)", "상태", "제출", "수정"].map(
+              {["교회명", "교단명", "담당자", "연락처", "인원", "확정 회비", "숙박(교회/외부/비숙박)", "상태", "납부", "제출", "수정"].map(
                 (h) => (
                   <th key={h} className="px-3 py-2 whitespace-nowrap font-medium">{h}</th>
                 ),
