@@ -1,5 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { getSessionPassword } from "@/lib/session-password";
+import { saveNavMenuConfigServer } from "@/lib/nav-menu.functions";
 
 /**
  * Nav menu (top tab) order + hidden config, persisted in
@@ -85,11 +88,18 @@ export function useNavMenuConfig(seasonId?: string) {
 
 export function useSaveNavMenuConfig(seasonId?: string) {
   const qc = useQueryClient();
+  const saveServer = useServerFn(saveNavMenuConfigServer);
   return useMutation({
     mutationFn: async (cfg: NavMenuConfig) => {
       if (!seasonId) throw new Error("시즌이 없습니다");
       const order = sanitizeNavOrder(cfg.order, DEFAULT_NAV_ORDER);
       const hidden = sanitizeNavHidden(cfg.hidden, DEFAULT_NAV_ORDER);
+      // 전체관리자 권한을 서버에서 재확인한 뒤 저장한다.
+      const password = getSessionPassword();
+      if (password) {
+        await saveServer({ data: { password, seasonId, order, hidden } });
+        return;
+      }
       const { error } = await supabase
         .from("app_settings")
         .upsert({

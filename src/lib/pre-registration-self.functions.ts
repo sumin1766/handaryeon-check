@@ -4,7 +4,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { MEMBER_CATEGORIES, PHONE_OPTIONAL_CATEGORIES, type MemberCategory } from "./pre-registration-public.functions";
+import {
+  ALL_MEMBER_CATEGORIES,
+  isPhoneOptional,
+  parseCategoryFees,
+  sumCategoryFees,
+  type AnyMemberCategory,
+  type CategoryFeeMap,
+} from "./member-categories";
+
+type MemberCategory = AnyMemberCategory;
 
 const DEFAULT_PRE_REG_FEE = 20000;
 
@@ -27,6 +36,7 @@ export type PreRegistrationSelfDetail = {
   headCount: number;
   expectedFee: number;
   unitFee: number;
+  categoryFees: CategoryFeeMap;
   members: SelfMember[];
 };
 
@@ -35,10 +45,10 @@ const memberSchema = z
     name: z.string().trim().min(1).max(50),
     phone: z.string().trim().max(30).optional().default(""),
     lodging_type: z.enum(["church", "external", "none"]),
-    category: z.enum(MEMBER_CATEGORIES),
+    category: z.enum(ALL_MEMBER_CATEGORIES),
   })
-  .refine((m) => PHONE_OPTIONAL_CATEGORIES.includes(m.category) || m.phone.trim().length > 0, {
-    message: "유아·초등을 제외한 참석자는 전화번호가 필수입니다.",
+  .refine((m) => isPhoneOptional(m.category) || m.phone.trim().length > 0, {
+    message: "유아유치를 제외한 참석자는 전화번호가 필수입니다.",
     path: ["phone"],
   });
 
@@ -86,7 +96,9 @@ async function loadDetail(id: string): Promise<PreRegistrationSelfDetail> {
     .select("*")
     .eq("season_id", reg.season_id)
     .maybeSingle();
-  const unitFee = (settings as { pre_reg_fee?: number } | null)?.pre_reg_fee ?? DEFAULT_PRE_REG_FEE;
+  const unitFee =
+    (settings as { pre_reg_fee?: number } | null)?.pre_reg_fee ?? DEFAULT_PRE_REG_FEE;
+  const categoryFees = parseCategoryFees((settings as { category_fees?: unknown } | null)?.category_fees);
 
   const { data: members } = await supabaseAdmin
     .from("pre_registration_members")
@@ -107,6 +119,7 @@ async function loadDetail(id: string): Promise<PreRegistrationSelfDetail> {
     headCount: reg.head_count,
     expectedFee: reg.expected_fee,
     unitFee,
+    categoryFees,
     members: (members ?? []).map((m) => ({
       name: m.name,
       phone: m.phone ?? "",
@@ -212,6 +225,7 @@ export const updatePreRegistrationSelf = createServerFn({ method: "POST" })
       .eq("season_id", reg.season_id)
       .maybeSingle();
     const unitFee = (settings as { pre_reg_fee?: number } | null)?.pre_reg_fee ?? DEFAULT_PRE_REG_FEE;
+    const categoryFees = parseCategoryFees((settings as { category_fees?: unknown } | null)?.category_fees);
 
     const { data: beforeMembers } = await supabaseAdmin
       .from("pre_registration_members")
@@ -220,8 +234,10 @@ export const updatePreRegistrationSelf = createServerFn({ method: "POST" })
 
     const beforeCount = beforeMembers?.length ?? 0;
     const afterCount = data.members.length;
-    const beforeFee = reg.expected_fee ?? beforeCount * unitFee;
-    const afterFee = afterCount * unitFee;
+    const beforeFee =
+      reg.expected_fee ??
+      sumCategoryFees((beforeMembers ?? []).map((m) => m.category), categoryFees, unitFee);
+    const afterFee = sumCategoryFees(data.members.map((m) => m.category), categoryFees, unitFee);
     const feeDelta = afterFee - beforeFee;
 
     const norm = (arr: SelfMember[]) =>

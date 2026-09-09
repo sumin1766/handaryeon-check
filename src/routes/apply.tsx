@@ -14,13 +14,19 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   DEFAULT_PRE_REG_FEE,
   PRE_REG_FORM_NOTICES,
-  calcExpectedFee,
 } from "@/lib/pre-registration-config";
 import {
-  submitPreRegistration,
   MEMBER_CATEGORIES,
-  PHONE_OPTIONAL_CATEGORIES,
+  CATEGORY_LABELS,
+  isPhoneOptional,
+  parseCategoryFees,
+  sumCategoryFees,
+  feeForCategory,
   type MemberCategory,
+  type CategoryFeeMap,
+} from "@/lib/member-categories";
+import {
+  submitPreRegistration,
   type SubmitPreRegistrationResult,
   type SubmitPreRegistrationInput,
 } from "@/lib/pre-registration-public.functions";
@@ -52,15 +58,7 @@ type Row = {
 };
 const emptyRow = (): Row => ({ name: "", phone: "", lodging_type: "church", category: "male_student" });
 
-const CATEGORY_LABELS: Record<MemberCategory, string> = {
-  male_student: "남학생",
-  male_adult: "남자어른",
-  female_student: "여학생",
-  female_adult: "여자어른",
-  male_child: "남자 유아~초등",
-  female_child: "여자 유아~초등",
-};
-const phoneOptional = (c: MemberCategory) => PHONE_OPTIONAL_CATEGORIES.includes(c);
+const phoneOptional = (c: MemberCategory) => isPhoneOptional(c);
 
 const LODGING_OPTIONS: { value: LodgingType; label: string }[] = [
   { value: "church", label: "교회 숙박" },
@@ -77,9 +75,9 @@ function ApplyPage() {
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
   const [result, setResult] = useState<SubmitPreRegistrationResult | null>(null);
 
-  const { data: fee = DEFAULT_PRE_REG_FEE } = useQuery({
+  const { data: feeCfg } = useQuery({
     queryKey: ["public-pre-reg-fee"],
-    queryFn: async () => {
+    queryFn: async (): Promise<{ preRegFee: number; categoryFees: CategoryFeeMap }> => {
       const { data: season } = await supabase
         .from("seasons")
         .select("id")
@@ -87,15 +85,21 @@ function ApplyPage() {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (!season) return DEFAULT_PRE_REG_FEE;
+      if (!season) return { preRegFee: DEFAULT_PRE_REG_FEE, categoryFees: {} };
       const { data } = await supabase
         .from("app_settings")
         .select("*")
         .eq("season_id", season.id)
         .maybeSingle();
-      return (data as { pre_reg_fee?: number } | null)?.pre_reg_fee ?? DEFAULT_PRE_REG_FEE;
+      return {
+        preRegFee: (data as { pre_reg_fee?: number } | null)?.pre_reg_fee ?? DEFAULT_PRE_REG_FEE,
+        categoryFees: parseCategoryFees((data as { category_fees?: unknown } | null)?.category_fees),
+      };
     },
   });
+  const preRegFee = feeCfg?.preRegFee ?? DEFAULT_PRE_REG_FEE;
+  const categoryFees = feeCfg?.categoryFees ?? {};
+  const expectedFee = sumCategoryFees(rows.map((r) => r.category), categoryFees, preRegFee);
 
   const submitFn = useServerFn(submitPreRegistration);
   const submit = useMutation({
@@ -130,7 +134,7 @@ function ApplyPage() {
       return;
     }
     if (cleaned.some((r) => !r.phone && !phoneOptional(r.category))) {
-      toast.error("유아·초등을 제외한 모든 참석자는 전화번호가 필수입니다.");
+      toast.error("유아유치를 제외한 모든 참석자는 전화번호가 필수입니다.");
       return;
     }
 
@@ -228,7 +232,7 @@ function ApplyPage() {
               >
                 {MEMBER_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
-                    {CATEGORY_LABELS[c]}
+                    {CATEGORY_LABELS[c]} ({krw(feeForCategory(c, categoryFees, preRegFee))})
                   </option>
                 ))}
               </select>
@@ -278,9 +282,9 @@ function ApplyPage() {
       <Card className="mt-5 flex flex-wrap items-center justify-between gap-3 p-4">
         <div>
           <div className="text-sm text-muted-foreground">
-            예상 회비 (1인 {krw(fee)} × {rows.length}명)
+            예상 회비 (분류별 설정 합계 · {rows.length}명)
           </div>
-          <div className="text-2xl font-bold">{krw(calcExpectedFee(rows.length, fee))}</div>
+          <div className="text-2xl font-bold">{krw(expectedFee)}</div>
         </div>
         <Button size="lg" onClick={onSubmit} disabled={submit.isPending}>
           {submit.isPending ? "제출 중..." : "사전접수 제출"}

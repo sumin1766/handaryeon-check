@@ -14,17 +14,12 @@ async function requireStaff(password: string) {
   return supabaseAdmin;
 }
 
-/** 6종 분류 → 운영 people 필드 매핑.
+/** 8종(+과거 2종) 분류 → 운영 people 필드 매핑.
  *  people.age_group은 기존 집계가 student/adult 두 값만 사용하므로
- *  유아초등(child)은 student로 집계한다(대시보드 4칸 기준 유지). */
-const CATEGORY_MAP: Record<string, { gender: "M" | "F"; age_group: "student" | "adult"; childNote?: boolean }> = {
-  male_student: { gender: "M", age_group: "student" },
-  female_student: { gender: "F", age_group: "student" },
-  male_adult: { gender: "M", age_group: "adult" },
-  female_adult: { gender: "F", age_group: "adult" },
-  male_child: { gender: "M", age_group: "student", childNote: true },
-  female_child: { gender: "F", age_group: "student", childNote: true },
-};
+ *  유아유치·초등은 student로 집계한다(대시보드 4칸 기준 유지). */
+import { CATEGORY_PEOPLE_MAP, parseCategoryFees, sumCategoryFees } from "./member-categories";
+
+const CATEGORY_MAP = CATEGORY_PEOPLE_MAP;
 
 const normChurch = (s: string | null | undefined) => {
   const base = (s ?? "").replace(/\s+/g, "").trim();
@@ -156,9 +151,9 @@ export const confirmPreRegistration = createServerFn({ method: "POST" })
 
       // 3) 운영 인원 등록
       const rows = list.map((m) => {
-        const map = CATEGORY_MAP[m.category] ?? CATEGORY_MAP["male_student"]!;
+        const map = CATEGORY_MAP[m.category as keyof typeof CATEGORY_MAP] ?? CATEGORY_MAP["male_student"];
         const notes: string[] = [];
-        if (map.childNote) notes.push("유아초등");
+        if (map.note) notes.push(map.note);
         if (m.lodging_type === "external") notes.push("외부숙박");
         if (m.phone) notes.push(m.phone);
         return {
@@ -181,15 +176,16 @@ export const confirmPreRegistration = createServerFn({ method: "POST" })
           .eq("id", list[i]!.id);
       }
 
-      // 5) 회비 — 사전등록 확정은 전원 기본 단가(pre_reg_fee)로만 계산한다.
-      //    세계로 성도 1만원 규칙은 현장등록 전용이므로 여기서는 적용하지 않는다.
+      // 5) 회비 — 분류별 설정 금액의 합계(유아유치는 기본 0원).
+      //    세계로 성도 회비는 현장등록 전용이므로 여기서는 적용하지 않는다.
       const { data: settings } = await db
         .from("app_settings")
-        .select("pre_reg_fee")
+        .select("pre_reg_fee, category_fees")
         .eq("season_id", reg.season_id)
         .maybeSingle();
       const preRegFee = (settings as { pre_reg_fee?: number } | null)?.pre_reg_fee ?? 20000;
-      const amount = list.length * preRegFee;
+      const categoryFees = parseCategoryFees((settings as { category_fees?: unknown } | null)?.category_fees);
+      const amount = sumCategoryFees(list.map((m) => m.category), categoryFees, preRegFee);
 
 
       const { data: existingPay } = await db

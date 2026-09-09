@@ -24,23 +24,18 @@ import { krw } from "@/lib/format";
 import { PRE_REG_FORM_NOTICES } from "@/lib/pre-registration-config";
 import {
   MEMBER_CATEGORIES,
-  PHONE_OPTIONAL_CATEGORIES,
+  CATEGORY_LABELS,
+  isPhoneOptional,
+  feeForCategory,
+  sumCategoryFees,
   type MemberCategory,
-} from "@/lib/pre-registration-public.functions";
+} from "@/lib/member-categories";
 import {
   updatePreRegistrationSelf,
   type PreRegistrationSelfDetail,
   type SelfMember,
 } from "@/lib/pre-registration-self.functions";
 
-const CATEGORY_LABELS: Record<MemberCategory, string> = {
-  male_student: "남학생",
-  male_adult: "남자어른",
-  female_student: "여학생",
-  female_adult: "여자어른",
-  male_child: "남자 유아~초등",
-  female_child: "여자 유아~초등",
-};
 const LODGING_OPTIONS: { value: SelfMember["lodging_type"]; label: string }[] = [
   { value: "church", label: "교회 숙박" },
   { value: "external", label: "외부 숙박" },
@@ -51,7 +46,7 @@ const STATUS_LABELS: Record<PreRegistrationSelfDetail["status"], string> = {
   applied: "확정완료",
   needs_review: "수정됨 · 재검토 필요",
 };
-const phoneOptional = (c: MemberCategory) => PHONE_OPTIONAL_CATEGORIES.includes(c);
+const phoneOptional = (c: string) => isPhoneOptional(c);
 const emptyRow = (): SelfMember => ({
   name: "",
   phone: "",
@@ -106,7 +101,7 @@ export function PreRegistrationSelfEditor({ initial }: { initial: PreRegistratio
 
   const noneCount = rows.filter((r) => r.lodging_type === "none").length;
   const lodgingCount = rows.length - noneCount;
-  const expectedFee = rows.length * detail.unitFee;
+  const expectedFee = sumCategoryFees(rows.map((r) => r.category), detail.categoryFees ?? {}, detail.unitFee);
 
   const diff = useMemo(() => {
     const key = (m: SelfMember) => `${m.name.trim()}|${m.phone.trim()}|${m.category}|${m.lodging_type}`;
@@ -138,7 +133,7 @@ export function PreRegistrationSelfEditor({ initial }: { initial: PreRegistratio
       return false;
     }
     if (rows.some((r) => !r.phone.trim() && !phoneOptional(r.category))) {
-      toast.error("유아·초등을 제외한 모든 참석자는 전화번호가 필수입니다.");
+      toast.error("유아유치를 제외한 모든 참석자는 전화번호가 필수입니다.");
       return false;
     }
     return true;
@@ -248,7 +243,7 @@ export function PreRegistrationSelfEditor({ initial }: { initial: PreRegistratio
               >
                 {MEMBER_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
-                    {CATEGORY_LABELS[c]}
+                    {CATEGORY_LABELS[c]} ({krw(feeForCategory(c, detail.categoryFees ?? {}, detail.unitFee))})
                   </option>
                 ))}
               </select>
@@ -297,7 +292,7 @@ export function PreRegistrationSelfEditor({ initial }: { initial: PreRegistratio
       <Card className="mt-5 flex flex-wrap items-center justify-between gap-3 p-4">
         <div>
           <div className="text-sm text-muted-foreground">
-            예상 회비 (1인 {krw(detail.unitFee)} × {rows.length}명)
+            예상 회비 (분류별 설정 합계 · {rows.length}명)
           </div>
           <div className="text-2xl font-bold">{krw(expectedFee)}</div>
         </div>

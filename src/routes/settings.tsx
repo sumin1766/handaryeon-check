@@ -21,7 +21,7 @@ import {
 } from "@/lib/receipt-layout";
 import { ReceiptLayoutEditor, type ReceiptData, type ReceiptMode } from "@/components/receipt-document";
 import { toast } from "sonner";
-import { Plus, Star, Calendar, Building2, Bath, Maximize2, Trash2, FileText, Lock, ScanText, CheckCircle2, XCircle, Loader2, LayoutDashboard, ChevronUp, ChevronDown, Menu as MenuIcon, Eye, EyeOff, Save, ExternalLink } from "lucide-react";
+import { Plus, Star, Calendar, Building2, Bath, Maximize2, Trash2, FileText, Lock, ScanText, CheckCircle2, XCircle, Loader2, LayoutDashboard, ChevronUp, ChevronDown, Menu as MenuIcon, Eye, EyeOff, Save, ExternalLink, GripVertical } from "lucide-react";
 import {
   useDashboardOrder, useSaveDashboardOrder, DEFAULT_DASHBOARD_ORDER,
   DASHBOARD_SECTION_LABEL, type DashboardSectionKey,
@@ -36,10 +36,17 @@ import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { krw } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useAuthRole } from "@/lib/use-auth-role";
+import {
+  MEMBER_CATEGORIES,
+  CATEGORY_LABELS,
+  defaultCategoryFee,
+  type AnyMemberCategory,
+} from "@/lib/member-categories";
 import { useChangePasswords } from "@/lib/auth-config";
 import {
   useFeeConfig, useSaveFeeConfig,
   DEFAULT_PRE_REG_FEE, DEFAULT_SEGUE_MEMBER_FEE,
+  type FeeConfig,
 } from "@/lib/pre-registration-config";
 
 export const Route = createFileRoute("/settings")({
@@ -736,8 +743,13 @@ function FeeSummary() {
   const { data } = useFeeConfig(season?.id);
   return (
     <div className="tabular-nums">
-      <div>사전접수 일괄 회비 <b className="text-foreground">{krw(data?.preRegFee ?? DEFAULT_PRE_REG_FEE)}</b></div>
-      <div>세계로 성도 회비 <b className="text-foreground">{krw(data?.segueMemberFee ?? DEFAULT_SEGUE_MEMBER_FEE)}</b></div>
+      <div>기본 단가 <b className="text-foreground">{krw(data?.preRegFee ?? DEFAULT_PRE_REG_FEE)}</b></div>
+      <div>
+        세계로 성도 회비{" "}
+        <b className="text-foreground">
+          {data?.segueFeeEnabled === false ? "안 받음" : krw(data?.segueMemberFee ?? DEFAULT_SEGUE_MEMBER_FEE)}
+        </b>
+      </div>
     </div>
   );
 }
@@ -746,40 +758,98 @@ function FeeSection() {
   const { season } = useActiveSeason();
   const { data } = useFeeConfig(season?.id);
   const save = useSaveFeeConfig(season?.id);
-  const [preRegFee, setPreRegFee] = useState<number | null>(null);
-  const [segueFee, setSegueFee] = useState<number | null>(null);
+  const [draft, setDraft] = useState<FeeConfig | null>(null);
+  const savedKey = JSON.stringify(data ?? null);
+  useEffect(() => {
+    if (data) setDraft(data);
+  }, [savedKey]);
+
   if (!season) return <div className="text-sm text-muted-foreground">시즌이 없습니다.</div>;
-  const pre = preRegFee ?? data?.preRegFee ?? DEFAULT_PRE_REG_FEE;
-  const seg = segueFee ?? data?.segueMemberFee ?? DEFAULT_SEGUE_MEMBER_FEE;
+  const cfg: FeeConfig = draft ?? {
+    preRegFee: DEFAULT_PRE_REG_FEE,
+    segueMemberFee: DEFAULT_SEGUE_MEMBER_FEE,
+    segueFeeEnabled: true,
+    categoryFees: {},
+  };
+  const feeOf = (c: AnyMemberCategory) =>
+    cfg.categoryFees[c] ?? defaultCategoryFee(c, cfg.preRegFee);
+  const setFee = (c: AnyMemberCategory, patch: Partial<{ enabled: boolean; amount: number }>) =>
+    setDraft({
+      ...cfg,
+      categoryFees: { ...cfg.categoryFees, [c]: { ...feeOf(c), ...patch } },
+    });
+
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
-        시즌별로 저장됩니다. 사전접수 예상 회비 = 인원수 × 사전접수 일괄 회비. 세계로 성도 회비는 참고용으로 저장만 됩니다.
+        활성 시즌({season.name})에만 저장됩니다. 사전접수 예상 회비 = 각 참석자 분류의 설정 금액 합계.
+        세계로 성도 회비는 현장등록 전용으로 저장만 되며 사전접수·확정 계산에는 쓰이지 않습니다.
       </p>
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="w-full sm:w-52">
-          <Label className="text-xs">사전접수 일괄 회비 (원/인)</Label>
-          <Input type="number" value={pre} onChange={(e) => setPreRegFee(parseInt(e.target.value) || 0)} className="tabular-nums" />
-        </div>
-        <div className="w-full sm:w-52">
-          <Label className="text-xs">세계로 성도 회비 (원/인, 참고용)</Label>
-          <Input type="number" value={seg} onChange={(e) => setSegueFee(parseInt(e.target.value) || 0)} className="tabular-nums" />
-        </div>
-        <Button
-          disabled={save.isPending}
-          onClick={() =>
-            save.mutate(
-              { preRegFee: pre, segueMemberFee: seg },
-              { onSuccess: () => toast.success("저장됨"), onError: (e: any) => toast.error(e.message ?? "저장 실패") },
-            )
-          }
-        >
-          <Save className="h-4 w-4 mr-1" />저장
-        </Button>
+
+      <div className="w-full sm:w-60">
+        <Label className="text-xs">기본 단가 (분류별 설정이 없을 때, 원/인)</Label>
+        <Input
+          type="number"
+          value={cfg.preRegFee}
+          onChange={(e) => setDraft({ ...cfg, preRegFee: parseInt(e.target.value) || 0 })}
+          className="tabular-nums"
+        />
       </div>
-      <div className="text-sm text-muted-foreground tabular-nums">
-        현재 저장값: 사전접수 {krw(data?.preRegFee ?? DEFAULT_PRE_REG_FEE)} · 세계로 성도 {krw(data?.segueMemberFee ?? DEFAULT_SEGUE_MEMBER_FEE)}
+
+      <div className="space-y-2">
+        <div className="text-sm font-semibold">분류별 회비</div>
+        {MEMBER_CATEGORIES.map((c) => {
+          const f = feeOf(c);
+          return (
+            <div key={c} className="flex flex-wrap items-center gap-3 rounded-md border bg-card px-3 py-2">
+              <span className="min-w-[9rem] font-medium">{CATEGORY_LABELS[c]}</span>
+              <label className="flex items-center gap-2 text-sm">
+                <Switch checked={f.enabled} onCheckedChange={(v) => setFee(c, { enabled: v })} />
+                {f.enabled ? "받음" : "안 받음"}
+              </label>
+              <Input
+                type="number"
+                value={f.amount}
+                disabled={!f.enabled}
+                onChange={(e) => setFee(c, { amount: parseInt(e.target.value) || 0 })}
+                className="w-32 tabular-nums"
+              />
+              <span className="text-xs text-muted-foreground">{krw(f.enabled ? f.amount : 0)}</span>
+            </div>
+          );
+        })}
       </div>
+
+      <div className="flex flex-wrap items-center gap-3 rounded-md border bg-muted/30 px-3 py-2">
+        <span className="min-w-[9rem] font-medium">세계로 성도 회비</span>
+        <label className="flex items-center gap-2 text-sm">
+          <Switch
+            checked={cfg.segueFeeEnabled}
+            onCheckedChange={(v) => setDraft({ ...cfg, segueFeeEnabled: v })}
+          />
+          {cfg.segueFeeEnabled ? "받음" : "안 받음"}
+        </label>
+        <Input
+          type="number"
+          value={cfg.segueMemberFee}
+          disabled={!cfg.segueFeeEnabled}
+          onChange={(e) => setDraft({ ...cfg, segueMemberFee: parseInt(e.target.value) || 0 })}
+          className="w-32 tabular-nums"
+        />
+        <span className="text-xs text-muted-foreground">현장등록 전용 · 사전접수에는 미적용</span>
+      </div>
+
+      <Button
+        disabled={save.isPending}
+        onClick={() =>
+          save.mutate(cfg, {
+            onSuccess: () => toast.success("저장됨"),
+            onError: (e: any) => toast.error(e.message ?? "저장 실패"),
+          })
+        }
+      >
+        <Save className="h-4 w-4 mr-1" />저장
+      </Button>
     </div>
   );
 }
@@ -1382,6 +1452,19 @@ function NavMenuSection() {
   const reset = () => setCfg({ order: DEFAULT_NAV_ORDER, hidden: [] });
   const dirty = JSON.stringify(cfg) !== savedKey;
 
+  // 순서 편집 모드 — 평소에는 드래그 비활성, 편집 모드에서만 드래그로 이동 가능
+  const role = useAuthRole();
+  const isAdmin = role === "admin";
+  const [orderEdit, setOrderEdit] = useState(false);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const moveTo = (from: number, to: number) => {
+    if (from === to || to < 0 || to >= cfg.order.length) return;
+    const next = [...cfg.order];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item!);
+    setCfg({ ...cfg, order: next });
+  };
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
@@ -1390,6 +1473,7 @@ function NavMenuSection() {
         <br />
         <span className="text-xs">
           ※ <b>대시보드</b>와 <b>설정</b> 메뉴는 안전을 위해 숨길 수 없습니다.
+          {" "}순서 변경은 <b>메뉴 순서 편집</b>을 눌러 편집 모드에서만 가능합니다(전체관리자 전용).
         </span>
       </p>
       <ul className="space-y-2">
@@ -1400,11 +1484,27 @@ function NavMenuSection() {
           return (
             <li
               key={path}
+              draggable={orderEdit}
+              onDragStart={() => setDragIdx(i)}
+              onDragOver={(e) => {
+                if (!orderEdit || dragIdx === null) return;
+                e.preventDefault();
+              }}
+              onDrop={(e) => {
+                if (!orderEdit || dragIdx === null) return;
+                e.preventDefault();
+                moveTo(dragIdx, i);
+                setDragIdx(null);
+              }}
+              onDragEnd={() => setDragIdx(null)}
               className={cn(
                 "flex items-center gap-2 rounded-md border bg-card px-3 py-2.5",
                 isHidden && "opacity-60",
+                orderEdit && "cursor-grab border-primary/40",
+                orderEdit && dragIdx === i && "opacity-50",
               )}
             >
+              {orderEdit && <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />}
               <span className="w-6 tabular-nums text-sm text-muted-foreground">{i + 1}.</span>
               <span className="flex-1 min-w-0">
                 <div className="font-medium truncate">{NAV_LABEL[path] ?? path}</div>
@@ -1427,10 +1527,10 @@ function NavMenuSection() {
               >
                 {isHidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
-              <Button size="icon" variant="outline" onClick={() => move(i, -1)} disabled={i === 0} aria-label="위로">
+              <Button size="icon" variant="outline" onClick={() => move(i, -1)} disabled={!orderEdit || i === 0} aria-label="위로">
                 <ChevronUp className="h-4 w-4" />
               </Button>
-              <Button size="icon" variant="outline" onClick={() => move(i, 1)} disabled={i === cfg.order.length - 1} aria-label="아래로">
+              <Button size="icon" variant="outline" onClick={() => move(i, 1)} disabled={!orderEdit || i === cfg.order.length - 1} aria-label="아래로">
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </li>
@@ -1438,12 +1538,27 @@ function NavMenuSection() {
         })}
       </ul>
       <div className="flex flex-wrap gap-2">
+        {!orderEdit ? (
+          <Button variant="outline" onClick={() => setOrderEdit(true)} disabled={!isAdmin}>
+            <GripVertical className="h-4 w-4 mr-1" />메뉴 순서 편집
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            onClick={() => {
+              setCfg(saved ?? { order: DEFAULT_NAV_ORDER, hidden: [] });
+              setOrderEdit(false);
+            }}
+          >
+            취소
+          </Button>
+        )}
         <Button
           onClick={() => save.mutate(cfg, {
-            onSuccess: () => toast.success("메뉴 설정 저장됨"),
+            onSuccess: () => { toast.success("메뉴 설정 저장됨"); setOrderEdit(false); },
             onError: (e: any) => toast.error(e.message ?? "저장 실패"),
           })}
-          disabled={!dirty || save.isPending}
+          disabled={!dirty || save.isPending || !isAdmin}
         >
           {save.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
           저장

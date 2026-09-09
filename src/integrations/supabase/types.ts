@@ -17,6 +17,7 @@ export type Database = {
       app_settings: {
         Row: {
           bath_unit_price: number
+          category_fees: Json
           created_at: string
           dashboard_section_order: string[]
           lodging_manual_order: boolean
@@ -25,10 +26,12 @@ export type Database = {
           ocr_enabled: boolean
           pre_reg_fee: number
           season_id: string
+          segue_fee_enabled: boolean
           segue_member_fee: number
         }
         Insert: {
           bath_unit_price?: number
+          category_fees?: Json
           created_at?: string
           dashboard_section_order?: string[]
           lodging_manual_order?: boolean
@@ -37,10 +40,12 @@ export type Database = {
           ocr_enabled?: boolean
           pre_reg_fee?: number
           season_id: string
+          segue_fee_enabled?: boolean
           segue_member_fee?: number
         }
         Update: {
           bath_unit_price?: number
+          category_fees?: Json
           created_at?: string
           dashboard_section_order?: string[]
           lodging_manual_order?: boolean
@@ -49,6 +54,7 @@ export type Database = {
           ocr_enabled?: boolean
           pre_reg_fee?: number
           season_id?: string
+          segue_fee_enabled?: boolean
           segue_member_fee?: number
         }
         Relationships: [
