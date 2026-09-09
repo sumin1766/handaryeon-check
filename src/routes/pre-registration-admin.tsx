@@ -289,6 +289,16 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
                   <td className="px-3 py-2 whitespace-nowrap">{krw(r.expected_fee)}</td>
                   <td className="px-3 py-2 whitespace-nowrap">{l.church} / {l.external} / {l.none}</td>
                   <td className="px-3 py-2"><StatusBadge status={r.status} /></td>
+                  <td className="px-3 py-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      size="sm"
+                      variant={r.paid ? "default" : "outline"}
+                      disabled={paying}
+                      onClick={() => togglePaid(r.id, !r.paid)}
+                    >
+                      {r.paid ? "납부 완료" : "미납"}
+                    </Button>
+                  </td>
                   <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{formatKst(r.created_at)}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{formatKst(r.updated_at)}</td>
                 </tr>
