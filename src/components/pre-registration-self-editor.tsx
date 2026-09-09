@@ -26,7 +26,6 @@ import {
   MEMBER_CATEGORIES,
   CATEGORY_LABELS,
   isPhoneOptional,
-  feeForCategory,
   sumCategoryFees,
   type MemberCategory,
 } from "@/lib/member-categories";
@@ -243,7 +242,7 @@ export function PreRegistrationSelfEditor({ initial }: { initial: PreRegistratio
               >
                 {MEMBER_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
-                    {CATEGORY_LABELS[c]} ({krw(feeForCategory(c, detail.categoryFees ?? {}, detail.unitFee))})
+                    {CATEGORY_LABELS[c]}
                   </option>
                 ))}
               </select>

@@ -21,7 +21,6 @@ import {
   isPhoneOptional,
   parseCategoryFees,
   sumCategoryFees,
-  feeForCategory,
   type MemberCategory,
   type CategoryFeeMap,
 } from "@/lib/member-categories";
@@ -232,7 +231,7 @@ function ApplyPage() {
               >
                 {MEMBER_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
-                    {CATEGORY_LABELS[c]} ({krw(feeForCategory(c, categoryFees, preRegFee))})
+                    {CATEGORY_LABELS[c]}
                   </option>
                 ))}
               </select>

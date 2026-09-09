@@ -42,6 +42,9 @@ import {
   defaultCategoryFee,
   type AnyMemberCategory,
 } from "@/lib/member-categories";
+import {
+  useSettingsCardOrder, useSaveSettingsCardOrder, DEFAULT_SETTINGS_CARD_ORDER,
+} from "@/lib/settings-card-order";
 import { useChangePasswords } from "@/lib/auth-config";
 import {
   useFeeConfig, useSaveFeeConfig,
