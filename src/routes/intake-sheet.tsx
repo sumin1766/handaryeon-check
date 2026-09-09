@@ -58,7 +58,7 @@ function IntakeSheetPage() {
   const [uncheckConfirm, setUncheckConfirm] = useState<{ id: string; name: string } | null>(null);
   const intakeKey = ["intake", season?.id] as const;
 
-  const { data } = useQuery({
+  const { data, refetch, isFetching } = useQuery({
     queryKey: intakeKey,
     enabled: !!season?.id,
     queryFn: async () => {
