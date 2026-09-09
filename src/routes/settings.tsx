@@ -1452,19 +1452,6 @@ function NavMenuSection() {
   const reset = () => setCfg({ order: DEFAULT_NAV_ORDER, hidden: [] });
   const dirty = JSON.stringify(cfg) !== savedKey;
 
-  // 순서 편집 모드 — 평소에는 드래그 비활성, 편집 모드에서만 드래그로 이동 가능
-  const role = useAuthRole();
-  const isAdmin = role === "admin";
-  const [orderEdit, setOrderEdit] = useState(false);
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
-  const moveTo = (from: number, to: number) => {
-    if (from === to || to < 0 || to >= cfg.order.length) return;
-    const next = [...cfg.order];
-    const [item] = next.splice(from, 1);
-    next.splice(to, 0, item!);
-    setCfg({ ...cfg, order: next });
-  };
-
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
@@ -1473,7 +1460,6 @@ function NavMenuSection() {
         <br />
         <span className="text-xs">
           ※ <b>대시보드</b>와 <b>설정</b> 메뉴는 안전을 위해 숨길 수 없습니다.
-          {" "}순서 변경은 <b>메뉴 순서 편집</b>을 눌러 편집 모드에서만 가능합니다(전체관리자 전용).
         </span>
       </p>
       <ul className="space-y-2">
@@ -1484,27 +1470,11 @@ function NavMenuSection() {
           return (
             <li
               key={path}
-              draggable={orderEdit}
-              onDragStart={() => setDragIdx(i)}
-              onDragOver={(e) => {
-                if (!orderEdit || dragIdx === null) return;
-                e.preventDefault();
-              }}
-              onDrop={(e) => {
-                if (!orderEdit || dragIdx === null) return;
-                e.preventDefault();
-                moveTo(dragIdx, i);
-                setDragIdx(null);
-              }}
-              onDragEnd={() => setDragIdx(null)}
               className={cn(
                 "flex items-center gap-2 rounded-md border bg-card px-3 py-2.5",
                 isHidden && "opacity-60",
-                orderEdit && "cursor-grab border-primary/40",
-                orderEdit && dragIdx === i && "opacity-50",
               )}
             >
-              {orderEdit && <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />}
               <span className="w-6 tabular-nums text-sm text-muted-foreground">{i + 1}.</span>
               <span className="flex-1 min-w-0">
                 <div className="font-medium truncate">{NAV_LABEL[path] ?? path}</div>
