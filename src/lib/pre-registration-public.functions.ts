@@ -97,10 +97,12 @@ export const submitPreRegistration = createServerFn({ method: "POST" })
       .select("*")
       .eq("season_id", season.id)
       .maybeSingle();
-    const fee = (settings as { pre_reg_fee?: number } | null)?.pre_reg_fee ?? DEFAULT_PRE_REG_FEE;
+    const s = settings as { pre_reg_fee?: number; category_fees?: unknown } | null;
+    const fee = s?.pre_reg_fee ?? DEFAULT_PRE_REG_FEE;
+    const categoryFees = parseCategoryFees(s?.category_fees);
 
     const headCount = data.members.length;
-    const expectedFee = headCount * fee;
+    const expectedFee = sumCategoryFees(data.members.map((m) => m.category), categoryFees, fee);
 
     const { count } = await supabaseAdmin
       .from("pre_registrations")
