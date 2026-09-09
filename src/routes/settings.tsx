@@ -1497,10 +1497,10 @@ function NavMenuSection() {
               >
                 {isHidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
-              <Button size="icon" variant="outline" onClick={() => move(i, -1)} disabled={!orderEdit || i === 0} aria-label="위로">
+              <Button size="icon" variant="outline" onClick={() => move(i, -1)} disabled={i === 0} aria-label="위로">
                 <ChevronUp className="h-4 w-4" />
               </Button>
-              <Button size="icon" variant="outline" onClick={() => move(i, 1)} disabled={!orderEdit || i === cfg.order.length - 1} aria-label="아래로">
+              <Button size="icon" variant="outline" onClick={() => move(i, 1)} disabled={i === cfg.order.length - 1} aria-label="아래로">
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </li>
@@ -1508,27 +1508,12 @@ function NavMenuSection() {
         })}
       </ul>
       <div className="flex flex-wrap gap-2">
-        {!orderEdit ? (
-          <Button variant="outline" onClick={() => setOrderEdit(true)} disabled={!isAdmin}>
-            <GripVertical className="h-4 w-4 mr-1" />메뉴 순서 편집
-          </Button>
-        ) : (
-          <Button
-            variant="outline"
-            onClick={() => {
-              setCfg(saved ?? { order: DEFAULT_NAV_ORDER, hidden: [] });
-              setOrderEdit(false);
-            }}
-          >
-            취소
-          </Button>
-        )}
         <Button
           onClick={() => save.mutate(cfg, {
-            onSuccess: () => { toast.success("메뉴 설정 저장됨"); setOrderEdit(false); },
+            onSuccess: () => { toast.success("메뉴 설정 저장됨"); },
             onError: (e: any) => toast.error(e.message ?? "저장 실패"),
           })}
-          disabled={!dirty || save.isPending || !isAdmin}
+          disabled={!dirty || save.isPending}
         >
           {save.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
           저장
