@@ -14,17 +14,12 @@ async function requireStaff(password: string) {
   return supabaseAdmin;
 }
 
-/** 6종 분류 → 운영 people 필드 매핑.
+/** 8종(+과거 2종) 분류 → 운영 people 필드 매핑.
  *  people.age_group은 기존 집계가 student/adult 두 값만 사용하므로
- *  유아초등(child)은 student로 집계한다(대시보드 4칸 기준 유지). */
-const CATEGORY_MAP: Record<string, { gender: "M" | "F"; age_group: "student" | "adult"; childNote?: boolean }> = {
-  male_student: { gender: "M", age_group: "student" },
-  female_student: { gender: "F", age_group: "student" },
-  male_adult: { gender: "M", age_group: "adult" },
-  female_adult: { gender: "F", age_group: "adult" },
-  male_child: { gender: "M", age_group: "student", childNote: true },
-  female_child: { gender: "F", age_group: "student", childNote: true },
-};
+ *  유아유치·초등은 student로 집계한다(대시보드 4칸 기준 유지). */
+import { CATEGORY_PEOPLE_MAP, parseCategoryFees, sumCategoryFees } from "./member-categories";
+
+const CATEGORY_MAP = CATEGORY_PEOPLE_MAP;
 
 const normChurch = (s: string | null | undefined) => {
   const base = (s ?? "").replace(/\s+/g, "").trim();
