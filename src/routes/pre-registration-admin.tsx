@@ -463,9 +463,76 @@ function DetailDialog({
                 {reg.head_count}명 × {krw(unitFee)} = <strong>{krw(reg.expected_fee)}</strong>
               </div>
               <div className="text-muted-foreground text-xs mt-1">
-                예상 회비와 확정 회비는 현재 동일하게 표시됩니다(확정 처리는 다음 단계).
+                운영 등록 시에는 세계로 성도 1만원 규칙이 적용되어 금액이 달라질 수 있습니다.
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-muted-foreground text-xs">납부</span>
+                <Button
+                  size="sm"
+                  variant={reg.paid ? "default" : "outline"}
+                  disabled={paying}
+                  onClick={() => onTogglePaid(reg.id, !reg.paid)}
+                >
+                  {reg.paid ? "납부 완료" : "미납"}
+                </Button>
+                {reg.paid && reg.paid_at && (
+                  <span className="text-xs text-muted-foreground">{formatKst(reg.paid_at)}</span>
+                )}
               </div>
             </Card>
+
+            <Card className="p-3 space-y-3 text-sm">
+              <div className="font-medium">
+                {reg.status === "applied" ? "확정 완료" : reg.status === "needs_review" ? "재확정" : "확정"}
+              </div>
+              {alreadyLinked ? (
+                <div className="text-muted-foreground">
+                  이미 운영 명단에 연결된 건입니다. 재확정하면 이 건에서 등록된 인원만 최신 명단으로 갱신됩니다.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex gap-1">
+                    <Button size="sm" variant={mode === "new" ? "default" : "outline"} onClick={() => setMode("new")}>
+                      신규 교회 생성
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={mode === "link" ? "default" : "outline"}
+                      disabled={!candidates?.length}
+                      onClick={() => setMode("link")}
+                    >
+                      기존 교회 연결
+                    </Button>
+                  </div>
+                  {mode === "link" && (
+                    <div className="space-y-1">
+                      {!candidates?.length && <div className="text-muted-foreground">유사한 교회가 없습니다.</div>}
+                      {(candidates ?? []).map((c) => (
+                        <label key={c.id} className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="church-candidate"
+                            checked={pickedChurch === c.id}
+                            onChange={() => setPickedChurch(c.id)}
+                          />
+                          <span>
+                            {c.name} {c.denomination ? `(${c.denomination})` : ""} · {c.peopleCount}명
+                            {c.exact ? " · 이름 일치" : ""}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              <Button
+                onClick={runConfirm}
+                disabled={confirming || (!alreadyLinked && mode === "link" && !pickedChurch)}
+              >
+                {confirming ? "처리 중…" : reg.status === "submitted" ? "확정" : "재확정"}
+              </Button>
+            </Card>
+
 
             <Card className="p-3">
               <div className="font-medium text-sm mb-2">참석자 명단 ({reg.members.length}명)</div>
