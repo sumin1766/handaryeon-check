@@ -82,6 +82,14 @@ function lodgingCounts(r: AdminPreRegistration) {
   return { church, external, none };
 }
 
+function lodgingCellText({ church, external, none }: { church: number; external: number; none: number }) {
+  const parts: string[] = [];
+  if (church > 0) parts.push(`교회 ${church}`);
+  if (external > 0) parts.push(`외부 ${external}`);
+  if (none > 0) parts.push(`비숙박 ${none}`);
+  return parts.length ? parts.join(" · ") : "-";
+}
+
 function PreRegAdminPage() {
   const role = useAuthRole();
   const [pw, setPw] = useState<string | null>(null);
