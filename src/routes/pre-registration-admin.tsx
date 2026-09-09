@@ -160,6 +160,9 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
     retry: false,
   });
 
+  // 다른 탭/다른 화면의 변경(확정·삭제·인원 수정)을 이 화면에도 즉시 반영한다.
+  useRealtimeInvalidate(["churches", "people"], [["pre-reg-admin"]]);
+
   useEffect(() => {
     if (isError && String((error as any)?.message ?? "").includes("권한")) onAuthLost();
   }, [isError, error, onAuthLost]);
