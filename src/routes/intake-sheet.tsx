@@ -146,6 +146,7 @@ function IntakeSheetPage() {
     onSuccess: () => {
       toast.success("삭제 완료");
       qc.invalidateQueries({ queryKey: ["intake"] });
+      notifyDataChanged();
     },
     onError: (e: any) => toast.error(e.message ?? "삭제 실패"),
   });
