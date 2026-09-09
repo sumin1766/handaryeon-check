@@ -286,7 +286,7 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left">
             <tr>
-              {["교회명", "교단명", "담당자", "연락처", "인원", "확정 회비", "숙박(교회/외부/비숙박)", "상태", "납부", "제출", "수정"].map(
+              {["교회명", "교단명", "담당자", "연락처", "인원", "확정 회비", "숙박(교회/외부/비숙박)", "상태", "납부", "제출", "수정", "삭제"].map(
                 (h) => (
                   <th key={h} className="px-3 py-2 whitespace-nowrap font-medium">{h}</th>
                 ),
@@ -295,10 +295,10 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
           </thead>
           <tbody>
             {isLoading && (
-              <tr><td colSpan={11} className="px-3 py-6 text-muted-foreground">불러오는 중…</td></tr>
+              <tr><td colSpan={12} className="px-3 py-6 text-muted-foreground">불러오는 중…</td></tr>
             )}
             {!isLoading && filtered.length === 0 && (
-              <tr><td colSpan={11} className="px-3 py-6 text-muted-foreground">사전접수 건이 없습니다.</td></tr>
+              <tr><td colSpan={12} className="px-3 py-6 text-muted-foreground">사전접수 건이 없습니다.</td></tr>
             )}
             {filtered.map((r) => {
               const l = lodgingCounts(r);
@@ -328,6 +328,18 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{formatKst(r.created_at)}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{formatKst(r.updated_at)}</td>
+                  <td className="px-3 py-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive"
+                      disabled={deleting}
+                      onClick={() => removeReg(r)}
+                      aria-label={`${r.church_name} 사전접수 삭제`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </td>
                 </tr>
               );
             })}
@@ -343,7 +355,10 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
         onRefresh={() => refetch()}
         onTogglePaid={togglePaid}
         paying={paying}
+        onDelete={removeReg}
+        deleting={deleting}
       />
+
     </div>
   );
 }
