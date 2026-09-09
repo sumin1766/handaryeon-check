@@ -31,6 +31,7 @@ import {
   type ChurchCandidate,
 } from "@/lib/pre-registration-confirm.functions";
 import { deletePreRegistration } from "@/lib/pre-registration-delete.functions";
+import { notifyDataChanged, useRealtimeInvalidate } from "@/lib/use-realtime";
 
 export const Route = createFileRoute("/pre-registration-admin")({
   head: () => ({
@@ -170,6 +171,7 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
     try {
       await setPaid({ data: { password, id, paid } });
       await refetch();
+      notifyDataChanged();
       toast.success(paid ? "납부 완료로 표시했습니다" : "미납으로 되돌렸습니다");
     } catch (e: any) {
       toast.error(e?.message ?? "저장 실패");
@@ -189,6 +191,7 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
       const res = await delReg({ data: { password, id: r.id } });
       setOpenId(null);
       await refetch();
+      notifyDataChanged();
       toast.success(
         res.deletedPeople
           ? `삭제 완료 — 운영 인원 ${res.deletedPeople}명 함께 삭제${res.deletedChurch ? " · 빈 교회 정리" : ""}`
@@ -493,6 +496,7 @@ function DetailDialog({
       });
       toast.success(`확정 완료 — ${res.peopleCount}명 등록 · 회비 ${krw(res.amount)}`);
       onRefresh();
+      notifyDataChanged();
       onClose();
     } catch (e: any) {
       toast.error(e?.message ?? "확정 처리에 실패했습니다.");
