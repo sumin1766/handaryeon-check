@@ -58,15 +58,7 @@ type Row = {
 };
 const emptyRow = (): Row => ({ name: "", phone: "", lodging_type: "church", category: "male_student" });
 
-const CATEGORY_LABELS: Record<MemberCategory, string> = {
-  male_student: "남학생",
-  male_adult: "남자어른",
-  female_student: "여학생",
-  female_adult: "여자어른",
-  male_child: "남자 유아~초등",
-  female_child: "여자 유아~초등",
-};
-const phoneOptional = (c: MemberCategory) => PHONE_OPTIONAL_CATEGORIES.includes(c);
+const phoneOptional = (c: MemberCategory) => isPhoneOptional(c);
 
 const LODGING_OPTIONS: { value: LodgingType; label: string }[] = [
   { value: "church", label: "교회 숙박" },
@@ -83,9 +75,9 @@ function ApplyPage() {
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
   const [result, setResult] = useState<SubmitPreRegistrationResult | null>(null);
 
-  const { data: fee = DEFAULT_PRE_REG_FEE } = useQuery({
+  const { data: feeCfg } = useQuery({
     queryKey: ["public-pre-reg-fee"],
-    queryFn: async () => {
+    queryFn: async (): Promise<{ preRegFee: number; categoryFees: CategoryFeeMap }> => {
       const { data: season } = await supabase
         .from("seasons")
         .select("id")
@@ -93,15 +85,21 @@ function ApplyPage() {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (!season) return DEFAULT_PRE_REG_FEE;
+      if (!season) return { preRegFee: DEFAULT_PRE_REG_FEE, categoryFees: {} };
       const { data } = await supabase
         .from("app_settings")
         .select("*")
         .eq("season_id", season.id)
         .maybeSingle();
-      return (data as { pre_reg_fee?: number } | null)?.pre_reg_fee ?? DEFAULT_PRE_REG_FEE;
+      return {
+        preRegFee: (data as { pre_reg_fee?: number } | null)?.pre_reg_fee ?? DEFAULT_PRE_REG_FEE,
+        categoryFees: parseCategoryFees((data as { category_fees?: unknown } | null)?.category_fees),
+      };
     },
   });
+  const preRegFee = feeCfg?.preRegFee ?? DEFAULT_PRE_REG_FEE;
+  const categoryFees = feeCfg?.categoryFees ?? {};
+  const expectedFee = sumCategoryFees(rows.map((r) => r.category), categoryFees, preRegFee);
 
   const submitFn = useServerFn(submitPreRegistration);
   const submit = useMutation({
