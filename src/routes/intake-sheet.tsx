@@ -122,14 +122,20 @@ function IntakeSheetPage() {
         checked_in_at: checked ? new Date().toISOString() : null,
       }).eq("id", id);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["intake"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["intake"] });
+      notifyDataChanged();
+    },
   });
 
   const updateActual = useMutation({
     mutationFn: async ({ id, count }: any) => {
       await supabase.from("churches").update({ actual_count: count }).eq("id", id);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["intake"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["intake"] });
+      notifyDataChanged();
+    },
   });
 
   const removeChurch = useMutation({
