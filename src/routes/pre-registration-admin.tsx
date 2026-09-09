@@ -24,6 +24,12 @@ import {
   getPreRegistrationChanges,
   type AdminPreRegistration,
 } from "@/lib/pre-registration-admin.functions";
+import {
+  findChurchCandidates,
+  confirmPreRegistration,
+  setPreRegistrationPaid,
+  type ChurchCandidate,
+} from "@/lib/pre-registration-confirm.functions";
 
 export const Route = createFileRoute("/pre-registration-admin")({
   head: () => ({
