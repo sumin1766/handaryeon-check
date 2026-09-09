@@ -29,6 +29,44 @@ import { DuplicateBanner } from "@/components/duplicate-banner";
 import { DuplicateCompareDialog } from "@/components/duplicate-compare-dialog";
 import { DismissedPairsPanel } from "@/components/dismissed-pairs-panel";
 import { useDuplicateDismissals } from "@/lib/use-duplicate-dismissals";
+import { useServerFn } from "@tanstack/react-start";
+import { getSessionPassword } from "@/lib/session-password";
+import {
+  findLinkedPreRegistrations,
+  deleteChurchWithPreRegistrations,
+} from "@/lib/pre-registration-delete.functions";
+
+/** 교회 삭제 — 연결된 활성 시즌 사전접수 건이 있으면 확인 후 함께 삭제(양방향 동기화). */
+function useSyncedChurchDelete() {
+  const findLinked = useServerFn(findLinkedPreRegistrations);
+  const deleteSynced = useServerFn(deleteChurchWithPreRegistrations);
+  return async (churchId: string) => {
+    const password = getSessionPassword();
+    if (password) {
+      let linked: { id: string; church_name: string; head_count: number }[] = [];
+      try {
+        linked = await findLinked({ data: { password, churchId } });
+      } catch {
+        linked = [];
+      }
+      if (linked.length) {
+        const ok = window.confirm(
+          `이 교회는 사전접수 건(${linked.map((l) => l.church_name).join(", ")})과 연결되어 있습니다.\n삭제하면 연결된 사전접수 건도 함께 삭제됩니다.\n\n계속할까요?`,
+        );
+        if (!ok) return false;
+      }
+      try {
+        await deleteSynced({ data: { password, churchId, alsoDeletePreReg: linked.length > 0 } });
+        return true;
+      } catch (e: any) {
+        if (linked.length) throw e; // 사전접수 연결 건은 반드시 동기화 삭제되어야 한다
+      }
+    }
+    const { error } = await supabase.from("churches").delete().eq("id", churchId);
+    if (error) throw error;
+    return true;
+  };
+}
 
 export const Route = createFileRoute("/registry")({
   head: () => ({ meta: [{ title: "접수 명단 — 한다련 캠프" }] }),
@@ -74,12 +112,11 @@ function RegistryPage() {
   const registryKey = ["registry", season?.id] as const;
 
 
+  const syncedDelete = useSyncedChurchDelete();
   const deleteChurch = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("churches").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
+    mutationFn: async (id: string) => syncedDelete(id),
+    onSuccess: (done) => {
+      if (!done) return;
       toast.success("삭제 완료");
       qc.invalidateQueries({ queryKey: ["registry"] });
       qc.invalidateQueries({ queryKey: ["pre-list"] });
@@ -468,12 +505,11 @@ function ChurchDialog({
     onError: (e: any) => toast.error(e.message ?? "저장 실패"),
   });
 
+  const syncedDelete = useSyncedChurchDelete();
   const remove = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("churches").delete().eq("id", church.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
+    mutationFn: async () => syncedDelete(church.id),
+    onSuccess: (done) => {
+      if (!done) return;
       toast.success("삭제 완료");
       qc.invalidateQueries({ queryKey: ["registry"] });
       qc.invalidateQueries({ queryKey: ["pre-list"] });
