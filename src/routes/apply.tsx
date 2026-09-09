@@ -14,13 +14,19 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   DEFAULT_PRE_REG_FEE,
   PRE_REG_FORM_NOTICES,
-  calcExpectedFee,
 } from "@/lib/pre-registration-config";
 import {
-  submitPreRegistration,
   MEMBER_CATEGORIES,
-  PHONE_OPTIONAL_CATEGORIES,
+  CATEGORY_LABELS,
+  isPhoneOptional,
+  parseCategoryFees,
+  sumCategoryFees,
+  feeForCategory,
   type MemberCategory,
+  type CategoryFeeMap,
+} from "@/lib/member-categories";
+import {
+  submitPreRegistration,
   type SubmitPreRegistrationResult,
   type SubmitPreRegistrationInput,
 } from "@/lib/pre-registration-public.functions";
