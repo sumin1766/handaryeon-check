@@ -7,29 +7,34 @@ import { z } from "zod";
 
 const DEFAULT_PRE_REG_FEE = 20000;
 
-/** 참석자 분류 6종 (DB 저장은 영문 코드) */
-export const MEMBER_CATEGORIES = [
-  "male_student",
-  "male_adult",
-  "female_student",
-  "female_adult",
-  "male_child",
-  "female_child",
-] as const;
-export type MemberCategory = (typeof MEMBER_CATEGORIES)[number];
-/** 유아·초등은 전화번호 선택 입력 */
-export const PHONE_OPTIONAL_CATEGORIES: MemberCategory[] = ["male_child", "female_child"];
+// 분류 8종 정의는 member-categories.ts 한 곳에서만 관리한다.
+export {
+  MEMBER_CATEGORIES,
+  ALL_MEMBER_CATEGORIES,
+  CATEGORY_LABELS,
+  PHONE_OPTIONAL_CATEGORIES,
+  isPhoneOptional,
+  type MemberCategory,
+  type AnyMemberCategory,
+} from "./member-categories";
+
+import {
+  ALL_MEMBER_CATEGORIES,
+  isPhoneOptional,
+  parseCategoryFees,
+  sumCategoryFees,
+} from "./member-categories";
 
 const memberSchema = z
   .object({
     name: z.string().trim().min(1).max(50),
     phone: z.string().trim().max(30).optional().default(""),
     lodging_type: z.enum(["church", "external", "none"]),
-    category: z.enum(MEMBER_CATEGORIES),
+    category: z.enum(ALL_MEMBER_CATEGORIES),
   })
   .refine(
-    (m) => PHONE_OPTIONAL_CATEGORIES.includes(m.category) || m.phone.trim().length > 0,
-    { message: "유아·초등을 제외한 참석자는 전화번호가 필수입니다.", path: ["phone"] },
+    (m) => isPhoneOptional(m.category) || m.phone.trim().length > 0,
+    { message: "유아유치를 제외한 참석자는 전화번호가 필수입니다.", path: ["phone"] },
   );
 
 
