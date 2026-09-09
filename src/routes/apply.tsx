@@ -21,7 +21,6 @@ import {
   isPhoneOptional,
   parseCategoryFees,
   sumCategoryFees,
-  feeForCategory,
   type MemberCategory,
   type CategoryFeeMap,
 } from "@/lib/member-categories";
@@ -32,6 +31,7 @@ import {
 } from "@/lib/pre-registration-public.functions";
 
 import { krw } from "@/lib/format";
+import { AttendeeExcelBar } from "@/components/attendee-excel-bar";
 
 export const Route = createFileRoute("/apply")({
   head: () => ({
@@ -216,6 +216,15 @@ function ApplyPage() {
           </div>
         </div>
 
+        <AttendeeExcelBar
+          onAdd={(list) =>
+            setRows((p) => [
+              ...p.filter((r) => r.name.trim()),
+              ...list.map((m) => ({ ...m, category: m.category as MemberCategory })),
+            ])
+          }
+        />
+
         <div className="mt-3 space-y-2">
           {rows.map((r, i) => (
             <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_1fr_auto_auto]">
@@ -232,7 +241,7 @@ function ApplyPage() {
               >
                 {MEMBER_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
-                    {CATEGORY_LABELS[c]} ({krw(feeForCategory(c, categoryFees, preRegFee))})
+                    {CATEGORY_LABELS[c]}
                   </option>
                 ))}
               </select>

@@ -1,0 +1,1 @@
+ALTER TABLE public.app_settings ADD COLUMN IF NOT EXISTS settings_card_order jsonb NOT NULL DEFAULT '[]'::jsonb;

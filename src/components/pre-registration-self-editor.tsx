@@ -21,12 +21,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { krw } from "@/lib/format";
+import { AttendeeExcelBar } from "@/components/attendee-excel-bar";
 import { PRE_REG_FORM_NOTICES } from "@/lib/pre-registration-config";
 import {
   MEMBER_CATEGORIES,
   CATEGORY_LABELS,
   isPhoneOptional,
-  feeForCategory,
   sumCategoryFees,
   type MemberCategory,
 } from "@/lib/member-categories";
@@ -227,6 +227,15 @@ export function PreRegistrationSelfEditor({ initial }: { initial: PreRegistratio
           </div>
         </div>
 
+        <AttendeeExcelBar
+          onAdd={(list) =>
+            setRows((p) => [
+              ...p.filter((r) => r.name.trim()),
+              ...list.map((m) => ({ ...m, category: m.category as MemberCategory })),
+            ])
+          }
+        />
+
         <div className="mt-3 space-y-2">
           {rows.map((r, i) => (
             <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_1fr_auto_auto]">
@@ -243,7 +252,7 @@ export function PreRegistrationSelfEditor({ initial }: { initial: PreRegistratio
               >
                 {MEMBER_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
-                    {CATEGORY_LABELS[c]} ({krw(feeForCategory(c, detail.categoryFees ?? {}, detail.unitFee))})
+                    {CATEGORY_LABELS[c]}
                   </option>
                 ))}
               </select>

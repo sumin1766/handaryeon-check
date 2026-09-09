@@ -42,6 +42,9 @@ import {
   defaultCategoryFee,
   type AnyMemberCategory,
 } from "@/lib/member-categories";
+import {
+  useSettingsCardOrder, useSaveSettingsCardOrder, DEFAULT_SETTINGS_CARD_ORDER,
+} from "@/lib/settings-card-order";
 import { useChangePasswords } from "@/lib/auth-config";
 import {
   useFeeConfig, useSaveFeeConfig,
@@ -71,85 +74,160 @@ function SettingsPage() {
       </AppShell>
     );
   }
+  return <SettingsContent isAdmin={role === "admin"} />;
+}
+
+function SettingsContent({ isAdmin }: { isAdmin: boolean }) {
+  const { season } = useActiveSeason();
+  const { data: savedOrder } = useSettingsCardOrder(season?.id);
+  const saveOrder = useSaveSettingsCardOrder(season?.id);
+  const [order, setOrder] = useState<string[]>(DEFAULT_SETTINGS_CARD_ORDER);
+  const [editMode, setEditMode] = useState(false);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+
+  const savedKey = JSON.stringify(savedOrder ?? DEFAULT_SETTINGS_CARD_ORDER);
+  useEffect(() => {
+    if (savedOrder) setOrder(savedOrder);
+  }, [savedKey]);
+
+  const CARDS: Record<string, ReactNode> = {
+    "apply-link": <ApplyQuickLinkCard />,
+    seasons: (
+      <SettingsCard icon={<Calendar className="h-5 w-5" />} title="시즌 관리" summary={<SeasonsSummary />}>
+        <SeasonsSection />
+      </SettingsCard>
+    ),
+    lodgings: (
+      <SettingsCard icon={<Building2 className="h-5 w-5" />} title="숙소 설정" summary={<LodgingsSummary />}>
+        <LodgingsSection />
+      </SettingsCard>
+    ),
+    places: (
+      <SettingsCard icon={<Building2 className="h-5 w-5" />} title="장소 설정" summary={<PlacesSummary />}>
+        <PlacesSection />
+      </SettingsCard>
+    ),
+    "bath-price": (
+      <SettingsCard icon={<Bath className="h-5 w-5" />} title="목욕쿠폰 단가" summary={<BathPriceSummary />}>
+        <BathPriceSection />
+      </SettingsCard>
+    ),
+    fee: (
+      <SettingsCard icon={<Bath className="h-5 w-5" />} title="회비 관리" summary={<FeeSummary />}>
+        <FeeSection />
+      </SettingsCard>
+    ),
+    receipt: (
+      <SettingsCard icon={<FileText className="h-5 w-5" />} title="영수증 서식 설정" summary={<ReceiptLayoutSummary />}>
+        <ReceiptLayoutSection />
+      </SettingsCard>
+    ),
+    password: (
+      <SettingsCard icon={<Lock className="h-5 w-5" />} title="비밀번호 변경" summary={<PasswordSummary />}>
+        <PasswordSection />
+      </SettingsCard>
+    ),
+    ocr: (
+      <SettingsCard icon={<ScanText className="h-5 w-5" />} title="OCR / API 키 설정" summary={<OcrSummary />}>
+        <OcrSection />
+      </SettingsCard>
+    ),
+    "dashboard-order": (
+      <SettingsCard icon={<LayoutDashboard className="h-5 w-5" />} title="대시보드 섹션 순서" summary={<DashboardOrderSummary />}>
+        <DashboardOrderSection />
+      </SettingsCard>
+    ),
+    "nav-menu": (
+      <SettingsCard icon={<MenuIcon className="h-5 w-5" />} title="메뉴(탭) 순서·표시" summary={<NavMenuSummary />}>
+        <NavMenuSection />
+      </SettingsCard>
+    ),
+  };
+
+  const moveTo = (from: number, to: number) => {
+    if (from === to || to < 0 || to >= order.length) return;
+    const next = [...order];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item!);
+    setOrder(next);
+  };
+
   return (
     <AppShell>
       <div className="space-y-6">
-        <header>
-          <h1 className="text-2xl font-bold">설정</h1>
-          <p className="text-sm text-muted-foreground">카드를 클릭하면 전체 내용을 팝업으로 열어볼 수 있습니다.</p>
+        <header className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">설정</h1>
+            <p className="text-sm text-muted-foreground">
+              {editMode
+                ? "카드를 끌어서 순서를 바꾼 뒤 저장하세요."
+                : "카드를 클릭하면 전체 내용을 팝업으로 열어볼 수 있습니다."}
+            </p>
+          </div>
+          {isAdmin && (
+            <div className="flex flex-wrap gap-2">
+              {!editMode ? (
+                <Button variant="outline" onClick={() => setEditMode(true)}>
+                  <GripVertical className="h-4 w-4 mr-1" />카드 순서 편집
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setOrder(savedOrder ?? DEFAULT_SETTINGS_CARD_ORDER);
+                      setEditMode(false);
+                    }}
+                  >
+                    취소
+                  </Button>
+                  <Button
+                    onClick={() =>
+                      saveOrder.mutate(order, {
+                        onSuccess: () => { toast.success("카드 순서 저장됨"); setEditMode(false); },
+                        onError: (e: any) => toast.error(e.message ?? "저장 실패"),
+                      })
+                    }
+                    disabled={saveOrder.isPending}
+                  >
+                    {saveOrder.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+                    저장
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
         </header>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <ApplyQuickLinkCard />
-          <SettingsCard
-            icon={<Calendar className="h-5 w-5" />}
-            title="시즌 관리"
-            summary={<SeasonsSummary />}
-          >
-            <SeasonsSection />
-          </SettingsCard>
-          <SettingsCard
-            icon={<Building2 className="h-5 w-5" />}
-            title="숙소 설정"
-            summary={<LodgingsSummary />}
-          >
-            <LodgingsSection />
-          </SettingsCard>
-          <SettingsCard
-            icon={<Building2 className="h-5 w-5" />}
-            title="장소 설정"
-            summary={<PlacesSummary />}
-          >
-            <PlacesSection />
-          </SettingsCard>
-          <SettingsCard
-            icon={<Bath className="h-5 w-5" />}
-            title="목욕쿠폰 단가"
-            summary={<BathPriceSummary />}
-          >
-            <BathPriceSection />
-          </SettingsCard>
-          <SettingsCard
-            icon={<Bath className="h-5 w-5" />}
-            title="회비 관리"
-            summary={<FeeSummary />}
-          >
-            <FeeSection />
-          </SettingsCard>
-          <SettingsCard
-            icon={<FileText className="h-5 w-5" />}
-            title="영수증 서식 설정"
-            summary={<ReceiptLayoutSummary />}
-          >
-            <ReceiptLayoutSection />
-          </SettingsCard>
-          <SettingsCard
-            icon={<Lock className="h-5 w-5" />}
-            title="비밀번호 변경"
-            summary={<PasswordSummary />}
-          >
-            <PasswordSection />
-          </SettingsCard>
-          <SettingsCard
-            icon={<ScanText className="h-5 w-5" />}
-            title="OCR / API 키 설정"
-            summary={<OcrSummary />}
-          >
-            <OcrSection />
-          </SettingsCard>
-          <SettingsCard
-            icon={<LayoutDashboard className="h-5 w-5" />}
-            title="대시보드 섹션 순서"
-            summary={<DashboardOrderSummary />}
-          >
-            <DashboardOrderSection />
-          </SettingsCard>
-          <SettingsCard
-            icon={<MenuIcon className="h-5 w-5" />}
-            title="메뉴(탭) 순서·표시"
-            summary={<NavMenuSummary />}
-          >
-            <NavMenuSection />
-          </SettingsCard>
+          {order.map((id, i) =>
+            CARDS[id] ? (
+              <div
+                key={id}
+                draggable={editMode}
+                onDragStart={() => setDragIdx(i)}
+                onDragOver={(e) => { if (editMode && dragIdx !== null) e.preventDefault(); }}
+                onDrop={(e) => {
+                  if (!editMode || dragIdx === null) return;
+                  e.preventDefault();
+                  moveTo(dragIdx, i);
+                  setDragIdx(null);
+                }}
+                onDragEnd={() => setDragIdx(null)}
+                className={cn(
+                  "relative h-full",
+                  editMode && "cursor-grab rounded-lg ring-2 ring-primary/40",
+                  editMode && dragIdx === i && "opacity-50",
+                )}
+              >
+                {editMode && (
+                  <div className="absolute right-2 top-2 z-10 rounded bg-background/90 p-1">
+                    <GripVertical className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                )}
+                <div className={cn(editMode && "pointer-events-none")}>{CARDS[id]}</div>
+              </div>
+            ) : null,
+          )}
         </div>
       </div>
     </AppShell>
@@ -1452,19 +1530,6 @@ function NavMenuSection() {
   const reset = () => setCfg({ order: DEFAULT_NAV_ORDER, hidden: [] });
   const dirty = JSON.stringify(cfg) !== savedKey;
 
-  // 순서 편집 모드 — 평소에는 드래그 비활성, 편집 모드에서만 드래그로 이동 가능
-  const role = useAuthRole();
-  const isAdmin = role === "admin";
-  const [orderEdit, setOrderEdit] = useState(false);
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
-  const moveTo = (from: number, to: number) => {
-    if (from === to || to < 0 || to >= cfg.order.length) return;
-    const next = [...cfg.order];
-    const [item] = next.splice(from, 1);
-    next.splice(to, 0, item!);
-    setCfg({ ...cfg, order: next });
-  };
-
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
@@ -1473,7 +1538,6 @@ function NavMenuSection() {
         <br />
         <span className="text-xs">
           ※ <b>대시보드</b>와 <b>설정</b> 메뉴는 안전을 위해 숨길 수 없습니다.
-          {" "}순서 변경은 <b>메뉴 순서 편집</b>을 눌러 편집 모드에서만 가능합니다(전체관리자 전용).
         </span>
       </p>
       <ul className="space-y-2">
@@ -1484,27 +1548,11 @@ function NavMenuSection() {
           return (
             <li
               key={path}
-              draggable={orderEdit}
-              onDragStart={() => setDragIdx(i)}
-              onDragOver={(e) => {
-                if (!orderEdit || dragIdx === null) return;
-                e.preventDefault();
-              }}
-              onDrop={(e) => {
-                if (!orderEdit || dragIdx === null) return;
-                e.preventDefault();
-                moveTo(dragIdx, i);
-                setDragIdx(null);
-              }}
-              onDragEnd={() => setDragIdx(null)}
               className={cn(
                 "flex items-center gap-2 rounded-md border bg-card px-3 py-2.5",
                 isHidden && "opacity-60",
-                orderEdit && "cursor-grab border-primary/40",
-                orderEdit && dragIdx === i && "opacity-50",
               )}
             >
-              {orderEdit && <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />}
               <span className="w-6 tabular-nums text-sm text-muted-foreground">{i + 1}.</span>
               <span className="flex-1 min-w-0">
                 <div className="font-medium truncate">{NAV_LABEL[path] ?? path}</div>
@@ -1527,10 +1575,10 @@ function NavMenuSection() {
               >
                 {isHidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
-              <Button size="icon" variant="outline" onClick={() => move(i, -1)} disabled={!orderEdit || i === 0} aria-label="위로">
+              <Button size="icon" variant="outline" onClick={() => move(i, -1)} disabled={i === 0} aria-label="위로">
                 <ChevronUp className="h-4 w-4" />
               </Button>
-              <Button size="icon" variant="outline" onClick={() => move(i, 1)} disabled={!orderEdit || i === cfg.order.length - 1} aria-label="아래로">
+              <Button size="icon" variant="outline" onClick={() => move(i, 1)} disabled={i === cfg.order.length - 1} aria-label="아래로">
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </li>
@@ -1538,27 +1586,12 @@ function NavMenuSection() {
         })}
       </ul>
       <div className="flex flex-wrap gap-2">
-        {!orderEdit ? (
-          <Button variant="outline" onClick={() => setOrderEdit(true)} disabled={!isAdmin}>
-            <GripVertical className="h-4 w-4 mr-1" />메뉴 순서 편집
-          </Button>
-        ) : (
-          <Button
-            variant="outline"
-            onClick={() => {
-              setCfg(saved ?? { order: DEFAULT_NAV_ORDER, hidden: [] });
-              setOrderEdit(false);
-            }}
-          >
-            취소
-          </Button>
-        )}
         <Button
           onClick={() => save.mutate(cfg, {
-            onSuccess: () => { toast.success("메뉴 설정 저장됨"); setOrderEdit(false); },
+            onSuccess: () => { toast.success("메뉴 설정 저장됨"); },
             onError: (e: any) => toast.error(e.message ?? "저장 실패"),
           })}
-          disabled={!dirty || save.isPending || !isAdmin}
+          disabled={!dirty || save.isPending}
         >
           {save.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
           저장
