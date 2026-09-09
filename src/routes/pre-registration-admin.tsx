@@ -418,6 +418,8 @@ function DetailDialog({
   onRefresh,
   onTogglePaid,
   paying,
+  onDelete,
+  deleting,
 }: {
   password: string;
   reg: AdminPreRegistration | null;
@@ -426,7 +428,10 @@ function DetailDialog({
   onRefresh: () => void;
   onTogglePaid: (id: string, paid: boolean) => void;
   paying: boolean;
+  onDelete: (r: AdminPreRegistration) => void;
+  deleting: boolean;
 }) {
+
   const changesFn = useServerFn(getPreRegistrationChanges);
   const candidatesFn = useServerFn(findChurchCandidates);
   const confirmFn = useServerFn(confirmPreRegistration);
