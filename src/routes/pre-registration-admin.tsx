@@ -143,10 +143,13 @@ function ReAuth({ onDone }: { onDone: (pw: string) => void }) {
 function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuthLost: () => void }) {
   const list = useServerFn(listPreRegistrations);
   const setPaid = useServerFn(setPreRegistrationPaid);
+  const delReg = useServerFn(deletePreRegistration);
   const [paying, setPaying] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<"recent" | "status" | "name">("recent");
   const [openId, setOpenId] = useState<string | null>(null);
+
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["pre-reg-admin"],
