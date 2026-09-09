@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchAll } from "@/lib/fetch-all";
 import { resilientQueryCache, writeCachedData } from "@/lib/query-session-cache";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
+import { RefreshButton } from "@/components/refresh-button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -56,7 +57,7 @@ function LodgingsPage() {
   const lodgingsKey = ["lodgings-page", season?.id] as const;
 
 
-  const { data } = useQuery<LodgingsPageData>({
+  const { data, refetch, isFetching } = useQuery<LodgingsPageData>({
     queryKey: lodgingsKey,
     enabled: !!season?.id,
     queryFn: async () => {
@@ -728,6 +729,7 @@ function LodgingsPage() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <RefreshButton onRefresh={() => refetch()} busy={isFetching} />
               {!orderEditMode ? (
                 <>
                   <Input placeholder="이름/교회 검색…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-56" />

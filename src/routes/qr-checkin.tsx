@@ -17,6 +17,7 @@ import { useAuthRole } from "@/lib/use-auth-role";
 import { getSessionPassword, setSessionPassword } from "@/lib/session-password";
 import { verifyPassword } from "@/lib/auth-config";
 import { notifyDataChanged } from "@/lib/use-realtime";
+import { RefreshButton } from "@/components/refresh-button";
 import { num, krw } from "@/lib/format";
 import {
   getCheckinByToken,
@@ -105,6 +106,7 @@ function CheckinContent({ password }: { password: string }) {
   const [manual, setManual] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const open = async (raw: string) => {
     const t = raw.trim();
@@ -122,10 +124,25 @@ function CheckinContent({ password }: { password: string }) {
     }
   };
 
+  const refresh = async () => {
+    if (!token) return;
+    setRefreshing(true);
+    try {
+      setDetail(await lookup({ data: { password, token } }));
+    } catch {
+      /* 조회 실패 시 기존 화면 유지 */
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   if (detail) {
     return (
       <CheckinDetailView
+        key={token}
         detail={detail}
+        onRefresh={refresh}
+        refreshing={refreshing}
         onSave={async (checkedIn, actualCount) => {
           await save({ data: { password, token, checkedIn, actualCount } });
           notifyDataChanged();
@@ -172,7 +189,8 @@ function CheckinContent({ password }: { password: string }) {
 }
 
 function QrScanner({ onResult, disabled }: { onResult: (t: string) => void; disabled?: boolean }) {
-  const [active, setActive] = useState(false);
+  // 진입 시 자동 시작. 브라우저 정책 등으로 실패하면 "카메라 시작" 버튼으로 켠다.
+  const [active, setActive] = useState(true);
   const [camError, setCamError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const instRef = useRef<any>(null);
@@ -219,7 +237,7 @@ function QrScanner({ onResult, disabled }: { onResult: (t: string) => void; disa
       <div id="qr-reader-box" ref={ref} className={active ? "overflow-hidden rounded-lg" : "hidden"} />
       {!active && (
         <Button className="h-14 w-full text-base" onClick={() => { setCamError(null); setActive(true); }} disabled={disabled}>
-          카메라로 QR 스캔하기
+          카메라 시작
         </Button>
       )}
       {active && (
@@ -236,10 +254,14 @@ function CheckinDetailView({
   detail,
   onSave,
   onRescan,
+  onRefresh,
+  refreshing,
 }: {
   detail: CheckinDetail;
   onSave: (checkedIn: boolean, actualCount: number | null) => Promise<void>;
   onRescan: () => void;
+  onRefresh: () => void | Promise<unknown>;
+  refreshing?: boolean;
 }) {
   const [checked, setChecked] = useState(detail.isCheckedIn);
   const [actual, setActual] = useState<string>(detail.actualCount != null ? String(detail.actualCount) : String(detail.headCount ?? ""));
@@ -251,7 +273,10 @@ function CheckinDetailView({
       <Card className="space-y-1 p-4">
         <div className="flex items-start justify-between gap-2">
           <h1 className="text-xl font-bold leading-tight">{detail.churchName}</h1>
-          <Badge variant="secondary">{detail.headCount}명</Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary">{detail.headCount}명</Badge>
+            <RefreshButton onRefresh={onRefresh} busy={refreshing} />
+          </div>
         </div>
         {detail.denomination && <div className="text-xs text-muted-foreground">{detail.denomination}</div>}
         <div className="pt-1 text-sm">담당자 · {detail.managerName}</div>

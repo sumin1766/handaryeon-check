@@ -20,7 +20,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useRealtimeInvalidate } from "@/lib/use-realtime";
+import { notifyDataChanged, useRealtimeInvalidate } from "@/lib/use-realtime";
+import { RefreshButton } from "@/components/refresh-button";
 import { useAuthRole } from "@/lib/use-auth-role";
 import { num, formatTime } from "@/lib/format";
 import { Pencil, Trash2 } from "lucide-react";
@@ -57,7 +58,7 @@ function IntakeSheetPage() {
   const [uncheckConfirm, setUncheckConfirm] = useState<{ id: string; name: string } | null>(null);
   const intakeKey = ["intake", season?.id] as const;
 
-  const { data } = useQuery({
+  const { data, refetch, isFetching } = useQuery({
     queryKey: intakeKey,
     enabled: !!season?.id,
     queryFn: async () => {
@@ -121,14 +122,20 @@ function IntakeSheetPage() {
         checked_in_at: checked ? new Date().toISOString() : null,
       }).eq("id", id);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["intake"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["intake"] });
+      notifyDataChanged();
+    },
   });
 
   const updateActual = useMutation({
     mutationFn: async ({ id, count }: any) => {
       await supabase.from("churches").update({ actual_count: count }).eq("id", id);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["intake"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["intake"] });
+      notifyDataChanged();
+    },
   });
 
   const removeChurch = useMutation({
@@ -139,6 +146,7 @@ function IntakeSheetPage() {
     onSuccess: () => {
       toast.success("삭제 완료");
       qc.invalidateQueries({ queryKey: ["intake"] });
+      notifyDataChanged();
     },
     onError: (e: any) => toast.error(e.message ?? "삭제 실패"),
   });
@@ -153,7 +161,10 @@ function IntakeSheetPage() {
             <h1 className="text-2xl font-bold">접수시트</h1>
             <p className="text-sm text-muted-foreground">교회별 접수 체크 및 실접수 인원 기록</p>
           </div>
-          <Input placeholder="교회명 / 이름 검색…" value={filter} onChange={(e) => setFilter(e.target.value)} className="w-64" />
+          <div className="flex items-center gap-2">
+            <Input placeholder="교회명 / 이름 검색…" value={filter} onChange={(e) => setFilter(e.target.value)} className="w-64" />
+            <RefreshButton onRefresh={() => refetch()} busy={isFetching} />
+          </div>
         </header>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

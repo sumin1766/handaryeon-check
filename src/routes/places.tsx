@@ -13,6 +13,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Building2, MapPin, Search, X, Copy, Check, Download } from "lucide-react";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
+import { RefreshButton } from "@/components/refresh-button";
 import { cn } from "@/lib/utils";
 import { downloadRowsAsXlsx } from "@/lib/export-xlsx";
 
@@ -33,7 +34,7 @@ function PlacesPage() {
   const qc = useQueryClient();
   useRealtimeInvalidate(["places"], [["places-view"], ["places-summary"], ["places-full"]]);
 
-  const { data: places = [] } = useQuery({
+  const { data: places = [], refetch: refetchPlaces, isFetching: placesFetching } = useQuery({
     queryKey: ["places-view", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
@@ -160,8 +161,11 @@ function PlacesPage() {
               장소를 클릭해 용도 라벨을 지정하세요. 장소는 설정 → 장소 설정에서 추가/삭제할 수 있습니다.
             </p>
           </div>
+          <div className="flex items-center gap-3">
+          <RefreshButton onRefresh={() => refetchPlaces()} busy={placesFetching} />
           <div className="tabular-nums text-sm text-muted-foreground">
             총 <b className="text-foreground">{places.length}</b>개 · 용도 지정 <b className="text-foreground">{totalAssigned}</b>개
+          </div>
           </div>
         </header>
 
