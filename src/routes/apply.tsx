@@ -31,6 +31,7 @@ import {
 } from "@/lib/pre-registration-public.functions";
 
 import { krw } from "@/lib/format";
+import { AttendeeExcelBar } from "@/components/attendee-excel-bar";
 
 export const Route = createFileRoute("/apply")({
   head: () => ({
@@ -214,6 +215,15 @@ function ApplyPage() {
             ))}
           </div>
         </div>
+
+        <AttendeeExcelBar
+          onAdd={(list) =>
+            setRows((p) => [
+              ...p.filter((r) => r.name.trim()),
+              ...list.map((m) => ({ ...m, category: m.category as MemberCategory })),
+            ])
+          }
+        />
 
         <div className="mt-3 space-y-2">
           {rows.map((r, i) => (
