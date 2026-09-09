@@ -28,6 +28,7 @@ export type Database = {
           season_id: string
           segue_fee_enabled: boolean
           segue_member_fee: number
+          settings_card_order: Json
         }
         Insert: {
           bath_unit_price?: number
@@ -42,6 +43,7 @@ export type Database = {
           season_id: string
           segue_fee_enabled?: boolean
           segue_member_fee?: number
+          settings_card_order?: Json
         }
         Update: {
           bath_unit_price?: number
@@ -56,6 +58,7 @@ export type Database = {
           season_id?: string
           segue_fee_enabled?: boolean
           segue_member_fee?: number
+          settings_card_order?: Json
         }
         Relationships: [
           {
