@@ -598,6 +598,21 @@ function DetailDialog({
               </Button>
             </Card>
 
+            <Card className="p-3 space-y-2 text-sm border-destructive/40">
+              <div className="font-medium text-destructive">사전접수 건 삭제</div>
+              <div className="text-muted-foreground text-xs">
+                {reg.status === "applied"
+                  ? "확정되어 운영 명단과 연결된 건입니다. 삭제하면 이 건에서 등록된 인원도 함께 삭제됩니다(수동 추가 인원은 유지)."
+                  : "운영 명단에 등록된 데이터가 없어 사전접수 건만 삭제됩니다."}
+              </div>
+              <Button variant="destructive" size="sm" disabled={deleting} onClick={() => onDelete(reg)}>
+                <Trash2 className="h-4 w-4 mr-1" />
+                {deleting ? "삭제 중…" : "삭제"}
+              </Button>
+            </Card>
+
+
+
 
             <Card className="p-3">
               <div className="font-medium text-sm mb-2">참석자 명단 ({reg.members.length}명)</div>
