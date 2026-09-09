@@ -12,7 +12,8 @@ import { fetchAll } from "@/lib/fetch-all";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { num, krw, formatKst, kstDateOf, weekdayOf, weekdayOfDate, eachKstDateBetween, shortDate } from "@/lib/format";
-import { useRealtimeInvalidate } from "@/lib/use-realtime";
+import { notifyDataChanged, useRealtimeInvalidate } from "@/lib/use-realtime";
+import { RefreshButton } from "@/components/refresh-button";
 import { useAuthRole } from "@/lib/use-auth-role";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Pencil, Trash2 } from "lucide-react";
@@ -149,6 +150,7 @@ function OnsitePage() {
       qc.invalidateQueries({ queryKey: ["intake"] });
       qc.invalidateQueries({ queryKey: ["registry"] });
       qc.invalidateQueries({ queryKey: ["lodgings"] });
+      notifyDataChanged();
     },
     onError: (e: any) => toast.error(e.message ?? "등록 실패"),
   });
@@ -384,9 +386,12 @@ function OnsitePage() {
   return (
     <AppShell>
       <div className="space-y-4">
-        <header>
-          <h1 className="text-2xl font-bold">현장접수</h1>
-          <p className="text-sm text-muted-foreground">이름 입력 → 인원 자동 카운트. 공백/쉼표/줄바꿈으로 구분.</p>
+        <header className="flex items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">현장접수</h1>
+            <p className="text-sm text-muted-foreground">이름 입력 → 인원 자동 카운트. 공백/쉼표/줄바꿈으로 구분.</p>
+          </div>
+          <RefreshButton onRefresh={() => { list.refetch(); lodgingsQ.refetch(); }} busy={list.isFetching} />
         </header>
 
         {(() => {

@@ -3,7 +3,8 @@ import { AppShell } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useRealtimeInvalidate } from "@/lib/use-realtime";
+import { notifyDataChanged, useRealtimeInvalidate } from "@/lib/use-realtime";
+import { RefreshButton } from "@/components/refresh-button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,7 @@ function BathPage() {
   const qc = useQueryClient();
   useRealtimeInvalidate(["bath_coupons", "app_settings"], [["bath", season?.id]]);
 
-  const { data } = useQuery({
+  const { data, refetch, isFetching } = useQuery({
     queryKey: ["bath", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
@@ -113,6 +114,7 @@ function BathPage() {
             <h1 className="text-2xl font-bold">목욕쿠폰</h1>
             <p className="text-sm text-muted-foreground">1매 = {krw(unit)} · 설정에서 변경</p>
           </div>
+          <RefreshButton onRefresh={() => refetch()} busy={isFetching} />
         </header>
 
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
