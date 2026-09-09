@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Copy, RefreshCw, Search } from "lucide-react";
+import { Copy, RefreshCw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { krw, formatKst } from "@/lib/format";
 import { useAuthRole } from "@/lib/use-auth-role";
@@ -30,6 +30,7 @@ import {
   setPreRegistrationPaid,
   type ChurchCandidate,
 } from "@/lib/pre-registration-confirm.functions";
+import { deletePreRegistration } from "@/lib/pre-registration-delete.functions";
 
 export const Route = createFileRoute("/pre-registration-admin")({
   head: () => ({
