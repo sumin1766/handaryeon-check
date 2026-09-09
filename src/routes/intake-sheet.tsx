@@ -4,6 +4,7 @@ import { AppShell, GenderBadge } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { sdb } from "@/lib/secure-db";
 import { fetchAll } from "@/lib/fetch-all";
 import { resilientQueryCache, writeCachedData } from "@/lib/query-session-cache";
 import { Card } from "@/components/ui/card";
@@ -62,7 +63,7 @@ function IntakeSheetPage() {
     queryKey: intakeKey,
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data: churches } = await supabase
+      const { data: churches } = await sdb
         .from("churches").select("*").eq("season_id", season!.id).order("name");
       const ids = (churches ?? []).map((c: any) => c.id);
       const people = ids.length
@@ -70,7 +71,7 @@ function IntakeSheetPage() {
             q.select("church_id, name, lodging, gender, age_group, lodging_id").in("church_id", ids),
           )
         : [];
-      const { data: lodgings } = await supabase
+      const { data: lodgings } = await sdb
         .from("lodgings").select("id, name, gender").eq("season_id", season!.id);
       const result = { churches: churches ?? [], people, lodgings: lodgings ?? [] };
       writeCachedData(intakeKey, result);
@@ -117,7 +118,7 @@ function IntakeSheetPage() {
 
   const updateCheck = useMutation({
     mutationFn: async ({ id, checked }: any) => {
-      await supabase.from("churches").update({
+      await sdb.from("churches").update({
         is_checked_in: checked,
         checked_in_at: checked ? new Date().toISOString() : null,
       }).eq("id", id);
@@ -130,7 +131,7 @@ function IntakeSheetPage() {
 
   const updateActual = useMutation({
     mutationFn: async ({ id, count }: any) => {
-      await supabase.from("churches").update({ actual_count: count }).eq("id", id);
+      await sdb.from("churches").update({ actual_count: count }).eq("id", id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["intake"] });
@@ -140,7 +141,7 @@ function IntakeSheetPage() {
 
   const removeChurch = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("churches").delete().eq("id", id);
+      const { error } = await sdb.from("churches").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {

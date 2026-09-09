@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { sdb } from "@/lib/secure-db";
 import { useAuthRole } from "@/lib/use-auth-role";
 
 const SEASON_CACHE_KEY = "handaryeon:last-good-seasons";
@@ -17,7 +18,7 @@ async function fetchSeasonsWithTimeout(ms = 10_000): Promise<Season[]> {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), ms);
   try {
-    const { data, error } = await supabase
+    const { data, error } = await sdb
       .from("seasons")
       .select("*")
       .order("created_at", { ascending: false })
@@ -180,7 +181,7 @@ export function useBackendKeepalive() {
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), 8_000);
       try {
-        const { error } = await supabase
+        const { error } = await sdb
           .from("seasons")
           .select("id", { head: true, count: "exact" })
           .limit(1)

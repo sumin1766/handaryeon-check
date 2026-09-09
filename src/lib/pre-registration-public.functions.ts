@@ -148,3 +148,28 @@ export const submitPreRegistration = createServerFn({ method: "POST" })
       duplicateNotice: (count ?? 0) > 0,
     };
   });
+
+/** 공개 사전접수 폼에서 회비 안내를 표시하기 위한 조회 전용 서버 함수. */
+export const getPublicFeeConfig = createServerFn({ method: "POST" }).handler(
+  async (): Promise<{ preRegFee: number; categoryFees: Record<string, number> }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: season } = await supabaseAdmin
+      .from("seasons")
+      .select("id")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!season) return { preRegFee: DEFAULT_PRE_REG_FEE, categoryFees: {} };
+    const { data } = await supabaseAdmin
+      .from("app_settings")
+      .select("pre_reg_fee, category_fees")
+      .eq("season_id", season.id)
+      .maybeSingle();
+    const s = data as { pre_reg_fee?: number; category_fees?: unknown } | null;
+    return {
+      preRegFee: s?.pre_reg_fee ?? DEFAULT_PRE_REG_FEE,
+      categoryFees: parseCategoryFees(s?.category_fees) as Record<string, number>,
+    };
+  },
+);

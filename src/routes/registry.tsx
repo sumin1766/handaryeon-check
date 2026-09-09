@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { sdb } from "@/lib/secure-db";
 import { fetchAll } from "@/lib/fetch-all";
 import { resilientQueryCache, writeCachedData } from "@/lib/query-session-cache";
 import { Card } from "@/components/ui/card";
@@ -62,7 +63,7 @@ function useSyncedChurchDelete() {
         if (linked.length) throw e; // 사전접수 연결 건은 반드시 동기화 삭제되어야 한다
       }
     }
-    const { error } = await supabase.from("churches").delete().eq("id", churchId);
+    const { error } = await sdb.from("churches").delete().eq("id", churchId);
     if (error) throw error;
     return true;
   };
@@ -133,7 +134,7 @@ function RegistryPage() {
     queryKey: registryKey,
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data: churches } = await supabase
+      const { data: churches } = await sdb
         .from("churches").select("*").eq("season_id", season!.id).order("created_at");
       const ids = (churches ?? []).map((c: any) => c.id);
       const people = ids.length
@@ -462,7 +463,7 @@ function ChurchDialog({
   const save = useMutation({
     mutationFn: async () => {
       if (!name.trim()) throw new Error("교회명 필수");
-      const { error: eU } = await supabase.from("churches").update({
+      const { error: eU } = await sdb.from("churches").update({
         name: name.trim(),
         denomination: denom || null,
         contact_name: contact || null,
@@ -498,15 +499,15 @@ function ChurchDialog({
       const existingIds: string[] = people.map((p: any) => p.id).filter(Boolean);
       const removedIds = existingIds.filter((id) => !keptIds.has(id));
       if (removedIds.length) {
-        const { error: eD } = await supabase.from("people").delete().in("id", removedIds);
+        const { error: eD } = await sdb.from("people").delete().in("id", removedIds);
         if (eD) throw eD;
       }
       for (const u of toUpdate) {
-        const { error: eU2 } = await supabase.from("people").update(u.fields).eq("id", u.id);
+        const { error: eU2 } = await sdb.from("people").update(u.fields).eq("id", u.id);
         if (eU2) throw eU2;
       }
       if (toInsert.length) {
-        const { error: eI } = await supabase.from("people").insert(toInsert);
+        const { error: eI } = await sdb.from("people").insert(toInsert);
         if (eI) throw eI;
       }
     },

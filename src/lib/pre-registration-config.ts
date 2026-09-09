@@ -2,6 +2,7 @@
 // 회비 값은 시즌 스코프(app_settings.season_id)로 저장된다.
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { sdb } from "@/lib/secure-db";
 import { parseCategoryFees, type CategoryFeeMap } from "@/lib/member-categories";
 
 export const DEFAULT_PRE_REG_FEE = 20000;
@@ -32,7 +33,7 @@ export function useFeeConfig(seasonId?: string) {
     queryKey: ["fee-config", seasonId],
     enabled: !!seasonId,
     queryFn: async (): Promise<FeeConfig> => {
-      const { data } = await supabase
+      const { data } = await sdb
         .from("app_settings")
         .select("*")
         .eq("season_id", seasonId!)
@@ -52,7 +53,7 @@ export function useSaveFeeConfig(seasonId?: string) {
   return useMutation({
     mutationFn: async (cfg: FeeConfig) => {
       if (!seasonId) throw new Error("활성 시즌이 없습니다");
-      const { error } = await supabase.from("app_settings").upsert({
+      const { error } = await sdb.from("app_settings").upsert({
         season_id: seasonId,
         pre_reg_fee: cfg.preRegFee,
         segue_member_fee: cfg.segueMemberFee,

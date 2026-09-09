@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { sdb } from "@/lib/secure-db";
 
 export type DashboardSectionKey = "pre" | "segue" | "actual";
 
@@ -32,7 +33,7 @@ export function useDashboardOrder(seasonId?: string) {
     queryKey: ["dashboard_order", seasonId],
     enabled: !!seasonId,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await sdb
         .from("app_settings")
         .select("dashboard_section_order")
         .eq("season_id", seasonId!)
@@ -47,7 +48,7 @@ export function useSaveDashboardOrder(seasonId?: string) {
   return useMutation({
     mutationFn: async (order: DashboardSectionKey[]) => {
       if (!seasonId) throw new Error("시즌이 없습니다");
-      const { error } = await supabase
+      const { error } = await sdb
         .from("app_settings")
         .upsert({ season_id: seasonId, dashboard_section_order: order } as any);
       if (error) throw error;

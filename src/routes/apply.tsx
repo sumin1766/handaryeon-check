@@ -10,7 +10,6 @@ import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/integrations/supabase/client";
 import {
   DEFAULT_PRE_REG_FEE,
   PRE_REG_FORM_NOTICES,
@@ -26,6 +25,7 @@ import {
 } from "@/lib/member-categories";
 import {
   submitPreRegistration,
+  getPublicFeeConfig,
   type SubmitPreRegistrationResult,
   type SubmitPreRegistrationInput,
 } from "@/lib/pre-registration-public.functions";
@@ -78,23 +78,8 @@ function ApplyPage() {
   const { data: feeCfg } = useQuery({
     queryKey: ["public-pre-reg-fee"],
     queryFn: async (): Promise<{ preRegFee: number; categoryFees: CategoryFeeMap }> => {
-      const { data: season } = await supabase
-        .from("seasons")
-        .select("id")
-        .eq("is_active", true)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!season) return { preRegFee: DEFAULT_PRE_REG_FEE, categoryFees: {} };
-      const { data } = await supabase
-        .from("app_settings")
-        .select("*")
-        .eq("season_id", season.id)
-        .maybeSingle();
-      return {
-        preRegFee: (data as { pre_reg_fee?: number } | null)?.pre_reg_fee ?? DEFAULT_PRE_REG_FEE,
-        categoryFees: parseCategoryFees((data as { category_fees?: unknown } | null)?.category_fees),
-      };
+      const cfg = await getPublicFeeConfig();
+      return { preRegFee: cfg.preRegFee, categoryFees: cfg.categoryFees as CategoryFeeMap };
     },
   });
   const preRegFee = feeCfg?.preRegFee ?? DEFAULT_PRE_REG_FEE;

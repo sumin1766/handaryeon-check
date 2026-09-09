@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { sdb } from "@/lib/secure-db";
 import { fetchAll } from "@/lib/fetch-all";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { pairKey } from "@/lib/duplicate-check";
@@ -41,7 +42,7 @@ export function useDuplicateDismissals(seasonId: string | undefined) {
     mutationFn: async (payload: { a: string; b: string; note?: string }) => {
       if (!seasonId) throw new Error("시즌 정보가 없습니다.");
       const [a, b] = payload.a < payload.b ? [payload.a, payload.b] : [payload.b, payload.a];
-      const { error } = await (supabase.from as any)("duplicate_dismissals").insert({
+      const { error } = await (sdb.from as any)("duplicate_dismissals").insert({
         season_id: seasonId,
         church_a_id: a,
         church_b_id: b,
@@ -58,7 +59,7 @@ export function useDuplicateDismissals(seasonId: string | undefined) {
 
   const restore = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from as any)("duplicate_dismissals").delete().eq("id", id);
+      const { error } = await (sdb.from as any)("duplicate_dismissals").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
