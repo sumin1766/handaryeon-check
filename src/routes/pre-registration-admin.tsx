@@ -268,10 +268,10 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
           </thead>
           <tbody>
             {isLoading && (
-              <tr><td colSpan={10} className="px-3 py-6 text-muted-foreground">불러오는 중…</td></tr>
+              <tr><td colSpan={11} className="px-3 py-6 text-muted-foreground">불러오는 중…</td></tr>
             )}
             {!isLoading && filtered.length === 0 && (
-              <tr><td colSpan={10} className="px-3 py-6 text-muted-foreground">사전접수 건이 없습니다.</td></tr>
+              <tr><td colSpan={11} className="px-3 py-6 text-muted-foreground">사전접수 건이 없습니다.</td></tr>
             )}
             {filtered.map((r) => {
               const l = lodgingCounts(r);
