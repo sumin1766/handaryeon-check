@@ -40,6 +40,8 @@ export function useFeeConfig(seasonId?: string) {
       return {
         preRegFee: (data as any)?.pre_reg_fee ?? DEFAULT_PRE_REG_FEE,
         segueMemberFee: (data as any)?.segue_member_fee ?? DEFAULT_SEGUE_MEMBER_FEE,
+        segueFeeEnabled: (data as any)?.segue_fee_enabled !== false,
+        categoryFees: parseCategoryFees((data as any)?.category_fees),
       };
     },
   });
@@ -54,17 +56,15 @@ export function useSaveFeeConfig(seasonId?: string) {
         season_id: seasonId,
         pre_reg_fee: cfg.preRegFee,
         segue_member_fee: cfg.segueMemberFee,
-      });
+        segue_fee_enabled: cfg.segueFeeEnabled,
+        category_fees: cfg.categoryFees as any,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["fee-config"] });
       qc.invalidateQueries({ queryKey: ["app_settings"] });
+      qc.invalidateQueries({ queryKey: ["public-pre-reg-fee"] });
     },
   });
-}
-
-/** 사전접수 예상 회비 = 인원수 × 일괄 회비 */
-export function calcExpectedFee(headCount: number, preRegFee: number) {
-  return Math.max(0, headCount) * preRegFee;
 }
