@@ -357,7 +357,7 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
                   <td className="px-3 py-2 whitespace-nowrap">{r.manager_phone}</td>
                   <td className="px-3 py-2 whitespace-nowrap">{r.head_count}명</td>
                   <td className="px-3 py-2 whitespace-nowrap">{krw(r.expected_fee)}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{l.church} / {l.external} / {l.none}</td>
+                  <td className="px-3 py-2 whitespace-nowrap">{lodgingCellText(l)}</td>
                   <td className="px-3 py-2"><StatusBadge status={r.status} /></td>
                   <td className="px-3 py-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                     <Button
