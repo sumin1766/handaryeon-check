@@ -46,6 +46,7 @@ import { useChangePasswords } from "@/lib/auth-config";
 import {
   useFeeConfig, useSaveFeeConfig,
   DEFAULT_PRE_REG_FEE, DEFAULT_SEGUE_MEMBER_FEE,
+  type FeeConfig,
 } from "@/lib/pre-registration-config";
 
 export const Route = createFileRoute("/settings")({

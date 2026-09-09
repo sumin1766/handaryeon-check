@@ -46,7 +46,7 @@ const STATUS_LABELS: Record<PreRegistrationSelfDetail["status"], string> = {
   applied: "확정완료",
   needs_review: "수정됨 · 재검토 필요",
 };
-const phoneOptional = (c: MemberCategory) => isPhoneOptional(c);
+const phoneOptional = (c: string) => isPhoneOptional(c);
 const emptyRow = (): SelfMember => ({
   name: "",
   phone: "",
