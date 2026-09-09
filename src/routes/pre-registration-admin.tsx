@@ -348,14 +348,24 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function GroupStat({
+  title,
+  g,
+  feeLabel,
+}: {
+  title: string;
+  g: { count: number; people: number; fee: number };
+  feeLabel: string;
+}) {
   return (
     <div className="rounded-xl border p-3">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="text-lg font-semibold mt-0.5">{value}</div>
+      <div className="text-xs text-muted-foreground">{title}</div>
+      <div className="text-lg font-semibold mt-0.5">{g.count}건 · {g.people}명</div>
+      <div className="text-sm text-muted-foreground mt-0.5">{feeLabel} {krw(g.fee)}</div>
     </div>
   );
 }
+
 
 function DetailDialog({
   password,
