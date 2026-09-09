@@ -527,8 +527,9 @@ function DetailDialog({
                 {reg.head_count}명 × {krw(unitFee)} = <strong>{krw(reg.expected_fee)}</strong>
               </div>
               <div className="text-muted-foreground text-xs mt-1">
-                운영 등록 시에는 세계로 성도 1만원 규칙이 적용되어 금액이 달라질 수 있습니다.
+                사전등록 확정은 전원 기본 단가({krw(preRegFee)})로 등록됩니다.
               </div>
+
               <div className="mt-2 flex items-center gap-2">
                 <span className="text-muted-foreground text-xs">납부</span>
                 <Button
