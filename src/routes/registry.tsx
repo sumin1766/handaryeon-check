@@ -20,7 +20,7 @@ import {
 import { notifyDataChanged, useRealtimeInvalidate } from "@/lib/use-realtime";
 import { useAuthRole } from "@/lib/use-auth-role";
 import { num, formatKst } from "@/lib/format";
-import { Plus, Trash2, Pencil, X, Save, Search, Merge } from "lucide-react";
+import { Plus, Trash2, Pencil, X, Save, Search, Merge, RefreshCw } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -129,7 +129,7 @@ function RegistryPage() {
 
   useRealtimeInvalidate(["churches", "people"], [["registry", season?.id]]);
 
-  const { data } = useQuery({
+  const { data, refetch, isFetching } = useQuery({
     queryKey: registryKey,
     enabled: !!season?.id,
     queryFn: async () => {
@@ -207,11 +207,24 @@ function RegistryPage() {
   return (
     <AppShell>
       <div className="space-y-4">
-        <header>
-          <h1 className="text-2xl font-bold">접수 명단</h1>
-          <p className="text-sm text-muted-foreground">
-            사전접수 · 현장접수 통합 명단 · 이름 검색으로 소속 교회/담당자 확인
-          </p>
+        <header className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">접수 명단</h1>
+            <p className="text-sm text-muted-foreground">
+              사전접수 · 현장접수 통합 명단 · 이름 검색으로 소속 교회/담당자 확인
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => {
+              refetch();
+              qc.invalidateQueries({ queryKey: ["pre-reg-admin"] });
+            }}
+            disabled={isFetching}
+          >
+            <RefreshCw className={`h-4 w-4 mr-1 ${isFetching ? "animate-spin" : ""}`} />
+            새로고침
+          </Button>
         </header>
 
         <DuplicateBanner
