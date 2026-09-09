@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { sdb } from "@/lib/secure-db";
 import { getSessionPassword } from "@/lib/session-password";
 import { saveSettingsCardOrderServer } from "@/lib/settings-card-order.functions";
 
@@ -41,7 +42,7 @@ export function useSettingsCardOrder(seasonId?: string) {
     enabled: !!seasonId,
     staleTime: 60_000,
     queryFn: async (): Promise<string[]> => {
-      const { data } = await supabase
+      const { data } = await sdb
         .from("app_settings")
         .select("*")
         .eq("season_id", seasonId!)
@@ -66,7 +67,7 @@ export function useSaveSettingsCardOrder(seasonId?: string) {
         await saveServer({ data: { password, seasonId, order: clean } });
         return;
       }
-      const { error } = await supabase
+      const { error } = await sdb
         .from("app_settings")
         .upsert({ season_id: seasonId, settings_card_order: clean } as never);
       if (error) throw error;

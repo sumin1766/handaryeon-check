@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { sdb } from "@/lib/secure-db";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,7 +39,7 @@ function PlacesPage() {
     queryKey: ["places-view", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data, error } = await (supabase.from as any)("places")
+      const { data, error } = await (sdb.from as any)("places")
         .select("*").eq("season_id", season!.id).order("name");
       if (error) throw error;
       return (data ?? []) as Place[];
@@ -49,7 +50,7 @@ function PlacesPage() {
     queryKey: ["places-lodgings-report", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data } = await supabase.from("lodgings")
+      const { data } = await sdb.from("lodgings")
         .select("id, name, building, floor, note, active")
         .eq("season_id", season!.id)
         .order("sort_order");
@@ -125,7 +126,7 @@ function PlacesPage() {
   const save = useMutation({
     mutationFn: async () => {
       if (!editing) return;
-      const { error } = await (supabase.from as any)("places").update({
+      const { error } = await (sdb.from as any)("places").update({
         purpose: purposeDraft.trim() || null,
         note: noteDraft.trim() || null,
       }).eq("id", editing.id);

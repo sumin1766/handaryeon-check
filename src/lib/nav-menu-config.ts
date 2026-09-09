@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { sdb } from "@/lib/secure-db";
 import { getSessionPassword } from "@/lib/session-password";
 import { saveNavMenuConfigServer } from "@/lib/nav-menu.functions";
 
@@ -75,7 +76,7 @@ export function useNavMenuConfig(seasonId?: string) {
     enabled: !!seasonId,
     staleTime: 60_000,
     queryFn: async (): Promise<NavMenuConfig> => {
-      const { data } = await supabase
+      const { data } = await sdb
         .from("app_settings")
         .select("nav_menu_order, nav_menu_hidden")
         .eq("season_id", seasonId!)
@@ -101,7 +102,7 @@ export function useSaveNavMenuConfig(seasonId?: string) {
         await saveServer({ data: { password, seasonId, order, hidden } });
         return;
       }
-      const { error } = await supabase
+      const { error } = await sdb
         .from("app_settings")
         .upsert({
           season_id: seasonId,

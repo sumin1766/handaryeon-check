@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { sdb } from "@/lib/secure-db";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export const RECEIPT_CANVAS = { width: 760, height: 1000 };
@@ -35,7 +36,7 @@ export function useReceiptLayout() {
   return useQuery({
     queryKey: ["receipt_layout"],
     queryFn: async (): Promise<ReceiptLayout> => {
-      const { data } = await supabase.from("receipt_layout").select("layout").eq("id", 1).maybeSingle();
+      const { data } = await sdb.from("receipt_layout").select("layout").eq("id", 1).maybeSingle();
       return (data?.layout as ReceiptLayout) ?? {};
     },
   });
@@ -45,7 +46,7 @@ export function useSaveReceiptLayout() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (layout: ReceiptLayout) => {
-      const { error } = await supabase
+      const { error } = await sdb
         .from("receipt_layout")
         .upsert({ id: 1, layout: layout as any, updated_at: new Date().toISOString() });
       if (error) throw error;

@@ -47,10 +47,16 @@ export function useRealtimeInvalidate(tables: string[], invalidateKeys: unknown[
       });
     }
     ch.subscribe();
+    // 실시간 알림이 닿지 않는 경우(브라우저 정책·네트워크·권한)를 대비한 주기 갱신.
+    // 화면이 앞에 있을 때만 동작하므로 배경 탭에서는 부하가 없다.
+    const poll = setInterval(() => {
+      if (typeof document === "undefined" || document.visibilityState === "visible") flush();
+    }, 30_000);
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onVisible);
     window.addEventListener(LOCAL_CHANGE_EVT, flush);
     return () => {
+      clearInterval(poll);
       if (timerRef.current) clearTimeout(timerRef.current);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);

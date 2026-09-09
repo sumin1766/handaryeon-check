@@ -8,7 +8,7 @@
 // final tiebreaker so every call site is safe by default. Callers that pass
 // their own `.order(...)` still win as the primary sort — additional
 // `.order()` calls chain as secondary sort keys, so their intent is preserved.
-import { supabase } from "@/integrations/supabase/client";
+import { sdb } from "@/lib/secure-db";
 
 const PAGE = 1000;
 
@@ -27,11 +27,11 @@ type Table =
 
 export async function fetchAll<T = any>(
   table: Table,
-  build: (q: ReturnType<typeof supabase.from>) => any,
+  build: (q: any) => any,
 ): Promise<T[]> {
   const out: T[] = [];
   for (let from = 0; ; from += PAGE) {
-    const q = build(supabase.from(table))
+    const q = build(sdb.from(table))
       .order("id")
       .range(from, from + PAGE - 1);
     const { data, error } = await q;

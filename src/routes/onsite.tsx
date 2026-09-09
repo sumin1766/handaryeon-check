@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { sdb } from "@/lib/secure-db";
 import { fetchAll } from "@/lib/fetch-all";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -109,7 +110,7 @@ function OnsitePage() {
     mutationFn: async () => {
       if (!season) throw new Error("시즌 없음");
       if (!form.church.trim()) throw new Error("교회명 필수");
-      const { data: church, error } = await supabase.from("churches").insert({
+      const { data: church, error } = await sdb.from("churches").insert({
         season_id: season.id,
         name: form.church.trim(),
         contact_name: form.contact || null,
@@ -129,7 +130,7 @@ function OnsitePage() {
       }
       let inserted: any[] = [];
       if (rows.length) {
-        const { data: ins, error: e2 } = await supabase.from("people").insert(rows).select("id, gender, lodging");
+        const { data: ins, error: e2 } = await sdb.from("people").insert(rows).select("id, gender, lodging");
         if (e2) throw e2;
         inserted = ins ?? [];
       }
@@ -160,7 +161,7 @@ function OnsitePage() {
     queryKey: ["onsite-lodgings", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data: lodgings, error } = await supabase
+      const { data: lodgings, error } = await sdb
         .from("lodgings").select("*").eq("season_id", season!.id).eq("active", true);
       if (error) throw error;
       const assigned = await fetchAll<any>("people", (q) =>
@@ -172,7 +173,7 @@ function OnsitePage() {
 
   const assign = useMutation({
     mutationFn: async (payload: { lodgingId: string; ids: string[] }) => {
-      const { error } = await supabase
+      const { error } = await sdb
         .from("people")
         .update({ lodging_id: payload.lodgingId, lodging: true })
         .in("id", payload.ids);
@@ -200,13 +201,13 @@ function OnsitePage() {
     queryKey: ["onsite-list", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data: churches } = await supabase
+      const { data: churches } = await sdb
         .from("churches").select("*").eq("season_id", season!.id).eq("source", "onsite").order("created_at", { ascending: false });
       const ids = (churches ?? []).map((c: any) => c.id);
       const people = ids.length
         ? await fetchAll<any>("people", (q) => q.select("church_id, lodging, age_group, created_at").in("church_id", ids))
         : [];
-      const { data: payments } = await supabase
+      const { data: payments } = await sdb
         .from("church_payments").select("*").eq("season_id", season!.id);
       return { churches: churches ?? [], people, payments: payments ?? [] };
     },
@@ -223,12 +224,12 @@ function OnsitePage() {
     }) => {
       const existing = (list.data?.payments ?? []).find((p: any) => p.church_id === payload.church_id);
       if (existing) {
-        const { error } = await supabase.from("church_payments")
+        const { error } = await sdb.from("church_payments")
           .update({ ...payload.patch, updated_at: new Date().toISOString() })
           .eq("id", existing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("church_payments").insert({
+        const { error } = await sdb.from("church_payments").insert({
           church_id: payload.church_id,
           season_id: season!.id,
           paid_transfer: false, paid_cash: false, amount: 0,
@@ -243,7 +244,7 @@ function OnsitePage() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("churches").delete().eq("id", id);
+      const { error } = await sdb.from("churches").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -260,7 +261,7 @@ function OnsitePage() {
     queryKey: ["onsite-segue-depts", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await sdb
         .from("churches")
         .select("id, name, denomination, contact_name, phone")
         .eq("season_id", season!.id)
@@ -276,7 +277,7 @@ function OnsitePage() {
     queryKey: ["onsite-segue-adult-church", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await sdb
         .from("churches")
         .select("id, name, created_at")
         .eq("season_id", season!.id)
@@ -299,7 +300,7 @@ function OnsitePage() {
       if (!dept) throw new Error("부서 정보 조회 실패");
       // 등록 건마다 새 세계로 계열 교회 레코드를 생성 (수동 취합 대상).
       const perChurchName = `${dept.name}(${nm})`;
-      const { data: church, error: cErr } = await supabase.from("churches").insert({
+      const { data: church, error: cErr } = await sdb.from("churches").insert({
         season_id: season!.id,
         name: perChurchName,
         denomination: dept.denomination ?? null,
@@ -311,7 +312,7 @@ function OnsitePage() {
         actual_count: 1,
       }).select("id").single();
       if (cErr) throw cErr;
-      const { data, error } = await supabase.from("people").insert({
+      const { data, error } = await sdb.from("people").insert({
         church_id: church.id,
         name: nm,
         gender: segueGender,
@@ -353,7 +354,7 @@ function OnsitePage() {
       if (!nm) throw new Error("이름을 입력하세요");
       // 등록 건마다 새 "세계로교회(이름)" 레코드를 만든다. 통합은 취합 화면에서 수동 진행.
       const perChurchName = `세계로교회(${nm})`;
-      const { data: church, error: cErr } = await supabase.from("churches").insert({
+      const { data: church, error: cErr } = await sdb.from("churches").insert({
         season_id: season!.id,
         name: perChurchName,
         source: "onsite",
@@ -362,7 +363,7 @@ function OnsitePage() {
         actual_count: 1,
       }).select("id").single();
       if (cErr) throw cErr;
-      const { error } = await supabase.from("people").insert({
+      const { error } = await sdb.from("people").insert({
         church_id: church.id,
         name: nm,
         gender: adultGender,

@@ -21,6 +21,7 @@ import {
 } from "@/lib/parsers/pre-registration-parser";
 import { parseWithLlmOrFallback, type ParseStage } from "@/lib/parsers/llm-parser";
 import { supabase } from "@/integrations/supabase/client";
+import { sdb } from "@/lib/secure-db";
 import { fetchAll } from "@/lib/fetch-all";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -121,7 +122,7 @@ function PreRegistrationPage() {
     queryKey: ["pre_ocr_enabled", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data } = await supabase.from("app_settings").select("*").eq("season_id", season!.id).maybeSingle();
+      const { data } = await sdb.from("app_settings").select("*").eq("season_id", season!.id).maybeSingle();
       return !!(data as any)?.ocr_enabled;
     },
   });
@@ -130,7 +131,7 @@ function PreRegistrationPage() {
     queryKey: ["pre-all", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data: churches } = await supabase
+      const { data: churches } = await sdb
         .from("churches").select("*").eq("season_id", season!.id).order("created_at", { ascending: true });
       const ids = (churches ?? []).map((c: any) => c.id);
       const people = ids.length
@@ -219,16 +220,16 @@ function PreRegistrationPage() {
 
       let churchId = editingId;
       if (editingId) {
-        const { error: eu } = await supabase.from("churches").update({
+        const { error: eu } = await sdb.from("churches").update({
           name: current.church_name.trim(),
           denomination: current.denomination || null,
           contact_name: current.contact_name || null,
           phone: current.phone || null,
         }).eq("id", editingId);
         if (eu) throw eu;
-        await supabase.from("people").delete().eq("church_id", editingId);
+        await sdb.from("people").delete().eq("church_id", editingId);
       } else {
-        const { data: church, error: e1 } = await supabase.from("churches").insert({
+        const { data: church, error: e1 } = await sdb.from("churches").insert({
           season_id: season.id,
           name: current.church_name.trim(),
           denomination: current.denomination || null,
@@ -267,7 +268,7 @@ function PreRegistrationPage() {
         excluded: current.excluded,
       });
       if (rows.length) {
-        const { error: e2 } = await supabase.from("people").insert(rows);
+        const { error: e2 } = await sdb.from("people").insert(rows);
         if (e2) throw e2;
       }
     },
@@ -281,7 +282,7 @@ function PreRegistrationPage() {
 
   const deleteChurch = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("churches").delete().eq("id", id);
+      const { error } = await sdb.from("churches").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -293,8 +294,8 @@ function PreRegistrationPage() {
   });
 
   const loadForEdit = async (churchId: string) => {
-    const { data: church } = await supabase.from("churches").select("*").eq("id", churchId).single();
-    const { data: people } = await supabase.from("people").select("*").eq("church_id", churchId);
+    const { data: church } = await sdb.from("churches").select("*").eq("id", churchId).single();
+    const { data: people } = await sdb.from("people").select("*").eq("church_id", churchId);
     if (!church) return;
     const parsed = emptyParsed();
     parsed.church_name = church.name ?? "";
@@ -549,7 +550,7 @@ function PreRegistrationList({
   const { data } = useQuery({
     queryKey: ["pre-list", seasonId],
     queryFn: async () => {
-      const { data: churches } = await supabase
+      const { data: churches } = await sdb
         .from("churches")
         .select("*")
         .eq("season_id", seasonId)
@@ -566,7 +567,7 @@ function PreRegistrationList({
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("churches").delete().eq("id", id);
+      const { error } = await sdb.from("churches").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {

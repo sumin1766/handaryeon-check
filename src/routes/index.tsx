@@ -4,6 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { sdb } from "@/lib/secure-db";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { num } from "@/lib/format";
 import { fetchAll } from "@/lib/fetch-all";
@@ -39,7 +40,7 @@ function DashboardPage() {
     queryKey: dashboardKey,
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data: churches } = await supabase
+      const { data: churches } = await sdb
         .from("churches").select("id, name, denomination, is_checked_in, actual_count").eq("season_id", season!.id);
       const churchIds = (churches ?? []).map((c: any) => c.id);
       if (churchIds.length === 0) {

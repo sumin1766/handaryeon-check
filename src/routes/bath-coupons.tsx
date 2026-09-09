@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { sdb } from "@/lib/secure-db";
 import { notifyDataChanged, useRealtimeInvalidate } from "@/lib/use-realtime";
 import { RefreshButton } from "@/components/refresh-button";
 import { Card } from "@/components/ui/card";
@@ -34,9 +35,9 @@ function BathPage() {
     queryKey: ["bath", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data: rows } = await supabase
+      const { data: rows } = await sdb
         .from("bath_coupons").select("*").eq("season_id", season!.id).order("created_at", { ascending: false });
-      const { data: settings } = await supabase
+      const { data: settings } = await sdb
         .from("app_settings").select("*").eq("season_id", season!.id).maybeSingle();
       return { rows: rows ?? [], unit: settings?.bath_unit_price ?? 5000 };
     },
@@ -52,7 +53,7 @@ function BathPage() {
       if (!form.name.trim()) throw new Error("이름 필수");
       const qty = form.qty || 1;
       const now = new Date();
-      await supabase.from("bath_coupons").insert({
+      await sdb.from("bath_coupons").insert({
         season_id: season!.id, name: form.name.trim(), qty, amount: qty * unit,
         weekday: pickBathWeekday(now),
       });
@@ -68,7 +69,7 @@ function BathPage() {
   const update = useMutation({
     mutationFn: async (row: any) => {
       const amount = (row.qty || 0) * unit;
-      await supabase.from("bath_coupons").update({
+      await sdb.from("bath_coupons").update({
         name: row.name, qty: row.qty, amount,
         paid_transfer: row.paid_transfer, transfer_at: row.transfer_at,
         paid_cash: row.paid_cash, cash_at: row.cash_at,
@@ -79,7 +80,7 @@ function BathPage() {
   });
 
   const remove = useMutation({
-    mutationFn: async (id: string) => { await supabase.from("bath_coupons").delete().eq("id", id); },
+    mutationFn: async (id: string) => { await sdb.from("bath_coupons").delete().eq("id", id); },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["bath"] }),
   });
 
@@ -89,10 +90,10 @@ function BathPage() {
     return {
       w,
       people: r.length,
-      qty: r.reduce((s, x: any) => s + x.qty, 0),
-      amount: r.reduce((s, x: any) => s + x.amount, 0),
-      transfer: r.filter((x: any) => x.paid_transfer).reduce((s, x: any) => s + x.amount, 0),
-      cash: r.filter((x: any) => x.paid_cash).reduce((s, x: any) => s + x.amount, 0),
+      qty: r.reduce((s: number, x: any) => s + x.qty, 0),
+      amount: r.reduce((s: number, x: any) => s + x.amount, 0),
+      transfer: r.filter((x: any) => x.paid_transfer).reduce((s: number, x: any) => s + x.amount, 0),
+      cash: r.filter((x: any) => x.paid_cash).reduce((s: number, x: any) => s + x.amount, 0),
     };
   });
 

@@ -3,6 +3,7 @@ import { AppShell, GenderBadge } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { sdb } from "@/lib/secure-db";
 import { fetchAll } from "@/lib/fetch-all";
 import { resilientQueryCache, writeCachedData } from "@/lib/query-session-cache";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
@@ -61,8 +62,8 @@ function LodgingsPage() {
     queryKey: lodgingsKey,
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data: lodgings } = await supabase.from("lodgings").select("*").eq("season_id", season!.id).order("sort_order");
-      const { data: churches } = await supabase.from("churches").select("id, name, denomination, memo").eq("season_id", season!.id);
+      const { data: lodgings } = await sdb.from("lodgings").select("*").eq("season_id", season!.id).order("sort_order");
+      const { data: churches } = await sdb.from("churches").select("id, name, denomination, memo").eq("season_id", season!.id);
       const ids = (churches ?? []).map((c: any) => c.id);
       const people = ids.length
         ? await fetchAll<any>("people", (q) => q.select("*").in("church_id", ids))
@@ -83,7 +84,7 @@ function LodgingsPage() {
     queryKey: ["app_settings-lodging-order", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data } = await (supabase.from as any)("app_settings")
+      const { data } = await (sdb.from as any)("app_settings")
         .select("season_id, lodging_manual_order")
         .eq("season_id", season!.id)
         .maybeSingle();
@@ -143,11 +144,11 @@ function LodgingsPage() {
       // 각 숙소에 sort_order = 인덱스+1 부여
       for (let i = 0; i < orderDraft.length; i++) {
         const id = orderDraft[i];
-        const { error } = await supabase.from("lodgings").update({ sort_order: i + 1 }).eq("id", id);
+        const { error } = await sdb.from("lodgings").update({ sort_order: i + 1 }).eq("id", id);
         if (error) throw error;
       }
       // upsert app_settings row (season_id PK)
-      const { error: upErr } = await (supabase.from as any)("app_settings")
+      const { error: upErr } = await (sdb.from as any)("app_settings")
         .upsert({ season_id: season.id, lodging_manual_order: true }, { onConflict: "season_id" });
       if (upErr) throw upErr;
     },
@@ -165,7 +166,7 @@ function LodgingsPage() {
   const resetOrderAuto = useMutation({
     mutationFn: async () => {
       if (!season) return;
-      const { error } = await (supabase.from as any)("app_settings")
+      const { error } = await (sdb.from as any)("app_settings")
         .upsert({ season_id: season.id, lodging_manual_order: false }, { onConflict: "season_id" });
       if (error) throw error;
     },
@@ -332,7 +333,7 @@ function LodgingsPage() {
       return;
     }
     const ids = group.persons.slice(0, slots).map((p) => p.id);
-    const { error } = await supabase.from("people").update({ lodging_id: lodging.id, lodging: true }).in("id", ids);
+    const { error } = await sdb.from("people").update({ lodging_id: lodging.id, lodging: true }).in("id", ids);
     if (error) return toast.error(error.message);
     const leftover = incoming - slots;
     const overNote = mode === "over" && isOverflow ? ` · 초과 ${incoming - remain}명` : "";
@@ -399,7 +400,7 @@ function LodgingsPage() {
       toast.error("남은 자리가 없습니다.");
       return;
     }
-    const { error } = await supabase.from("people").update({ lodging_id: lodging.id, lodging: true }).in("id", ids);
+    const { error } = await sdb.from("people").update({ lodging_id: lodging.id, lodging: true }).in("id", ids);
     if (error) return toast.error(error.message);
     const overNote = mode === "over" && isOverflow ? ` · 초과 ${incomingTotal - (remain as number)}명` : "";
     toast.success(`${assignedGroups}개 교회 · ${assignedCount}명 배정${leftover ? ` (잔여 ${leftover}명)` : ""}${overNote}`);
@@ -1175,7 +1176,7 @@ function RoomDetail({ lodging, people, churchMap, onChanged, search }: any) {
   }, [displayPeople]);
 
   const unassignOne = async (id: string) => {
-    await supabase.from("people").update({ lodging_id: null }).eq("id", id);
+    await sdb.from("people").update({ lodging_id: null }).eq("id", id);
     toast.success("배정 해제");
     onChanged();
   };
@@ -1183,14 +1184,14 @@ function RoomDetail({ lodging, people, churchMap, onChanged, search }: any) {
     const ids = people.filter((p: any) => p.church_id === churchId).map((p: any) => p.id);
     if (ids.length === 0) return;
     if (!confirm(`${churchMap.get(churchId)} ${ids.length}명을 모두 해제하시겠습니까?`)) return;
-    await supabase.from("people").update({ lodging_id: null }).in("id", ids);
+    await sdb.from("people").update({ lodging_id: null }).in("id", ids);
     toast.success(`${ids.length}명 해제`);
     onChanged();
   };
   const unassignAll = async () => {
     if (people.length === 0) return;
     if (!confirm(`방 전체 ${people.length}명을 해제하시겠습니까?`)) return;
-    await supabase.from("people").update({ lodging_id: null }).eq("lodging_id", lodging.id);
+    await sdb.from("people").update({ lodging_id: null }).eq("lodging_id", lodging.id);
     toast.success("전체 해제");
     onChanged();
   };

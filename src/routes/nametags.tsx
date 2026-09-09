@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { sdb } from "@/lib/secure-db";
 import { fetchAll } from "@/lib/fetch-all";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { Card } from "@/components/ui/card";
@@ -24,7 +25,7 @@ function NametagsPage() {
     queryKey: ["nametag-page", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data: churches } = await supabase
+      const { data: churches } = await sdb
         .from("churches").select("id, name, denomination").eq("season_id", season!.id).order("name");
       const ids = (churches ?? []).map((c: any) => c.id);
       const people = ids.length

@@ -3,6 +3,9 @@ import { AppShell } from "@/components/app-shell";
 import { useActiveSeason, useSeasons } from "@/lib/use-active-season";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { sdb } from "@/lib/secure-db";
+import { getOcrStatusFn, updateOcrConfigFn, updateOcrBackupKeyFn } from "@/lib/auth.functions";
+import { getSessionPassword } from "@/lib/session-password";
 import { fetchAll } from "@/lib/fetch-all";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -317,7 +320,7 @@ function LodgingsSummary() {
     queryKey: ["lodgings-settings", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data } = await supabase.from("lodgings").select("id, active, capacity").eq("season_id", season!.id);
+      const { data } = await sdb.from("lodgings").select("id, active, capacity").eq("season_id", season!.id);
       return data ?? [];
     },
   });
@@ -337,7 +340,7 @@ function BathPriceSummary() {
     queryKey: ["app_settings", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data } = await supabase.from("app_settings").select("*").eq("season_id", season!.id).maybeSingle();
+      const { data } = await sdb.from("app_settings").select("*").eq("season_id", season!.id).maybeSingle();
       return data;
     },
   });
@@ -354,7 +357,7 @@ function SeasonsSection() {
   const createSeason = useMutation({
     mutationFn: async () => {
       if (!form.name.trim()) throw new Error("시즌 이름을 입력하세요");
-      const { data, error } = await supabase
+      const { data, error } = await sdb
         .from("seasons")
         .insert({
           name: form.name.trim(),
@@ -374,8 +377,8 @@ function SeasonsSection() {
         note: l.note ?? null,
         sort_order: l.sort_order,
       }));
-      await supabase.from("lodgings").insert(rows);
-      await supabase.from("app_settings").insert({ season_id: data.id, bath_unit_price: 5000 });
+      await sdb.from("lodgings").insert(rows);
+      await sdb.from("app_settings").insert({ season_id: data.id, bath_unit_price: 5000 });
       return data.id;
     },
     onSuccess: () => {
@@ -388,8 +391,8 @@ function SeasonsSection() {
 
   const activate = useMutation({
     mutationFn: async (id: string) => {
-      await supabase.from("seasons").update({ is_active: false }).neq("id", id);
-      const { error } = await supabase.from("seasons").update({ is_active: true }).eq("id", id);
+      await sdb.from("seasons").update({ is_active: false }).neq("id", id);
+      const { error } = await sdb.from("seasons").update({ is_active: true }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -400,7 +403,7 @@ function SeasonsSection() {
 
   const updateSeason = useMutation({
     mutationFn: async (s: any) => {
-      const { error } = await supabase
+      const { error } = await sdb
         .from("seasons")
         .update({ name: s.name, start_date: s.start_date, end_date: s.end_date })
         .eq("id", s.id);
@@ -479,7 +482,7 @@ function LodgingsSection() {
     queryKey: ["lodgings-settings-full", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data } = await supabase.from("lodgings").select("*").eq("season_id", season!.id).order("sort_order");
+      const { data } = await sdb.from("lodgings").select("*").eq("season_id", season!.id).order("sort_order");
       return data ?? [];
     },
   });
@@ -487,7 +490,7 @@ function LodgingsSection() {
     queryKey: ["app_settings-lodging-order", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data } = await (supabase.from as any)("app_settings")
+      const { data } = await (sdb.from as any)("app_settings")
         .select("season_id, lodging_manual_order")
         .eq("season_id", season!.id)
         .maybeSingle();
@@ -527,10 +530,10 @@ function LodgingsSection() {
     mutationFn: async (orderedIds: string[]) => {
       if (!season) return;
       for (let i = 0; i < orderedIds.length; i++) {
-        const { error } = await supabase.from("lodgings").update({ sort_order: i + 1 }).eq("id", orderedIds[i]);
+        const { error } = await sdb.from("lodgings").update({ sort_order: i + 1 }).eq("id", orderedIds[i]);
         if (error) throw error;
       }
-      const { error: upErr } = await (supabase.from as any)("app_settings")
+      const { error: upErr } = await (sdb.from as any)("app_settings")
         .upsert({ season_id: season.id, lodging_manual_order: true }, { onConflict: "season_id" });
       if (upErr) throw upErr;
     },
@@ -547,7 +550,7 @@ function LodgingsSection() {
   const resetAuto = useMutation({
     mutationFn: async () => {
       if (!season) return;
-      const { error } = await (supabase.from as any)("app_settings")
+      const { error } = await (sdb.from as any)("app_settings")
         .upsert({ season_id: season.id, lodging_manual_order: false }, { onConflict: "season_id" });
       if (error) throw error;
     },
@@ -590,7 +593,7 @@ function LodgingsSection() {
   });
   const update = useMutation({
     mutationFn: async (row: any) => {
-      const { error } = await supabase.from("lodgings").update({
+      const { error } = await sdb.from("lodgings").update({
         name: row.name, building: row.building, floor: row.floor,
         capacity: row.capacity, gender: row.gender, active: row.active, note: row.note,
       }).eq("id", row.id);
@@ -600,7 +603,7 @@ function LodgingsSection() {
   });
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("lodgings").delete().eq("id", id);
+      const { error } = await sdb.from("lodgings").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -618,7 +621,7 @@ function LodgingsSection() {
     mutationFn: async () => {
       if (!form.name.trim()) throw new Error("숙소명을 입력하세요");
       const maxSort = lodgings.reduce((m: number, l: any) => Math.max(m, l.sort_order ?? 0), 0);
-      const { error } = await supabase.from("lodgings").insert({
+      const { error } = await sdb.from("lodgings").insert({
         season_id: season!.id,
         name: form.name.trim(),
         building: form.building,
@@ -939,7 +942,7 @@ function BathPriceSection() {
     queryKey: ["app_settings", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data } = await supabase.from("app_settings").select("*").eq("season_id", season!.id).maybeSingle();
+      const { data } = await sdb.from("app_settings").select("*").eq("season_id", season!.id).maybeSingle();
       return data;
     },
   });
@@ -952,7 +955,7 @@ function BathPriceSection() {
         <Input type="number" value={price} onChange={(e) => setPrice(parseInt(e.target.value) || 0)} className="tabular-nums" />
       </div>
       <Button onClick={async () => {
-        await supabase.from("app_settings").upsert({ season_id: season.id, bath_unit_price: price });
+        await sdb.from("app_settings").upsert({ season_id: season.id, bath_unit_price: price });
         qc.invalidateQueries({ queryKey: ["app_settings"] });
         toast.success("저장됨");
       }}>저장</Button>
@@ -1108,15 +1111,7 @@ function useOcrStatus() {
   return useQuery({
     queryKey: ["ocr_status"],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("ocr_status" as any);
-      if (error) throw error;
-      return data as {
-        has_key: boolean;
-        key_last4: string | null;
-        base_url: string;
-        has_backup_key?: boolean;
-        backup_key_last4?: string | null;
-      };
+      return await getOcrStatusFn({ data: { password: getSessionPassword() ?? "" } });
     },
   });
 }
@@ -1127,7 +1122,7 @@ function useOcrEnabled() {
     queryKey: ["app_settings_ocr", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data } = await supabase.from("app_settings").select("*").eq("season_id", season!.id).maybeSingle();
+      const { data } = await sdb.from("app_settings").select("*").eq("season_id", season!.id).maybeSingle();
       return { enabled: !!(data as any)?.ocr_enabled, seasonId: season!.id };
     },
   });
@@ -1185,7 +1180,7 @@ function OcrSection() {
       toast.error("API 키가 등록되지 않았습니다. 먼저 키를 등록하세요.");
       return;
     }
-    const { error } = await supabase.from("app_settings").upsert({ season_id: en.seasonId, ocr_enabled: next } as any);
+    const { error } = await sdb.from("app_settings").upsert({ season_id: en.seasonId, ocr_enabled: next } as any);
     if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["app_settings"] });
     qc.invalidateQueries({ queryKey: ["app_settings_ocr"] });
@@ -1198,10 +1193,7 @@ function OcrSection() {
     if (!newKey.trim() && !newUrl.trim()) { toast.error("변경할 값을 입력하세요."); return; }
     setSaving(true);
     try {
-      const { error } = await supabase.rpc("ocr_config_update" as any, {
-        current_admin: pwd, new_api_key: newKey || null, new_base_url: newUrl || null,
-      });
-      if (error) throw error;
+      await updateOcrConfigFn({ data: { current_admin: pwd, new_api_key: newKey || null, new_base_url: newUrl || null } });
       toast.success("저장되었습니다");
       setPwd(""); setNewKey(""); setNewUrl(""); setEditing(false);
       await refetchStatus();
@@ -1319,11 +1311,7 @@ function BackupKeySection({
     if (!clear && !newKey.trim()) { toast.error("새 백업 키를 입력하세요."); return; }
     setSaving(true);
     try {
-      const { error } = await supabase.rpc("ocr_backup_key_update" as any, {
-        current_admin: pwd,
-        new_key: clear ? "" : newKey,
-      });
-      if (error) throw error;
+      await updateOcrBackupKeyFn({ data: { current_admin: pwd, new_key: clear ? "" : newKey } });
       toast.success(clear ? "백업 키를 삭제했습니다" : "백업 키를 저장했습니다");
       setPwd(""); setNewKey(""); setEditing(false);
       await refetchStatus();
@@ -1617,7 +1605,7 @@ function PlacesSummary() {
     queryKey: ["places-summary", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data } = await (supabase.from as any)("places")
+      const { data } = await (sdb.from as any)("places")
         .select("id, purpose").eq("season_id", season!.id);
       return data ?? [];
     },
@@ -1639,14 +1627,14 @@ function PlacesSection() {
     queryKey: ["places-full", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data } = await (supabase.from as any)("places")
+      const { data } = await (sdb.from as any)("places")
         .select("*").eq("season_id", season!.id).order("created_at");
       return data ?? [];
     },
   });
   const update = useMutation({
     mutationFn: async (row: any) => {
-      const { error } = await (supabase.from as any)("places").update({
+      const { error } = await (sdb.from as any)("places").update({
         name: row.name, purpose: row.purpose, note: row.note,
       }).eq("id", row.id);
       if (error) throw error;
@@ -1655,7 +1643,7 @@ function PlacesSection() {
   });
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase.from as any)("places").delete().eq("id", id);
+      const { error } = await (sdb.from as any)("places").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -1668,7 +1656,7 @@ function PlacesSection() {
   const add = useMutation({
     mutationFn: async () => {
       if (!form.name.trim()) throw new Error("장소명을 입력하세요");
-      const { error } = await (supabase.from as any)("places").insert({
+      const { error } = await (sdb.from as any)("places").insert({
         season_id: season!.id,
         name: form.name.trim(),
         purpose: form.purpose.trim() || null,

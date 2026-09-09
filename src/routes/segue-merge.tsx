@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { sdb } from "@/lib/secure-db";
 import { fetchAll } from "@/lib/fetch-all";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,7 @@ function SegueMergePage() {
     queryKey: ["segue-merge", season?.id],
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data: churches } = await supabase
+      const { data: churches } = await sdb
         .from("churches")
         .select("*")
         .eq("season_id", season!.id)
@@ -44,7 +45,7 @@ function SegueMergePage() {
       const people = ids.length
         ? await fetchAll<any>("people", (q) => q.select("*").in("church_id", ids))
         : [];
-      const { data: log } = await supabase
+      const { data: log } = await sdb
         .from("segue_merge_log")
         .select("*")
         .eq("season_id", season!.id)
@@ -98,12 +99,12 @@ function SegueMergePage() {
       if (!season) throw new Error("시즌 없음");
       if (person.church_id === target.id) return;
       const fromChurchId = person.church_id;
-      const { error: e1 } = await supabase
+      const { error: e1 } = await sdb
         .from("people")
         .update({ church_id: target.id })
         .eq("id", person.id);
       if (e1) throw e1;
-      const { error: e2 } = await supabase.from("segue_merge_log").insert({
+      const { error: e2 } = await sdb.from("segue_merge_log").insert({
         season_id: season.id,
         person_id: person.id,
         from_church_id: fromChurchId,
@@ -120,12 +121,12 @@ function SegueMergePage() {
 
   const undoMove = useMutation({
     mutationFn: async (entry: any) => {
-      const { error: e1 } = await supabase
+      const { error: e1 } = await sdb
         .from("people")
         .update({ church_id: entry.from_church_id })
         .eq("id", entry.person_id);
       if (e1) throw e1;
-      const { error: e2 } = await supabase.from("segue_merge_log").delete().eq("id", entry.id);
+      const { error: e2 } = await sdb.from("segue_merge_log").delete().eq("id", entry.id);
       if (e2) throw e2;
     },
     onSuccess: () => {
