@@ -57,8 +57,8 @@ const CATEGORY_LABELS: Record<MemberCategory, string> = {
   male_adult: "남자어른",
   female_student: "여학생",
   female_adult: "여자어른",
-  male_child: "남자유아초등",
-  female_child: "여자유아초등",
+  male_child: "남자 유아~초등",
+  female_child: "여자 유아~초등",
 };
 const phoneOptional = (c: MemberCategory) => PHONE_OPTIONAL_CATEGORIES.includes(c);
 
