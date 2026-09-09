@@ -1,6 +1,11 @@
 // 사전접수 관리 — 조회 전용 (3단계).
 // 교회가 /apply 로 직접 제출한 활성 시즌 사전접수 건을 목록/상세로 확인한다.
 // 상태 변경·확정·이관·삭제 기능은 이 화면에 없다(4단계).
+import {
+  CATEGORY_LABELS,
+  MEMBER_CATEGORIES,
+  LEGACY_MEMBER_CATEGORIES,
+} from "@/lib/member-categories";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
@@ -47,15 +52,8 @@ export const Route = createFileRoute("/pre-registration-admin")({
   component: PreRegAdminPage,
 });
 
-const CATEGORY_LABEL: Record<string, string> = {
-  male_student: "남학생",
-  male_adult: "남자어른",
-  female_student: "여학생",
-  female_adult: "여자어른",
-  male_child: "남자 유아~초등",
-  female_child: "여자 유아~초등",
-};
-const CATEGORY_ORDER = Object.keys(CATEGORY_LABEL);
+const CATEGORY_LABEL = CATEGORY_LABELS as Record<string, string>;
+const CATEGORY_ORDER: string[] = [...MEMBER_CATEGORIES, ...LEGACY_MEMBER_CATEGORIES];
 
 const LODGING_LABEL: Record<string, string> = {
   church: "교회 숙박",
@@ -282,7 +280,9 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
           숙박 유형(전체): 교회 {summary.lodging.church} · 외부 {summary.lodging.external} · 비숙박 {summary.lodging.none}
         </div>
         <div className="mt-2 flex flex-wrap gap-2 text-xs">
-          {CATEGORY_ORDER.map((c) => (
+          {CATEGORY_ORDER.filter(
+            (c) => !(LEGACY_MEMBER_CATEGORIES as readonly string[]).includes(c) || (summary.cat[c] ?? 0) > 0,
+          ).map((c) => (
             <span key={c} className="rounded-full bg-muted px-3 py-1">
               {CATEGORY_LABEL[c]} {summary.cat[c] ?? 0}
             </span>
