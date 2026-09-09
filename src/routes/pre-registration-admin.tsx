@@ -193,19 +193,25 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
   const summary = useMemo(() => {
     const cat: Record<string, number> = {};
     const lodging = { church: 0, external: 0, none: 0 };
-    let people = 0;
-    let fee = 0;
+    const group = {
+      all: { count: 0, people: 0, fee: 0 },
+      confirmed: { count: 0, people: 0, fee: 0 },
+      pending: { count: 0, people: 0, fee: 0 },
+    };
     for (const r of rows) {
-      fee += r.expected_fee ?? 0;
+      const people = r.members.length;
+      const fee = r.expected_fee ?? 0;
+      const bucket = r.status === "applied" ? group.confirmed : group.pending;
+      group.all.count++; group.all.people += people; group.all.fee += fee;
+      bucket.count++; bucket.people += people; bucket.fee += fee;
       for (const m of r.members) {
-        people++;
         cat[m.category] = (cat[m.category] ?? 0) + 1;
         if (m.lodging_type === "church") lodging.church++;
         else if (m.lodging_type === "external") lodging.external++;
         else lodging.none++;
       }
     }
-    return { cat, lodging, people, fee, count: rows.length };
+    return { cat, lodging, ...group };
   }, [rows]);
 
   const selected = rows.find((r) => r.id === openId) ?? null;
@@ -216,7 +222,7 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
         <div>
           <h1 className="text-2xl font-bold">사전접수 관리</h1>
           <p className="text-sm text-muted-foreground">
-            교회가 직접 제출한 활성 시즌 사전접수 건 · 조회 전용
+            교회가 직접 제출한 활성 시즌 사전접수 건
           </p>
         </div>
         <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
@@ -232,16 +238,15 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
       )}
 
       <Card className="p-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat label="전체 건수" value={`${summary.count}건`} />
-          <Stat label="총 인원" value={`${summary.people}명`} />
-          <Stat label="확정 회비 합계" value={krw(summary.fee)} />
-          <Stat
-            label="숙박 유형"
-            value={`교회 ${summary.lodging.church} · 외부 ${summary.lodging.external} · 비숙박 ${summary.lodging.none}`}
-          />
+        <div className="grid gap-3 sm:grid-cols-3">
+          <GroupStat title="전체" g={summary.all} feeLabel="회비 합계" />
+          <GroupStat title="확정" g={summary.confirmed} feeLabel="확정 회비 합계" />
+          <GroupStat title="미확정 (검토대기+재검토)" g={summary.pending} feeLabel="미확정 회비 합계" />
         </div>
-        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+        <div className="mt-3 text-xs text-muted-foreground">
+          숙박 유형(전체): 교회 {summary.lodging.church} · 외부 {summary.lodging.external} · 비숙박 {summary.lodging.none}
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2 text-xs">
           {CATEGORY_ORDER.map((c) => (
             <span key={c} className="rounded-full bg-muted px-3 py-1">
               {CATEGORY_LABEL[c]} {summary.cat[c] ?? 0}
@@ -249,6 +254,7 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
           ))}
         </div>
       </Card>
+
 
       <Card className="p-3 flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[220px]">
