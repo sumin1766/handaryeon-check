@@ -155,6 +155,19 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
 
   const rows = data?.rows ?? [];
 
+  const togglePaid = async (id: string, paid: boolean) => {
+    setPaying(true);
+    try {
+      await setPaid({ data: { password, id, paid } });
+      await refetch();
+      toast.success(paid ? "납부 완료로 표시했습니다" : "미납으로 되돌렸습니다");
+    } catch (e: any) {
+      toast.error(e?.message ?? "저장 실패");
+    } finally {
+      setPaying(false);
+    }
+  };
+
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     let out = rows.filter(
