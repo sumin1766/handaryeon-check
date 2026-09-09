@@ -223,6 +223,7 @@ function ApplyPage() {
               ...list.map((m) => ({ ...m, category: m.category as MemberCategory })),
             ])
           }
+          onClear={() => setRows([])}
         />
 
         <div className="mt-3 space-y-2">
