@@ -27,6 +27,9 @@ export type AdminPreRegistration = {
   created_at: string;
   updated_at: string;
   applied_at: string | null;
+  church_id: string | null;
+  paid: boolean;
+  paid_at: string | null;
   members: AdminMember[];
 };
 
