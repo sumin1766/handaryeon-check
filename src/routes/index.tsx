@@ -8,7 +8,8 @@ import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { num } from "@/lib/format";
 import { fetchAll } from "@/lib/fetch-all";
 import { resilientQueryCache, writeCachedData } from "@/lib/query-session-cache";
-import { ArrowDown, ArrowUp, Minus } from "lucide-react";
+import { ArrowDown, ArrowUp, Minus, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useDashboardOrder, DEFAULT_DASHBOARD_ORDER } from "@/lib/dashboard-order";
 
 export const Route = createFileRoute("/")({
@@ -34,7 +35,7 @@ function DashboardPage() {
   useRealtimeInvalidate(["churches", "people"], [["dashboard"]]);
   const dashboardKey = ["dashboard", season?.id] as const;
 
-  const { data } = useQuery({
+  const { data, refetch, isFetching } = useQuery({
     queryKey: dashboardKey,
     enabled: !!season?.id,
     queryFn: async () => {
@@ -259,13 +260,19 @@ function DashboardPage() {
       `}</style>
       <div className="lumina-scope -mx-6 -my-6 min-h-[calc(100vh-130px)]">
         <div className="mx-auto max-w-[1200px] px-4 sm:px-10 py-8 sm:py-12 space-y-8 sm:space-y-12">
-          <header>
-            <h1 className="lumina-title font-bold" style={{ fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-              대시보드
-            </h1>
-            <p className="lumina-muted lumina-subtitle mt-2" style={{ fontWeight: 600, letterSpacing: "-0.01em" }}>
-              {season.name} 현황
-            </p>
+          <header className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h1 className="lumina-title font-bold" style={{ fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+                대시보드
+              </h1>
+              <p className="lumina-muted lumina-subtitle mt-2" style={{ fontWeight: 600, letterSpacing: "-0.01em" }}>
+                {season.name} 현황
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
+              <RefreshCw className={`h-4 w-4 mr-1 ${isFetching ? "animate-spin" : ""}`} />
+              새로고침
+            </Button>
           </header>
           {activeOrder.map((k) => sections[k])}
         </div>

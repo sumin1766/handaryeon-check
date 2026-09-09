@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useRealtimeInvalidate } from "@/lib/use-realtime";
+import { notifyDataChanged, useRealtimeInvalidate } from "@/lib/use-realtime";
 import { useAuthRole } from "@/lib/use-auth-role";
 import { num, formatKst } from "@/lib/format";
 import { Plus, Trash2, Pencil, X, Save, Search, Merge } from "lucide-react";
@@ -122,6 +122,7 @@ function RegistryPage() {
       qc.invalidateQueries({ queryKey: ["pre-list"] });
       qc.invalidateQueries({ queryKey: ["intake"] });
       qc.invalidateQueries({ queryKey: ["pre-reg-admin"] });
+      notifyDataChanged();
     },
     onError: (e: any) => toast.error(e.message ?? "삭제 실패"),
   });
@@ -502,6 +503,7 @@ function ChurchDialog({
       qc.invalidateQueries({ queryKey: ["pre-list"] });
       qc.invalidateQueries({ queryKey: ["intake"] });
       qc.invalidateQueries({ queryKey: ["pre-reg-admin"] });
+      notifyDataChanged();
       onClose();
     },
     onError: (e: any) => toast.error(e.message ?? "저장 실패"),
@@ -517,6 +519,7 @@ function ChurchDialog({
       qc.invalidateQueries({ queryKey: ["pre-list"] });
       qc.invalidateQueries({ queryKey: ["intake"] });
       qc.invalidateQueries({ queryKey: ["pre-reg-admin"] });
+      notifyDataChanged();
       onClose();
     },
     onError: (e: any) => toast.error(e.message ?? "삭제 실패"),
