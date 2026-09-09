@@ -278,6 +278,37 @@ export const updatePreRegistrationSelf = createServerFn({ method: "POST" })
     // 상태 전이: applied → needs_review, 그 외는 현 상태 유지
     const nextStatus = reg.status === "applied" ? "needs_review" : reg.status;
 
+    // 헤더/명단/이력을 한 묶음으로 처리하고, 중간 실패 시 이전 상태로 되돌린다.
+    const restoreHeader = async () => {
+      await supabaseAdmin
+        .from("pre_registrations")
+        .update({
+          church_name: reg.church_name,
+          denomination: reg.denomination,
+          manager_name: reg.manager_name,
+          manager_phone: reg.manager_phone,
+          head_count: reg.head_count,
+          expected_fee: reg.expected_fee,
+          status: reg.status,
+          updated_at: reg.updated_at,
+        })
+        .eq("id", reg.id);
+    };
+    const restoreMembers = async () => {
+      await supabaseAdmin.from("pre_registration_members").delete().eq("pre_registration_id", reg.id);
+      if (beforeMembers?.length) {
+        await supabaseAdmin.from("pre_registration_members").insert(
+          beforeMembers.map((m) => ({
+            pre_registration_id: reg.id,
+            name: m.name,
+            phone: m.phone,
+            lodging_type: m.lodging_type,
+            category: m.category,
+          })),
+        );
+      }
+    };
+
     const { error: updErr } = await supabaseAdmin
       .from("pre_registrations")
       .update({
@@ -291,13 +322,16 @@ export const updatePreRegistrationSelf = createServerFn({ method: "POST" })
         updated_at: new Date().toISOString(),
       })
       .eq("id", reg.id);
-    if (updErr) throw new Error("저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+    if (updErr) throw new Error(`저장에 실패했습니다: ${updErr.message}`);
 
     const { error: delErr } = await supabaseAdmin
       .from("pre_registration_members")
       .delete()
       .eq("pre_registration_id", reg.id);
-    if (delErr) throw new Error("명단 저장에 실패했습니다.");
+    if (delErr) {
+      await restoreHeader();
+      throw new Error(`명단 저장에 실패했습니다: ${delErr.message}`);
+    }
 
     const { error: insErr } = await supabaseAdmin.from("pre_registration_members").insert(
       data.members.map((m) => ({
@@ -308,9 +342,13 @@ export const updatePreRegistrationSelf = createServerFn({ method: "POST" })
         category: m.category,
       })),
     );
-    if (insErr) throw new Error("명단 저장에 실패했습니다.");
+    if (insErr) {
+      await restoreMembers();
+      await restoreHeader();
+      throw new Error(`명단 저장에 실패했습니다: ${insErr.message}`);
+    }
 
-    await supabaseAdmin.from("pre_registration_changes").insert({
+    const { error: logErr } = await supabaseAdmin.from("pre_registration_changes").insert({
       pre_registration_id: reg.id,
       change_type: changeType,
       before_count: beforeCount,
@@ -319,6 +357,11 @@ export const updatePreRegistrationSelf = createServerFn({ method: "POST" })
       resolved: false,
       note: reg.status === "applied" ? "확정 후 교회 수정 — 재검토 필요" : null,
     });
+    if (logErr) {
+      await restoreMembers();
+      await restoreHeader();
+      throw new Error(`변경 이력 기록에 실패했습니다: ${logErr.message}`);
+    }
 
     return { detail: await loadDetail(reg.id), changeType, beforeCount, afterCount, feeDelta };
   });
