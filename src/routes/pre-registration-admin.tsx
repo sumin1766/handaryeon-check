@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Copy, RefreshCw, Search } from "lucide-react";
+import { Copy, RefreshCw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { krw, formatKst } from "@/lib/format";
 import { useAuthRole } from "@/lib/use-auth-role";
@@ -30,6 +30,7 @@ import {
   setPreRegistrationPaid,
   type ChurchCandidate,
 } from "@/lib/pre-registration-confirm.functions";
+import { deletePreRegistration } from "@/lib/pre-registration-delete.functions";
 
 export const Route = createFileRoute("/pre-registration-admin")({
   head: () => ({
@@ -50,8 +51,8 @@ const CATEGORY_LABEL: Record<string, string> = {
   male_adult: "남자어른",
   female_student: "여학생",
   female_adult: "여자어른",
-  male_child: "남자유아초등",
-  female_child: "여자유아초등",
+  male_child: "남자 유아~초등",
+  female_child: "여자 유아~초등",
 };
 const CATEGORY_ORDER = Object.keys(CATEGORY_LABEL);
 
@@ -143,10 +144,13 @@ function ReAuth({ onDone }: { onDone: (pw: string) => void }) {
 function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuthLost: () => void }) {
   const list = useServerFn(listPreRegistrations);
   const setPaid = useServerFn(setPreRegistrationPaid);
+  const delReg = useServerFn(deletePreRegistration);
   const [paying, setPaying] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<"recent" | "status" | "name">("recent");
   const [openId, setOpenId] = useState<string | null>(null);
+
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["pre-reg-admin"],
@@ -174,6 +178,31 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
     }
   };
 
+  const removeReg = async (r: AdminPreRegistration) => {
+    const warn =
+      r.status === "applied"
+        ? `'${r.church_name}' 사전접수 건은 확정되어 운영 명단(접수 명단)과 연결되어 있습니다.\n삭제하면 이 건에서 등록된 인원도 함께 삭제됩니다. (담당자가 직접 추가한 인원은 유지)\n\n삭제할까요?`
+        : `'${r.church_name}' 사전접수 건과 참석자 명단을 삭제할까요?\n(운영 명단에 등록된 데이터는 없습니다)`;
+    if (!window.confirm(warn)) return;
+    setDeleting(true);
+    try {
+      const res = await delReg({ data: { password, id: r.id } });
+      setOpenId(null);
+      await refetch();
+      toast.success(
+        res.deletedPeople
+          ? `삭제 완료 — 운영 인원 ${res.deletedPeople}명 함께 삭제${res.deletedChurch ? " · 빈 교회 정리" : ""}`
+          : "삭제 완료",
+      );
+    } catch (e: any) {
+      toast.error(e?.message ?? "삭제 실패");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+
+
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     let out = rows.filter(
@@ -193,19 +222,25 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
   const summary = useMemo(() => {
     const cat: Record<string, number> = {};
     const lodging = { church: 0, external: 0, none: 0 };
-    let people = 0;
-    let fee = 0;
+    const group = {
+      all: { count: 0, people: 0, fee: 0 },
+      confirmed: { count: 0, people: 0, fee: 0 },
+      pending: { count: 0, people: 0, fee: 0 },
+    };
     for (const r of rows) {
-      fee += r.expected_fee ?? 0;
+      const people = r.members.length;
+      const fee = r.expected_fee ?? 0;
+      const bucket = r.status === "applied" ? group.confirmed : group.pending;
+      group.all.count++; group.all.people += people; group.all.fee += fee;
+      bucket.count++; bucket.people += people; bucket.fee += fee;
       for (const m of r.members) {
-        people++;
         cat[m.category] = (cat[m.category] ?? 0) + 1;
         if (m.lodging_type === "church") lodging.church++;
         else if (m.lodging_type === "external") lodging.external++;
         else lodging.none++;
       }
     }
-    return { cat, lodging, people, fee, count: rows.length };
+    return { cat, lodging, ...group };
   }, [rows]);
 
   const selected = rows.find((r) => r.id === openId) ?? null;
@@ -216,7 +251,7 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
         <div>
           <h1 className="text-2xl font-bold">사전접수 관리</h1>
           <p className="text-sm text-muted-foreground">
-            교회가 직접 제출한 활성 시즌 사전접수 건 · 조회 전용
+            교회가 직접 제출한 활성 시즌 사전접수 건
           </p>
         </div>
         <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
@@ -232,16 +267,15 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
       )}
 
       <Card className="p-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat label="전체 건수" value={`${summary.count}건`} />
-          <Stat label="총 인원" value={`${summary.people}명`} />
-          <Stat label="확정 회비 합계" value={krw(summary.fee)} />
-          <Stat
-            label="숙박 유형"
-            value={`교회 ${summary.lodging.church} · 외부 ${summary.lodging.external} · 비숙박 ${summary.lodging.none}`}
-          />
+        <div className="grid gap-3 sm:grid-cols-3">
+          <GroupStat title="전체" g={summary.all} feeLabel="회비 합계" />
+          <GroupStat title="확정" g={summary.confirmed} feeLabel="확정 회비 합계" />
+          <GroupStat title="미확정 (검토대기+재검토)" g={summary.pending} feeLabel="미확정 회비 합계" />
         </div>
-        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+        <div className="mt-3 text-xs text-muted-foreground">
+          숙박 유형(전체): 교회 {summary.lodging.church} · 외부 {summary.lodging.external} · 비숙박 {summary.lodging.none}
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2 text-xs">
           {CATEGORY_ORDER.map((c) => (
             <span key={c} className="rounded-full bg-muted px-3 py-1">
               {CATEGORY_LABEL[c]} {summary.cat[c] ?? 0}
@@ -249,6 +283,7 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
           ))}
         </div>
       </Card>
+
 
       <Card className="p-3 flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[220px]">
@@ -280,7 +315,7 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-left">
             <tr>
-              {["교회명", "교단명", "담당자", "연락처", "인원", "확정 회비", "숙박(교회/외부/비숙박)", "상태", "납부", "제출", "수정"].map(
+              {["교회명", "교단명", "담당자", "연락처", "인원", "확정 회비", "숙박(교회/외부/비숙박)", "상태", "납부", "제출", "수정", "삭제"].map(
                 (h) => (
                   <th key={h} className="px-3 py-2 whitespace-nowrap font-medium">{h}</th>
                 ),
@@ -289,10 +324,10 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
           </thead>
           <tbody>
             {isLoading && (
-              <tr><td colSpan={11} className="px-3 py-6 text-muted-foreground">불러오는 중…</td></tr>
+              <tr><td colSpan={12} className="px-3 py-6 text-muted-foreground">불러오는 중…</td></tr>
             )}
             {!isLoading && filtered.length === 0 && (
-              <tr><td colSpan={11} className="px-3 py-6 text-muted-foreground">사전접수 건이 없습니다.</td></tr>
+              <tr><td colSpan={12} className="px-3 py-6 text-muted-foreground">사전접수 건이 없습니다.</td></tr>
             )}
             {filtered.map((r) => {
               const l = lodgingCounts(r);
@@ -322,6 +357,18 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{formatKst(r.created_at)}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{formatKst(r.updated_at)}</td>
+                  <td className="px-3 py-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive"
+                      disabled={deleting}
+                      onClick={() => removeReg(r)}
+                      aria-label={`${r.church_name} 사전접수 삭제`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </td>
                 </tr>
               );
             })}
@@ -337,19 +384,32 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
         onRefresh={() => refetch()}
         onTogglePaid={togglePaid}
         paying={paying}
+        onDelete={removeReg}
+        deleting={deleting}
       />
+
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function GroupStat({
+  title,
+  g,
+  feeLabel,
+}: {
+  title: string;
+  g: { count: number; people: number; fee: number };
+  feeLabel: string;
+}) {
   return (
     <div className="rounded-xl border p-3">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="text-lg font-semibold mt-0.5">{value}</div>
+      <div className="text-xs text-muted-foreground">{title}</div>
+      <div className="text-lg font-semibold mt-0.5">{g.count}건 · {g.people}명</div>
+      <div className="text-sm text-muted-foreground mt-0.5">{feeLabel} {krw(g.fee)}</div>
     </div>
   );
 }
+
 
 function DetailDialog({
   password,
@@ -359,6 +419,8 @@ function DetailDialog({
   onRefresh,
   onTogglePaid,
   paying,
+  onDelete,
+  deleting,
 }: {
   password: string;
   reg: AdminPreRegistration | null;
@@ -367,7 +429,10 @@ function DetailDialog({
   onRefresh: () => void;
   onTogglePaid: (id: string, paid: boolean) => void;
   paying: boolean;
+  onDelete: (r: AdminPreRegistration) => void;
+  deleting: boolean;
 }) {
+
   const changesFn = useServerFn(getPreRegistrationChanges);
   const candidatesFn = useServerFn(findChurchCandidates);
   const confirmFn = useServerFn(confirmPreRegistration);
@@ -463,8 +528,9 @@ function DetailDialog({
                 {reg.head_count}명 × {krw(unitFee)} = <strong>{krw(reg.expected_fee)}</strong>
               </div>
               <div className="text-muted-foreground text-xs mt-1">
-                운영 등록 시에는 세계로 성도 1만원 규칙이 적용되어 금액이 달라질 수 있습니다.
+                사전등록 확정은 전원 기본 단가({krw(preRegFee)})로 등록됩니다.
               </div>
+
               <div className="mt-2 flex items-center gap-2">
                 <span className="text-muted-foreground text-xs">납부</span>
                 <Button
@@ -532,6 +598,21 @@ function DetailDialog({
                 {confirming ? "처리 중…" : reg.status === "submitted" ? "확정" : "재확정"}
               </Button>
             </Card>
+
+            <Card className="p-3 space-y-2 text-sm border-destructive/40">
+              <div className="font-medium text-destructive">사전접수 건 삭제</div>
+              <div className="text-muted-foreground text-xs">
+                {reg.status === "applied"
+                  ? "확정되어 운영 명단과 연결된 건입니다. 삭제하면 이 건에서 등록된 인원도 함께 삭제됩니다(수동 추가 인원은 유지)."
+                  : "운영 명단에 등록된 데이터가 없어 사전접수 건만 삭제됩니다."}
+              </div>
+              <Button variant="destructive" size="sm" disabled={deleting} onClick={() => onDelete(reg)}>
+                <Trash2 className="h-4 w-4 mr-1" />
+                {deleting ? "삭제 중…" : "삭제"}
+              </Button>
+            </Card>
+
+
 
 
             <Card className="p-3">
