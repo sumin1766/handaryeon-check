@@ -20,6 +20,7 @@ export const DEFAULT_NAV_ORDER: string[] = [
   "/intake-sheet",
   "/registry",
   "/onsite",
+  "/qr-checkin",
   "/lodgings",
   "/places",
   "/nametags",
