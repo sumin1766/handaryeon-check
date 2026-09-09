@@ -1,5 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { getSessionPassword } from "@/lib/session-password";
+import { saveNavMenuConfigServer } from "@/lib/nav-menu.functions";
 
 /**
  * Nav menu (top tab) order + hidden config, persisted in
