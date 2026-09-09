@@ -172,7 +172,8 @@ function CheckinContent({ password }: { password: string }) {
 }
 
 function QrScanner({ onResult, disabled }: { onResult: (t: string) => void; disabled?: boolean }) {
-  const [active, setActive] = useState(false);
+  // 진입 시 자동 시작. 브라우저 정책 등으로 실패하면 "카메라 시작" 버튼으로 켠다.
+  const [active, setActive] = useState(true);
   const [camError, setCamError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const instRef = useRef<any>(null);
@@ -219,7 +220,7 @@ function QrScanner({ onResult, disabled }: { onResult: (t: string) => void; disa
       <div id="qr-reader-box" ref={ref} className={active ? "overflow-hidden rounded-lg" : "hidden"} />
       {!active && (
         <Button className="h-14 w-full text-base" onClick={() => { setCamError(null); setActive(true); }} disabled={disabled}>
-          카메라로 QR 스캔하기
+          카메라 시작
         </Button>
       )}
       {active && (
