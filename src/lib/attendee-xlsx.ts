@@ -170,7 +170,7 @@ export async function parseAttendeeWorkbook(file: File): Promise<ParseResult> {
     const lodgingRaw = cellText(row.getCell(4).value).trim();
 
     if (!name || name === "이름") return;
-    if (norm(name) === norm(GUIDE.slice(0, 6))) return;
+    if (name.startsWith("작성 안내")) return;
 
     const category = categoryFromLabel(categoryRaw);
     if (!category) {
