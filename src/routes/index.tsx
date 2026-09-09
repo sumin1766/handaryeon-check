@@ -8,7 +8,8 @@ import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { num } from "@/lib/format";
 import { fetchAll } from "@/lib/fetch-all";
 import { resilientQueryCache, writeCachedData } from "@/lib/query-session-cache";
-import { ArrowDown, ArrowUp, Minus } from "lucide-react";
+import { ArrowDown, ArrowUp, Minus, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useDashboardOrder, DEFAULT_DASHBOARD_ORDER } from "@/lib/dashboard-order";
 
 export const Route = createFileRoute("/")({
@@ -34,7 +35,7 @@ function DashboardPage() {
   useRealtimeInvalidate(["churches", "people"], [["dashboard"]]);
   const dashboardKey = ["dashboard", season?.id] as const;
 
-  const { data } = useQuery({
+  const { data, refetch, isFetching } = useQuery({
     queryKey: dashboardKey,
     enabled: !!season?.id,
     queryFn: async () => {
