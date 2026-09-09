@@ -260,13 +260,19 @@ function DashboardPage() {
       `}</style>
       <div className="lumina-scope -mx-6 -my-6 min-h-[calc(100vh-130px)]">
         <div className="mx-auto max-w-[1200px] px-4 sm:px-10 py-8 sm:py-12 space-y-8 sm:space-y-12">
-          <header>
-            <h1 className="lumina-title font-bold" style={{ fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-              대시보드
-            </h1>
-            <p className="lumina-muted lumina-subtitle mt-2" style={{ fontWeight: 600, letterSpacing: "-0.01em" }}>
-              {season.name} 현황
-            </p>
+          <header className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h1 className="lumina-title font-bold" style={{ fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+                대시보드
+              </h1>
+              <p className="lumina-muted lumina-subtitle mt-2" style={{ fontWeight: 600, letterSpacing: "-0.01em" }}>
+                {season.name} 현황
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
+              <RefreshCw className={`h-4 w-4 mr-1 ${isFetching ? "animate-spin" : ""}`} />
+              새로고침
+            </Button>
           </header>
           {activeOrder.map((k) => sections[k])}
         </div>
