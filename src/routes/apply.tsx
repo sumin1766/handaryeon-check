@@ -134,7 +134,7 @@ function ApplyPage() {
       return;
     }
     if (cleaned.some((r) => !r.phone && !phoneOptional(r.category))) {
-      toast.error("유아·초등을 제외한 모든 참석자는 전화번호가 필수입니다.");
+      toast.error("유아유치를 제외한 모든 참석자는 전화번호가 필수입니다.");
       return;
     }
 
@@ -232,7 +232,7 @@ function ApplyPage() {
               >
                 {MEMBER_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
-                    {CATEGORY_LABELS[c]}
+                    {CATEGORY_LABELS[c]} ({krw(feeForCategory(c, categoryFees, preRegFee))})
                   </option>
                 ))}
               </select>
@@ -282,9 +282,9 @@ function ApplyPage() {
       <Card className="mt-5 flex flex-wrap items-center justify-between gap-3 p-4">
         <div>
           <div className="text-sm text-muted-foreground">
-            예상 회비 (1인 {krw(fee)} × {rows.length}명)
+            예상 회비 (분류별 설정 합계 · {rows.length}명)
           </div>
-          <div className="text-2xl font-bold">{krw(calcExpectedFee(rows.length, fee))}</div>
+          <div className="text-2xl font-bold">{krw(expectedFee)}</div>
         </div>
         <Button size="lg" onClick={onSubmit} disabled={submit.isPending}>
           {submit.isPending ? "제출 중..." : "사전접수 제출"}
