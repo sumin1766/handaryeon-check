@@ -234,6 +234,7 @@ export function PreRegistrationSelfEditor({ initial }: { initial: PreRegistratio
               ...list.map((m) => ({ ...m, category: m.category as MemberCategory })),
             ])
           }
+          onClear={() => setRows([])}
         />
 
         <div className="mt-3 space-y-2">

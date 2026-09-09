@@ -1,7 +1,7 @@
-// 참석자 명단 엑셀 템플릿 다운로드 + 업로드(브라우저 파싱) 바.
+// 참석자 명단 엑셀 템플릿 다운로드 + 업로드(브라우저 파싱) + 명단 비우기 바.
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { Download, Upload, Loader2 } from "lucide-react";
+import { Download, Upload, Loader2, Trash2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   downloadAttendeeTemplate,
@@ -9,7 +9,13 @@ import {
   type ParsedAttendee,
 } from "@/lib/attendee-xlsx";
 
-export function AttendeeExcelBar({ onAdd }: { onAdd: (rows: ParsedAttendee[]) => void }) {
+export function AttendeeExcelBar({
+  onAdd,
+  onClear,
+}: {
+  onAdd: (rows: ParsedAttendee[]) => void;
+  onClear?: () => void;
+}) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -34,6 +40,22 @@ export function AttendeeExcelBar({ onAdd }: { onAdd: (rows: ParsedAttendee[]) =>
     }
   };
 
+  const clearAll = () => {
+    if (!onClear) return;
+    if (!window.confirm("현재 입력된 참석자 명단을 모두 삭제할까요? (교회·담당자 정보는 유지됩니다)")) return;
+    onClear();
+    setErrors([]);
+    toast.success("명단을 모두 비웠습니다.");
+  };
+
+  const clearAndUpload = () => {
+    if (!onClear) return;
+    if (!window.confirm("현재 명단을 비우고 새 엑셀 파일로 다시 올릴까요?")) return;
+    onClear();
+    setErrors([]);
+    fileRef.current?.click();
+  };
+
   return (
     <div className="mt-3 space-y-2 rounded-md border border-dashed p-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -50,8 +72,18 @@ export function AttendeeExcelBar({ onAdd }: { onAdd: (rows: ParsedAttendee[]) =>
           {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Upload className="mr-1 h-4 w-4" />}
           엑셀 업로드
         </Button>
+        {onClear && (
+          <>
+            <Button type="button" variant="outline" size="sm" disabled={busy} onClick={clearAndUpload}>
+              <RefreshCw className="mr-1 h-4 w-4" /> 명단 삭제 후 재업로드
+            </Button>
+            <Button type="button" variant="destructive" size="sm" disabled={busy} onClick={clearAll}>
+              <Trash2 className="mr-1 h-4 w-4" /> 명단 전체 삭제
+            </Button>
+          </>
+        )}
         <span className="text-xs text-muted-foreground">
-          업로드한 명단은 기존 입력 뒤에 추가되며, 이후에도 수정·삭제할 수 있습니다.
+          "엑셀 업로드"는 기존 입력 뒤에 추가되고, "명단 삭제 후 재업로드"는 비운 뒤 새로 올립니다.
         </span>
         <input
           ref={fileRef}
