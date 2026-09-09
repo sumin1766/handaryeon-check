@@ -334,6 +334,9 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
         reg={selected}
         preRegFee={data?.preRegFee ?? 0}
         onClose={() => setOpenId(null)}
+        onRefresh={() => refetch()}
+        onTogglePaid={togglePaid}
+        paying={paying}
       />
     </div>
   );
