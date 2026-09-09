@@ -391,6 +391,51 @@ function DetailDialog({
     queryFn: () => changesFn({ data: { password, id: reg!.id } }),
   });
 
+  const regId = reg?.id ?? null;
+  const alreadyLinked = !!reg?.church_id;
+  useEffect(() => {
+    setCandidates(null);
+    setPickedChurch(null);
+    setMode("new");
+    if (!regId) return;
+    let alive = true;
+    candidatesFn({ data: { password, id: regId } })
+      .then((c) => {
+        if (!alive) return;
+        setCandidates(c);
+        if (c.length) {
+          setMode("link");
+          setPickedChurch(c[0]!.id);
+        }
+      })
+      .catch(() => alive && setCandidates([]));
+    return () => {
+      alive = false;
+    };
+  }, [regId, password, candidatesFn]);
+
+  const runConfirm = async () => {
+    if (!reg) return;
+    setConfirming(true);
+    try {
+      const res = await confirmFn({
+        data: {
+          password,
+          id: reg.id,
+          mode: alreadyLinked ? "new" : mode,
+          ...(!alreadyLinked && mode === "link" && pickedChurch ? { churchId: pickedChurch } : {}),
+        },
+      });
+      toast.success(`확정 완료 — ${res.peopleCount}명 등록 · 회비 ${krw(res.amount)}`);
+      onRefresh();
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.message ?? "확정 처리에 실패했습니다.");
+    } finally {
+      setConfirming(false);
+    }
+  };
+
   const unitFee = reg && reg.head_count > 0 ? Math.round(reg.expected_fee / reg.head_count) : preRegFee;
 
   return (
