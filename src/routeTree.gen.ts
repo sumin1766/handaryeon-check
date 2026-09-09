@@ -14,6 +14,7 @@ import { Route as SegueMergeRouteImport } from './routes/segue-merge'
 import { Route as RostersRouteImport } from './routes/rosters'
 import { Route as RegistryRouteImport } from './routes/registry'
 import { Route as ReceiptRouteImport } from './routes/receipt'
+import { Route as QrCheckinRouteImport } from './routes/qr-checkin'
 import { Route as PreRegistrationAdminRouteImport } from './routes/pre-registration-admin'
 import { Route as PreRegistrationRouteImport } from './routes/pre-registration'
 import { Route as PlacesRouteImport } from './routes/places'
@@ -50,6 +51,11 @@ const RegistryRoute = RegistryRouteImport.update({
 const ReceiptRoute = ReceiptRouteImport.update({
   id: '/receipt',
   path: '/receipt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QrCheckinRoute = QrCheckinRouteImport.update({
+  id: '/qr-checkin',
+  path: '/qr-checkin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PreRegistrationAdminRoute = PreRegistrationAdminRouteImport.update({
@@ -124,6 +130,7 @@ export interface FileRoutesByFullPath {
   '/places': typeof PlacesRoute
   '/pre-registration': typeof PreRegistrationRoute
   '/pre-registration-admin': typeof PreRegistrationAdminRoute
+  '/qr-checkin': typeof QrCheckinRoute
   '/receipt': typeof ReceiptRoute
   '/registry': typeof RegistryRoute
   '/rosters': typeof RostersRoute
@@ -143,6 +150,7 @@ export interface FileRoutesByTo {
   '/places': typeof PlacesRoute
   '/pre-registration': typeof PreRegistrationRoute
   '/pre-registration-admin': typeof PreRegistrationAdminRoute
+  '/qr-checkin': typeof QrCheckinRoute
   '/receipt': typeof ReceiptRoute
   '/registry': typeof RegistryRoute
   '/rosters': typeof RostersRoute
@@ -163,6 +171,7 @@ export interface FileRoutesById {
   '/places': typeof PlacesRoute
   '/pre-registration': typeof PreRegistrationRoute
   '/pre-registration-admin': typeof PreRegistrationAdminRoute
+  '/qr-checkin': typeof QrCheckinRoute
   '/receipt': typeof ReceiptRoute
   '/registry': typeof RegistryRoute
   '/rosters': typeof RostersRoute
@@ -184,6 +193,7 @@ export interface FileRouteTypes {
     | '/places'
     | '/pre-registration'
     | '/pre-registration-admin'
+    | '/qr-checkin'
     | '/receipt'
     | '/registry'
     | '/rosters'
@@ -203,6 +213,7 @@ export interface FileRouteTypes {
     | '/places'
     | '/pre-registration'
     | '/pre-registration-admin'
+    | '/qr-checkin'
     | '/receipt'
     | '/registry'
     | '/rosters'
@@ -222,6 +233,7 @@ export interface FileRouteTypes {
     | '/places'
     | '/pre-registration'
     | '/pre-registration-admin'
+    | '/qr-checkin'
     | '/receipt'
     | '/registry'
     | '/rosters'
@@ -242,6 +254,7 @@ export interface RootRouteChildren {
   PlacesRoute: typeof PlacesRoute
   PreRegistrationRoute: typeof PreRegistrationRoute
   PreRegistrationAdminRoute: typeof PreRegistrationAdminRoute
+  QrCheckinRoute: typeof QrCheckinRoute
   ReceiptRoute: typeof ReceiptRoute
   RegistryRoute: typeof RegistryRoute
   RostersRoute: typeof RostersRoute
@@ -286,6 +299,13 @@ declare module '@tanstack/react-router' {
       path: '/receipt'
       fullPath: '/receipt'
       preLoaderRoute: typeof ReceiptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/qr-checkin': {
+      id: '/qr-checkin'
+      path: '/qr-checkin'
+      fullPath: '/qr-checkin'
+      preLoaderRoute: typeof QrCheckinRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pre-registration-admin': {
@@ -386,6 +406,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlacesRoute: PlacesRoute,
   PreRegistrationRoute: PreRegistrationRoute,
   PreRegistrationAdminRoute: PreRegistrationAdminRoute,
+  QrCheckinRoute: QrCheckinRoute,
   ReceiptRoute: ReceiptRoute,
   RegistryRoute: RegistryRoute,
   RostersRoute: RostersRoute,
