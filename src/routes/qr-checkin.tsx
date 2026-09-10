@@ -251,11 +251,22 @@ function QrScanner({ onResult, disabled }: { onResult: (t: string) => void; disa
     };
   }, [active, onResult]);
 
+  if (hasCamera === false) {
+    return (
+      <Card className="space-y-3 p-4">
+        <div className="flex h-40 items-center justify-center rounded-lg bg-muted text-sm text-muted-foreground">
+          카메라를 사용할 수 없습니다
+        </div>
+        <p className="text-xs text-muted-foreground">아래 칸에 접근 코드를 직접 입력해 조회하세요.</p>
+      </Card>
+    );
+  }
+
   return (
     <Card className="space-y-3 p-4">
       <div id="qr-reader-box" ref={ref} className={active ? "overflow-hidden rounded-lg" : "hidden"} />
       {!active && (
-        <Button className="h-14 w-full text-base" onClick={() => { setCamError(null); setActive(true); }} disabled={disabled}>
+        <Button className="h-14 w-full text-base" onClick={() => { setCamError(null); setActive(true); }} disabled={disabled || hasCamera === null}>
           카메라 시작
         </Button>
       )}
