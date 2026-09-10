@@ -189,12 +189,31 @@ function CheckinContent({ password }: { password: string }) {
 }
 
 function QrScanner({ onResult, disabled }: { onResult: (t: string) => void; disabled?: boolean }) {
-  // 진입 시 자동 시작. 브라우저 정책 등으로 실패하면 "카메라 시작" 버튼으로 켠다.
-  const [active, setActive] = useState(true);
+  // 기기 분기: 카메라가 있는 기기에서만 자동 시작. PC 등 카메라가 없으면 비활성 안내만 표시.
+  const [hasCamera, setHasCamera] = useState<boolean | null>(null);
+  const [active, setActive] = useState(false);
   const [camError, setCamError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const instRef = useRef<any>(null);
   const doneRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const md = typeof navigator !== "undefined" ? navigator.mediaDevices : undefined;
+        if (!md || !md.enumerateDevices || !md.getUserMedia) throw new Error("no camera");
+        const devices = await md.enumerateDevices();
+        const found = devices.some((d) => d.kind === "videoinput");
+        if (cancelled) return;
+        setHasCamera(found);
+        setActive(found);
+      } catch {
+        if (!cancelled) setHasCamera(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!active) return;
@@ -219,8 +238,10 @@ function QrScanner({ onResult, disabled }: { onResult: (t: string) => void; disa
         );
       } catch (e: any) {
         if (!cancelled) {
+          // 권한 거부·미지원 등 어떤 실패에서도 에러 화면 대신 코드 입력 경로로 폴백한다.
           setCamError(e?.message ?? "카메라를 사용할 수 없습니다. 아래에서 코드를 직접 입력해 주세요.");
           setActive(false);
+          setHasCamera(false);
         }
       }
     })();
@@ -232,11 +253,22 @@ function QrScanner({ onResult, disabled }: { onResult: (t: string) => void; disa
     };
   }, [active, onResult]);
 
+  if (hasCamera === false) {
+    return (
+      <Card className="space-y-3 p-4">
+        <div className="flex h-40 items-center justify-center rounded-lg bg-muted text-sm text-muted-foreground">
+          카메라를 사용할 수 없습니다
+        </div>
+        <p className="text-xs text-muted-foreground">아래 칸에 접근 코드를 직접 입력해 조회하세요.</p>
+      </Card>
+    );
+  }
+
   return (
     <Card className="space-y-3 p-4">
       <div id="qr-reader-box" ref={ref} className={active ? "overflow-hidden rounded-lg" : "hidden"} />
       {!active && (
-        <Button className="h-14 w-full text-base" onClick={() => { setCamError(null); setActive(true); }} disabled={disabled}>
+        <Button className="h-14 w-full text-base" onClick={() => { setCamError(null); setActive(true); }} disabled={disabled || hasCamera === null}>
           카메라 시작
         </Button>
       )}

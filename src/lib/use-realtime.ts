@@ -27,7 +27,8 @@ export function useRealtimeInvalidate(tables: string[], invalidateKeys: unknown[
         timerRef.current = null;
       }
       for (const k of invalidateKeys) {
-        qc.invalidateQueries({ queryKey: k, refetchType: "active" });
+        // refetchType: "all" — 지금 화면에 없는 목록도 오래된 값으로 표시하고 즉시 갱신한다.
+        qc.invalidateQueries({ queryKey: k, refetchType: "all" });
       }
     };
     const invalidateSoon = () => {
@@ -36,7 +37,8 @@ export function useRealtimeInvalidate(tables: string[], invalidateKeys: unknown[
         return;
       }
       if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(flush, 8_000);
+      // 짧은 디바운스 — 변경이 몰려도 마지막 신호까지 반드시 반영된다.
+      timerRef.current = setTimeout(flush, 400);
     };
     const onVisible = () => {
       if (document.visibilityState === "visible" && pendingRef.current) flush();

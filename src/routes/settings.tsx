@@ -227,7 +227,7 @@ function SettingsContent({ isAdmin }: { isAdmin: boolean }) {
                     <GripVertical className="h-4 w-4 text-muted-foreground" />
                   </div>
                 )}
-                <div className={cn(editMode && "pointer-events-none")}>{CARDS[id]}</div>
+                <div className={cn("h-full", editMode && "pointer-events-none")}>{CARDS[id]}</div>
               </div>
             ) : null,
           )}
@@ -246,9 +246,9 @@ function SettingsCard({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-left w-full"
+        className="text-left w-full h-full"
       >
-        <Card className="p-4 transition hover:shadow-md hover:border-primary/50 cursor-pointer h-full">
+        <Card className="flex h-full min-h-[168px] flex-col p-4 transition hover:shadow-md hover:border-primary/50 cursor-pointer">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">{icon}</div>
@@ -256,7 +256,7 @@ function SettingsCard({
             </div>
             <Maximize2 className="h-4 w-4 shrink-0 text-muted-foreground" />
           </div>
-          <div className="mt-3 text-sm text-muted-foreground">{summary}</div>
+          <div className="mt-3 flex-1 text-sm text-muted-foreground">{summary}</div>
           <div className="mt-3 text-xs text-primary font-medium">클릭하여 열기 →</div>
         </Card>
       </button>
