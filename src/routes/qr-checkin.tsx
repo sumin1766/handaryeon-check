@@ -238,8 +238,10 @@ function QrScanner({ onResult, disabled }: { onResult: (t: string) => void; disa
         );
       } catch (e: any) {
         if (!cancelled) {
+          // 권한 거부·미지원 등 어떤 실패에서도 에러 화면 대신 코드 입력 경로로 폴백한다.
           setCamError(e?.message ?? "카메라를 사용할 수 없습니다. 아래에서 코드를 직접 입력해 주세요.");
           setActive(false);
+          setHasCamera(false);
         }
       }
     })();
