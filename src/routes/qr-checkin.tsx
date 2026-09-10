@@ -189,12 +189,31 @@ function CheckinContent({ password }: { password: string }) {
 }
 
 function QrScanner({ onResult, disabled }: { onResult: (t: string) => void; disabled?: boolean }) {
-  // 진입 시 자동 시작. 브라우저 정책 등으로 실패하면 "카메라 시작" 버튼으로 켠다.
-  const [active, setActive] = useState(true);
+  // 기기 분기: 카메라가 있는 기기에서만 자동 시작. PC 등 카메라가 없으면 비활성 안내만 표시.
+  const [hasCamera, setHasCamera] = useState<boolean | null>(null);
+  const [active, setActive] = useState(false);
   const [camError, setCamError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const instRef = useRef<any>(null);
   const doneRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const md = typeof navigator !== "undefined" ? navigator.mediaDevices : undefined;
+        if (!md || !md.enumerateDevices || !md.getUserMedia) throw new Error("no camera");
+        const devices = await md.enumerateDevices();
+        const found = devices.some((d) => d.kind === "videoinput");
+        if (cancelled) return;
+        setHasCamera(found);
+        setActive(found);
+      } catch {
+        if (!cancelled) setHasCamera(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!active) return;
