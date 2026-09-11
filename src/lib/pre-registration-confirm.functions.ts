@@ -242,31 +242,20 @@ export const confirmPreRegistration = createServerFn({ method: "POST" })
 
       return { churchId, peopleCount: list.length, amount };
     } catch (e) {
-      // 부분 반영 방지 — 이번 처리로 만든 데이터만 되돌린다.
-      const personIds = (
+      // 부분 반영 방지 — 이번 처리로 새로 만든 것만 되돌리고, 기존 매핑은 유지한다.
+      if (newPersonIds.length) {
         await db
           .from("pre_registration_members")
-          .select("person_id")
-          .eq("pre_registration_id", reg.id)
-      ).data;
-      const ids = (personIds ?? []).map((r) => r.person_id).filter((v): v is string => !!v);
+          .update({ person_id: null })
+          .in("person_id", newPersonIds);
+        await db.from("people").delete().in("id", newPersonIds);
+      }
       if (createdChurchId) {
-        await db.from("people").delete().eq("church_id", createdChurchId);
         await db.from("churches").delete().eq("id", createdChurchId);
-        await db
-          .from("pre_registration_members")
-          .update({ person_id: null })
-          .eq("pre_registration_id", reg.id);
-      } else if (ids.length) {
-        // 링크 모드 실패 시에는 새로 만든 사람만 남지 않도록 매핑 기준으로 정리
-        await db.from("people").delete().in("id", ids);
-        await db
-          .from("pre_registration_members")
-          .update({ person_id: null })
-          .eq("pre_registration_id", reg.id);
       }
       throw e instanceof Error ? e : new Error("확정 처리에 실패했습니다.");
     }
+
   });
 
 /** 회비 납부 완료 여부 토글 (표시 전용 값). */
