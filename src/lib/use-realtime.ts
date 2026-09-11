@@ -73,12 +73,22 @@ export function useRealtimeInvalidate(tables: string[], invalidateKeys: unknown[
     const poll = setInterval(() => {
       if (typeof document === "undefined" || document.visibilityState === "visible") flush();
     }, 30_000);
+    // 다른 탭에서 일어난 변경도 즉시 반영한다(브로드캐스트 + 저장소 신호).
+    const channel = getChannel();
+    const onCrossTab = () => invalidateSoon();
+    if (channel) channel.addEventListener("message", onCrossTab);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === CROSS_TAB_STORAGE_KEY) invalidateSoon();
+    };
+    window.addEventListener("storage", onStorage);
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onVisible);
     window.addEventListener(LOCAL_CHANGE_EVT, flush);
     return () => {
       clearInterval(poll);
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (channel) channel.removeEventListener("message", onCrossTab);
+      window.removeEventListener("storage", onStorage);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
       window.removeEventListener(LOCAL_CHANGE_EVT, flush);
