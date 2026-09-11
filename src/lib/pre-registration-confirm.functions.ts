@@ -141,16 +141,18 @@ export const confirmPreRegistration = createServerFn({ method: "POST" })
       createdChurchId = created.id;
     }
 
+    const newPersonIds: string[] = [];
     try {
-      // 2) 이 건에서 파생된 기존 people만 정리 (재확정 시 덮어쓰기)
+      // 2) 기존 매핑 확인 — 실제로 남아 있는 파생 인원만 갱신 대상으로 삼는다.
       const priorPersonIds = list.map((m) => m.person_id).filter((v): v is string => !!v);
+      const alive = new Set<string>();
       if (priorPersonIds.length) {
-        const { error: delErr } = await db.from("people").delete().in("id", priorPersonIds);
-        if (delErr) throw new Error("기존 등록 인원 정리에 실패했습니다.");
+        const { data: existing } = await db.from("people").select("id").in("id", priorPersonIds);
+        for (const p of existing ?? []) alive.add(p.id);
       }
 
-      // 3) 운영 인원 등록
-      const rows = list.map((m) => {
+      // 3) 운영 인원 반영 — 기존 인원은 갱신, 신규만 추가, 빠진 인원은 매핑 기준으로 제거.
+      const toRow = (m: (typeof list)[number]) => {
         const map = CATEGORY_MAP[m.category as keyof typeof CATEGORY_MAP] ?? CATEGORY_MAP["male_student"];
         const notes: string[] = [];
         if (map.note) notes.push(map.note);
@@ -164,17 +166,34 @@ export const confirmPreRegistration = createServerFn({ method: "POST" })
           lodging: m.lodging_type === "church",
           note: notes.length ? notes.join(" · ") : null,
         };
-      });
-      const { data: inserted, error: pErr } = await db.from("people").insert(rows).select("id");
-      if (pErr || !inserted) throw new Error("참석자 등록에 실패했습니다.");
+      };
 
-      // 4) 매핑 추적 (pre_registration_members.person_id)
-      for (let i = 0; i < list.length; i++) {
-        await db
+      for (const m of list) {
+        const row = toRow(m);
+        if (m.person_id && alive.has(m.person_id)) {
+          const { error: uErr } = await db.from("people").update(row).eq("id", m.person_id);
+          if (uErr) throw new Error("참석자 갱신에 실패했습니다.");
+          alive.delete(m.person_id);
+          continue;
+        }
+        const { data: created, error: iErr } = await db.from("people").insert(row).select("id").single();
+        if (iErr || !created) throw new Error("참석자 등록에 실패했습니다.");
+        newPersonIds.push(created.id);
+        const { error: mErr } = await db
           .from("pre_registration_members")
-          .update({ person_id: inserted[i]?.id ?? null })
-          .eq("id", list[i]!.id);
+          .update({ person_id: created.id })
+          .eq("id", m.id);
+        if (mErr) throw new Error("참석자 매핑 저장에 실패했습니다.");
       }
+
+      // 4) 명단에서 빠졌는데 남아 있는 파생 인원 정리 (수기 추가 인원은 매핑이 없어 보존됨)
+      const stale = [...alive];
+      if (stale.length) {
+        const { error: sErr } = await db.from("people").delete().in("id", stale);
+        if (sErr) throw new Error("빠진 인원 정리에 실패했습니다.");
+      }
+
+
 
       // 5) 회비 — 분류별 설정 금액의 합계(유아유치는 기본 0원).
       //    세계로 성도 회비는 현장등록 전용이므로 여기서는 적용하지 않는다.
