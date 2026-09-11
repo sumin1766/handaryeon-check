@@ -386,5 +386,10 @@ export const updatePreRegistrationSelf = createServerFn({ method: "POST" })
       throw new Error(`변경 이력 기록에 실패했습니다: ${logErr.message}`);
     }
 
+    // 빠진 참석자의 파생 운영 인원 정리 (매핑된 인원만 — 수기로 추가한 인원은 보존).
+    if (droppedPersonIds.length) {
+      await supabaseAdmin.from("people").delete().in("id", droppedPersonIds);
+    }
+
     return { detail: await loadDetail(reg.id), changeType, beforeCount, afterCount, feeDelta };
   });
