@@ -3,14 +3,33 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 const LOCAL_CHANGE_EVT = "handaryeon-data-changed";
+const CROSS_TAB_CHANNEL = "handaryeon-data-changed";
+const CROSS_TAB_STORAGE_KEY = "handaryeon:data-changed-at";
+
+function getChannel(): BroadcastChannel | null {
+  if (typeof window === "undefined" || typeof BroadcastChannel === "undefined") return null;
+  const w = window as unknown as { __handaryeonChannel?: BroadcastChannel };
+  if (!w.__handaryeonChannel) w.__handaryeonChannel = new BroadcastChannel(CROSS_TAB_CHANNEL);
+  return w.__handaryeonChannel;
+}
 
 /**
- * 변경 액션(삭제/확정/재확정/납부 등) 직후 호출하면, 같은 탭의 모든 화면이
- * 다음 자동 주기를 기다리지 않고 즉시 재조회한다.
+ * 변경 액션(삭제/확정/재확정/납부 등) 직후 호출하면, 같은 탭뿐 아니라
+ * 같은 브라우저의 다른 탭 화면도 다음 자동 주기를 기다리지 않고 즉시 재조회한다.
  */
 export function notifyDataChanged() {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new Event(LOCAL_CHANGE_EVT));
+  try {
+    getChannel()?.postMessage(Date.now());
+  } catch {
+    // 채널 사용 불가 — 아래 storage 신호로 대체된다.
+  }
+  try {
+    window.localStorage.setItem(CROSS_TAB_STORAGE_KEY, String(Date.now()));
+  } catch {
+    // 저장소가 막혀 있어도 30초 주기 갱신이 백업으로 동작한다.
+  }
 }
 
 export function useRealtimeInvalidate(tables: string[], invalidateKeys: unknown[][]) {
@@ -54,12 +73,22 @@ export function useRealtimeInvalidate(tables: string[], invalidateKeys: unknown[
     const poll = setInterval(() => {
       if (typeof document === "undefined" || document.visibilityState === "visible") flush();
     }, 30_000);
+    // 다른 탭에서 일어난 변경도 즉시 반영한다(브로드캐스트 + 저장소 신호).
+    const channel = getChannel();
+    const onCrossTab = () => invalidateSoon();
+    if (channel) channel.addEventListener("message", onCrossTab);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === CROSS_TAB_STORAGE_KEY) invalidateSoon();
+    };
+    window.addEventListener("storage", onStorage);
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onVisible);
     window.addEventListener(LOCAL_CHANGE_EVT, flush);
     return () => {
       clearInterval(poll);
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (channel) channel.removeEventListener("message", onCrossTab);
+      window.removeEventListener("storage", onStorage);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
       window.removeEventListener(LOCAL_CHANGE_EVT, flush);

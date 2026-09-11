@@ -141,6 +141,26 @@ export const confirmPreRegistration = createServerFn({ method: "POST" })
       createdChurchId = created.id;
     }
 
+    // 재확정 시 담당자 정보 동기화 — 사전접수에서 파생된 교회(source='pre')만 갱신한다.
+    // 수기로 만든 교회나 기존 교회에 연결한 경우의 담당자 정보는 건드리지 않는다.
+    if (!createdChurchId) {
+      const { data: target } = await db
+        .from("churches")
+        .select("id, source")
+        .eq("id", churchId)
+        .maybeSingle();
+      if (target?.source === "pre") {
+        await db
+          .from("churches")
+          .update({
+            contact_name: reg.manager_name,
+            phone: reg.manager_phone,
+            denomination: reg.denomination ?? null,
+          })
+          .eq("id", churchId);
+      }
+    }
+
     const newPersonIds: string[] = [];
     try {
       // 2) 기존 매핑 확인 — 실제로 남아 있는 파생 인원만 갱신 대상으로 삼는다.
