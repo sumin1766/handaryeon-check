@@ -203,6 +203,7 @@ export type Database = {
           memo: string | null
           name: string
           phone: string | null
+          primary_pre_registration_id: string | null
           season_id: string
           source: string
         }
@@ -217,6 +218,7 @@ export type Database = {
           memo?: string | null
           name: string
           phone?: string | null
+          primary_pre_registration_id?: string | null
           season_id: string
           source?: string
         }
@@ -231,10 +233,18 @@ export type Database = {
           memo?: string | null
           name?: string
           phone?: string | null
+          primary_pre_registration_id?: string | null
           season_id?: string
           source?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "churches_primary_pre_registration_id_fkey"
+            columns: ["primary_pre_registration_id"]
+            isOneToOne: false
+            referencedRelation: "pre_registrations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "churches_season_id_fkey"
             columns: ["season_id"]
