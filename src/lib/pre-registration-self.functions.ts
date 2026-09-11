@@ -362,15 +362,9 @@ export const updatePreRegistrationSelf = createServerFn({ method: "POST" })
       throw new Error(`명단 저장에 실패했습니다: ${delErr.message}`);
     }
 
-    const { error: insErr } = await supabaseAdmin.from("pre_registration_members").insert(
-      data.members.map((m) => ({
-        pre_registration_id: reg.id,
-        name: m.name,
-        phone: m.phone.trim() ? m.phone.trim() : null,
-        lodging_type: m.lodging_type,
-        category: m.category,
-      })),
-    );
+    const { error: insErr } = await supabaseAdmin
+      .from("pre_registration_members")
+      .insert(insertRows);
     if (insErr) {
       await restoreMembers();
       await restoreHeader();
