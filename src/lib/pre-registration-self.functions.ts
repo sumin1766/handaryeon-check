@@ -18,6 +18,8 @@ type MemberCategory = AnyMemberCategory;
 const DEFAULT_PRE_REG_FEE = 20000;
 
 export type SelfMember = {
+  /** 기존 참석자 행의 고유 ID — 새로 추가한 줄에는 없다(이름이 아니라 이 값으로 식별한다). */
+  id?: string;
   name: string;
   phone: string;
   lodging_type: "church" | "external" | "none";
@@ -42,6 +44,7 @@ export type PreRegistrationSelfDetail = {
 
 const memberSchema = z
   .object({
+    id: z.string().uuid().optional(),
     name: z.string().trim().min(1).max(50),
     phone: z.string().trim().max(30).optional().default(""),
     lodging_type: z.enum(["church", "external", "none"]),
