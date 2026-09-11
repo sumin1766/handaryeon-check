@@ -153,37 +153,77 @@ export const getPreRegistrationByToken = createServerFn({ method: "POST" })
     return loadDetail(row.id);
   });
 
-/** 본인확인 3값 일치로 조회 (5회 실패 시 10분 잠금) */
-export const getPreRegistrationByIdentity = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) =>
-    z
-      .object({
-        churchName: z.string().trim().min(1).max(100),
-        managerName: z.string().trim().min(1).max(50),
-        managerPhone: z.string().trim().min(1).max(30),
-      })
-      .parse(data),
-  )
-  .handler(async ({ data }): Promise<PreRegistrationSelfDetail> => {
+export type SelfSummary = {
+  id: string;
+  churchName: string;
+  managerName: string;
+  headCount: number;
+  expectedFee: number;
+  status: PreRegistrationSelfDetail["status"];
+  createdAt: string;
+  updatedAt: string;
+};
+
+const identitySchema = z.object({
+  churchName: z.string().trim().min(1).max(100),
+  managerName: z.string().trim().min(1).max(50),
+  managerPhone: z.string().trim().min(1).max(30),
+});
+
+/** 본인확인 3값 일치 건을 "전부" 목록으로 반환 (5회 실패 시 10분 잠금) */
+export const listPreRegistrationsByIdentity = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => identitySchema.parse(data))
+  .handler(async ({ data }): Promise<SelfSummary[]> => {
     const ip = clientIp();
     assertNotLocked(ip);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows } = await supabaseAdmin
       .from("pre_registrations")
-      .select("id, created_at")
+      .select("id, church_name, manager_name, head_count, expected_fee, status, created_at, updated_at")
       .eq("church_name", data.churchName)
       .eq("manager_name", data.managerName)
       .eq("manager_phone", data.managerPhone)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    const row = rows?.[0];
-    if (!row) {
+      .order("created_at", { ascending: true });
+    if (!rows?.length) {
       recordFailure(ip);
       throw new Error("일치하는 접수 건이 없습니다. 입력값을 다시 확인해 주세요.");
     }
     clearFailures(ip);
+    return rows.map((r: any) => ({
+      id: r.id,
+      churchName: r.church_name,
+      managerName: r.manager_name,
+      headCount: r.head_count ?? 0,
+      expectedFee: r.expected_fee ?? 0,
+      status: (r.status as PreRegistrationSelfDetail["status"]) ?? "submitted",
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    }));
+  });
+
+/** 목록에서 고른 1건 열기 — 3값이 그 건과 정확히 일치할 때만 반환한다. */
+export const openPreRegistrationByIdentity = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => identitySchema.extend({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data }): Promise<PreRegistrationSelfDetail> => {
+    const ip = clientIp();
+    assertNotLocked(ip);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("pre_registrations")
+      .select("id")
+      .eq("id", data.id)
+      .eq("church_name", data.churchName)
+      .eq("manager_name", data.managerName)
+      .eq("manager_phone", data.managerPhone)
+      .maybeSingle();
+    if (!row) {
+      recordFailure(ip);
+      throw new Error("해당 접수 건을 열 수 없습니다.");
+    }
+    clearFailures(ip);
     return loadDetail(row.id);
   });
+
 
 export type UpdateSelfResult = {
   detail: PreRegistrationSelfDetail;
