@@ -124,6 +124,7 @@ async function loadDetail(id: string): Promise<PreRegistrationSelfDetail> {
     unitFee,
     categoryFees,
     members: (members ?? []).map((m) => ({
+      id: m.id,
       name: m.name,
       phone: m.phone ?? "",
       lodging_type: (m.lodging_type as SelfMember["lodging_type"]) ?? "church",
