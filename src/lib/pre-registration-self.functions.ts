@@ -304,10 +304,39 @@ export const updatePreRegistrationSelf = createServerFn({ method: "POST" })
             phone: m.phone,
             lodging_type: m.lodging_type,
             category: m.category,
+            person_id: m.person_id,
           })),
         );
       }
     };
+
+    // 확정 건의 "참석자 ↔ 운영 인원(person_id)" 매핑 유지.
+    // 수정 저장은 참석자 행을 다시 쓰지만, 이름(+분류)이 같은 참석자는 기존 매핑을 그대로 이어받는다.
+    const unusedBefore = [...(beforeMembers ?? [])];
+    const takeMapping = (name: string, category: string): string | null => {
+      const pick = (fn: (m: (typeof unusedBefore)[number]) => boolean) => {
+        const i = unusedBefore.findIndex((m) => !!m.person_id && fn(m));
+        if (i < 0) return null;
+        const [m] = unusedBefore.splice(i, 1);
+        return m?.person_id ?? null;
+      };
+      return (
+        pick((m) => m.name.trim() === name.trim() && m.category === category) ??
+        pick((m) => m.name.trim() === name.trim())
+      );
+    };
+    const insertRows = data.members.map((m) => ({
+      pre_registration_id: reg.id,
+      name: m.name,
+      phone: m.phone.trim() ? m.phone.trim() : null,
+      lodging_type: m.lodging_type,
+      category: m.category,
+      person_id: takeMapping(m.name, m.category),
+    }));
+    // 이번 수정에서 빠진 참석자의 파생 운영 인원 → 저장 성공 후 정리한다.
+    const droppedPersonIds = unusedBefore
+      .map((m) => m.person_id)
+      .filter((v): v is string => !!v);
 
     const { error: updErr } = await supabaseAdmin
       .from("pre_registrations")
