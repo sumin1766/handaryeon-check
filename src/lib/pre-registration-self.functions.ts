@@ -315,9 +315,16 @@ export const updatePreRegistrationSelf = createServerFn({ method: "POST" })
     };
 
     // 확정 건의 "참석자 ↔ 운영 인원(person_id)" 매핑 유지.
-    // 수정 저장은 참석자 행을 다시 쓰지만, 이름(+분류)이 같은 참석자는 기존 매핑을 그대로 이어받는다.
+    // 식별은 이름이 아니라 참석자 행의 고유 ID를 우선한다(동명이인·개명에도 엇갈리지 않는다).
+    // 행 ID가 없는 줄(예전 화면·엑셀 신규 추가)만 이름+분류로 보수적으로 이어받는다.
     const unusedBefore = [...(beforeMembers ?? [])];
-    const takeMapping = (name: string, category: string): string | null => {
+    const takeById = (id: string): string | null | undefined => {
+      const i = unusedBefore.findIndex((m) => m.id === id);
+      if (i < 0) return undefined;
+      const [m] = unusedBefore.splice(i, 1);
+      return m?.person_id ?? null;
+    };
+    const takeByName = (name: string, category: string): string | null => {
       const pick = (fn: (m: (typeof unusedBefore)[number]) => boolean) => {
         const i = unusedBefore.findIndex((m) => !!m.person_id && fn(m));
         if (i < 0) return null;
@@ -329,13 +336,27 @@ export const updatePreRegistrationSelf = createServerFn({ method: "POST" })
         pick((m) => m.name.trim() === name.trim())
       );
     };
-    const insertRows = data.members.map((m) => ({
+
+    // 1) 행 ID가 있는 줄 먼저 확정 매핑
+    const mapped = new Map<number, string | null>();
+    data.members.forEach((m, idx) => {
+      if (!m.id) return;
+      const got = takeById(m.id);
+      if (got !== undefined) mapped.set(idx, got);
+    });
+    // 2) 나머지 줄만 이름 기준 폴백
+    data.members.forEach((m, idx) => {
+      if (mapped.has(idx)) return;
+      mapped.set(idx, takeByName(m.name, m.category));
+    });
+
+    const insertRows = data.members.map((m, idx) => ({
       pre_registration_id: reg.id,
       name: m.name,
       phone: m.phone.trim() ? m.phone.trim() : null,
       lodging_type: m.lodging_type,
       category: m.category,
-      person_id: takeMapping(m.name, m.category),
+      person_id: mapped.get(idx) ?? null,
     }));
     // 이번 수정에서 빠진 참석자의 파생 운영 인원 → 저장 성공 후 정리한다.
     const droppedPersonIds = unusedBefore
