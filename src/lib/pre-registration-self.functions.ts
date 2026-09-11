@@ -229,7 +229,7 @@ export const updatePreRegistrationSelf = createServerFn({ method: "POST" })
 
     const { data: beforeMembers } = await supabaseAdmin
       .from("pre_registration_members")
-      .select("name, phone, lodging_type, category")
+      .select("id, name, phone, lodging_type, category, person_id")
       .eq("pre_registration_id", reg.id);
 
     const beforeCount = beforeMembers?.length ?? 0;
