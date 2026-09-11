@@ -133,6 +133,7 @@ export const confirmPreRegistration = createServerFn({ method: "POST" })
           contact_name: reg.manager_name,
           phone: reg.manager_phone,
           source: "pre",
+          primary_pre_registration_id: reg.id,
         })
         .select("id")
         .single();
@@ -142,24 +143,39 @@ export const confirmPreRegistration = createServerFn({ method: "POST" })
     }
 
     // 재확정 시 담당자 정보 동기화 — 사전접수에서 파생된 교회(source='pre')만 갱신한다.
+    // 한 교회에 여러 제출(여러 담당자)이 묶일 수 있으므로, 대표 담당자로 지정된 건이거나
+    // 이 교회에 연결된 제출이 이 건뿐일 때만 대표 표시 값을 갱신한다.
     // 수기로 만든 교회나 기존 교회에 연결한 경우의 담당자 정보는 건드리지 않는다.
     if (!createdChurchId) {
       const { data: target } = await db
         .from("churches")
-        .select("id, source")
+        .select("id, source, primary_pre_registration_id")
         .eq("id", churchId)
         .maybeSingle();
       if (target?.source === "pre") {
-        await db
-          .from("churches")
-          .update({
-            contact_name: reg.manager_name,
-            phone: reg.manager_phone,
-            denomination: reg.denomination ?? null,
-          })
-          .eq("id", churchId);
+        const { data: linked } = await db
+          .from("pre_registrations")
+          .select("id")
+          .eq("church_id", churchId);
+        const others = (linked ?? []).filter((r) => r.id !== reg.id);
+        const isPrimary = target.primary_pre_registration_id === reg.id;
+        const soleLinked = others.length === 0;
+        if (isPrimary || soleLinked) {
+          await db
+            .from("churches")
+            .update({
+              contact_name: reg.manager_name,
+              phone: reg.manager_phone,
+              denomination: reg.denomination ?? null,
+              ...(soleLinked && !target.primary_pre_registration_id
+                ? { primary_pre_registration_id: reg.id }
+                : {}),
+            })
+            .eq("id", churchId);
+        }
       }
     }
+
 
     const newPersonIds: string[] = [];
     try {
