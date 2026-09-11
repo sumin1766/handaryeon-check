@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/dialog";
 import { notifyDataChanged, useRealtimeInvalidate } from "@/lib/use-realtime";
 import { useAuthRole } from "@/lib/use-auth-role";
+import { useChurchManagers } from "@/lib/use-church-managers";
+import { ChurchManagersCell } from "@/components/church-managers-cell";
 import { num, formatKst } from "@/lib/format";
 import { Plus, Trash2, Pencil, X, Save, Search, Merge, RefreshCw } from "lucide-react";
 import { Link } from "@tanstack/react-router";
@@ -129,6 +131,7 @@ function RegistryPage() {
   });
 
   useRealtimeInvalidate(["churches", "people"], [["registry", season?.id]]);
+  const managers = useChurchManagers(season?.id);
 
   const { data, refetch, isFetching } = useQuery({
     queryKey: registryKey,
@@ -376,8 +379,14 @@ function RegistryPage() {
                         )}
                       </td>
                       <td className="px-3 py-2 text-xs">
-                        <div>{c.contact_name ?? "—"}</div>
-                        <div className="text-muted-foreground">{c.phone ?? ""}</div>
+                        <ChurchManagersCell
+                          churchId={c.id}
+                          info={managers.map.get(c.id)}
+                          fallbackName={c.contact_name}
+                          fallbackPhone={c.phone}
+                          isAdmin={role === "admin"}
+                          onChanged={() => managers.refetch()}
+                        />
                       </td>
                       <td className="px-2 py-2 text-center">
                         <span className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold ${c.source === "onsite" ? "bg-amber-100 text-amber-800" : "bg-sky-100 text-sky-800"}`}>

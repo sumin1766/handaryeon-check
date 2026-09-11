@@ -24,6 +24,8 @@ import { Button } from "@/components/ui/button";
 import { notifyDataChanged, useRealtimeInvalidate } from "@/lib/use-realtime";
 import { RefreshButton } from "@/components/refresh-button";
 import { useAuthRole } from "@/lib/use-auth-role";
+import { useChurchManagers } from "@/lib/use-church-managers";
+import { ChurchManagersCell } from "@/components/church-managers-cell";
 import { num, formatTime } from "@/lib/format";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -53,6 +55,7 @@ function IntakeSheetPage() {
   const role = useAuthRole();
   const isAdmin = role === "admin";
   useRealtimeInvalidate(["churches", "people", "lodgings"], [["intake", season?.id]]);
+  const managers = useChurchManagers(season?.id);
   const [filter, setFilter] = useState("");
   const isTouch = useIsTouchDevice();
   const [keypad, setKeypad] = useState<{ id: string; name: string; value: string } | null>(null);
@@ -211,8 +214,14 @@ function IntakeSheetPage() {
                       )}
                     </td>
                     <td className="px-3 py-2 text-xs">
-                      <div>{c.contact_name ?? "-"}</div>
-                      <div className="text-muted-foreground">{c.phone ?? ""}</div>
+                      <ChurchManagersCell
+                        churchId={c.id}
+                        info={managers.map.get(c.id)}
+                        fallbackName={c.contact_name}
+                        fallbackPhone={c.phone}
+                        isAdmin={isAdmin}
+                        onChanged={() => managers.refetch()}
+                      />
                     </td>
                     <td className="text-right px-3 py-2 tabular-nums">{num(ps.length)}</td>
                     <td className="text-right px-3 py-2 tabular-nums text-sky-700">{num(lodgingCount)}</td>
