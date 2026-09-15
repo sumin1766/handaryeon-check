@@ -94,7 +94,15 @@ function SettingsContent({ isAdmin }: { isAdmin: boolean }) {
   }, [savedKey]);
 
   const CARDS: Record<string, ReactNode> = {
-    "apply-link": <ApplyQuickLinkCard />,
+    "apply-form": (
+      <SettingsCard
+        icon={<ExternalLink className="h-5 w-5" />}
+        title="사전접수 폼 관리"
+        summary={<ApplyFormSummary />}
+      >
+        <ApplyFormSection />
+      </SettingsCard>
+    ),
     seasons: (
       <SettingsCard icon={<Calendar className="h-5 w-5" />} title="시즌 관리" summary={<SeasonsSummary />}>
         <SeasonsSection />
