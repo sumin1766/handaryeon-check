@@ -2,7 +2,7 @@
 // 활성 시즌 전용. 조회·저장 모두 서버 함수에서 권한 재확인 후 처리(방식 B).
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useRef, useState } from "react";
+import { Component, useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
@@ -39,7 +39,39 @@ export const Route = createFileRoute("/qr-checkin")({
     ],
   }),
   component: QrCheckinPage,
+  errorComponent: () => (
+    <AppShell>
+      <Card className="mx-auto max-w-md space-y-3 p-6">
+        <h1 className="text-lg font-semibold">화면을 불러오지 못했습니다</h1>
+        <p className="text-sm text-muted-foreground">
+          페이지를 새로고침해 주세요. 카메라를 쓸 수 없는 기기에서는 접근 코드를 직접 입력해 조회할 수 있습니다.
+        </p>
+        <Button onClick={() => window.location.reload()}>새로고침</Button>
+      </Card>
+    </AppShell>
+  ),
 });
+
+/** 스캐너에서 어떤 예외가 나도 페이지 전체가 죽지 않도록 감싸는 경계. */
+class ScannerBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    if (this.state.failed) {
+      return (
+        <Card className="space-y-3 p-4">
+          <div className="flex h-40 items-center justify-center rounded-lg bg-muted text-sm text-muted-foreground">
+            카메라를 사용할 수 없습니다
+          </div>
+          <p className="text-xs text-muted-foreground">아래 칸에 접근 코드를 직접 입력해 조회하세요.</p>
+        </Card>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function QrCheckinPage() {
   const role = useAuthRole();
