@@ -235,22 +235,30 @@ function QrScanner({ onResult, disabled }: { onResult: (t: string) => void; disa
     let cancelled = false;
     (async () => {
       try {
-        const md = typeof navigator !== "undefined" ? navigator.mediaDevices : undefined;
-        if (!md || !md.enumerateDevices || !md.getUserMedia) throw new Error("no camera");
+        if (typeof window === "undefined" || typeof navigator === "undefined") throw new Error("no camera");
+        if (window.isSecureContext === false) throw new Error("insecure context");
+        const md = navigator.mediaDevices as MediaDevices | undefined;
+        if (!md || typeof md.enumerateDevices !== "function" || typeof md.getUserMedia !== "function") {
+          throw new Error("no camera");
+        }
         const devices = await md.enumerateDevices();
-        const found = devices.some((d) => d.kind === "videoinput");
+        const found = Array.isArray(devices) && devices.some((d) => d.kind === "videoinput");
         if (cancelled) return;
         setHasCamera(found);
         setActive(found);
       } catch {
-        if (!cancelled) setHasCamera(false);
+        // 카메라가 없거나 접근 불가하면 스캐너를 아예 초기화하지 않고 수동 입력으로 폴백한다.
+        if (!cancelled) {
+          setHasCamera(false);
+          setActive(false);
+        }
       }
     })();
     return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || hasCamera !== true) return;
     let cancelled = false;
     doneRef.current = false;
     (async () => {
