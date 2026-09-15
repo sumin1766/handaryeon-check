@@ -28,6 +28,7 @@ import { useAuthRole, setAuthRole, type AuthRole } from "@/lib/use-auth-role";
 import { useTheme } from "@/lib/use-theme";
 import { setReadOnlyMode } from "@/lib/read-only";
 import { useNavMenuConfig, applyNavConfig } from "@/lib/nav-menu-config";
+import { useGlobalRealtime } from "@/lib/use-realtime";
 import logoAsset from "@/assets/handaryeon-symbol.png.asset.json";
 
 type RoleSet = readonly AuthRole[];
@@ -103,6 +104,8 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   } = useActiveSeason();
   const { failing, failures } = useBackendKeepalive();
   const backendDown = failing || (isError && !season);
+  // 모든 탭이 같은 전역 갱신 신호를 구독한다(데이터 변경 → 즉시 최신화).
+  useGlobalRealtime();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const router = useRouter();
   const role = useAuthRole();
