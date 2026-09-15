@@ -291,9 +291,13 @@ function QrScanner({ onResult, disabled }: { onResult: (t: string) => void; disa
       cancelled = true;
       const inst = instRef.current;
       instRef.current = null;
-      if (inst) inst.stop().then(() => inst.clear()).catch(() => {});
+      try {
+        if (inst) inst.stop().then(() => inst.clear()).catch(() => {});
+      } catch {
+        /* 정리 중 예외는 무시 — 페이지가 죽지 않게 한다. */
+      }
     };
-  }, [active, onResult]);
+  }, [active, hasCamera, onResult]);
 
   if (hasCamera === false) {
     return (
