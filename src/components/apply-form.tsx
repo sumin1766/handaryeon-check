@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   DEFAULT_PRE_REG_FEE,
-  PRE_REG_FORM_NOTICES,
+  DEFAULT_APPLY_NOTICES,
 } from "@/lib/pre-registration-config";
 import {
   MEMBER_CATEGORIES,
@@ -150,10 +150,7 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
       </div>
 
       <Card className="mt-5 space-y-2 p-4 text-sm leading-relaxed">
-        <p>• {PRE_REG_FORM_NOTICES.student}</p>
-        <p>• {PRE_REG_FORM_NOTICES.phone}</p>
-        <p>• {EXTERNAL_NOTICE}</p>
-        {extraNotices.map((n, i) => (
+        {(extraNotices.length ? extraNotices : DEFAULT_APPLY_NOTICES).map((n, i) => (
           <p key={i}>• {n}</p>
         ))}
       </Card>

@@ -28,6 +28,13 @@ export const PRE_REG_FORM_NOTICES = {
 
 } as const;
 
+/** 관리 화면에서 편집 가능한 기본 안내 문구(저장 전 초기값 = 기존 표시와 동일). */
+export const DEFAULT_APPLY_NOTICES: string[] = [
+  PRE_REG_FORM_NOTICES.student,
+  PRE_REG_FORM_NOTICES.phone,
+  "외부 숙박 관련 문의는 추후 안내문에 따라 별도로 문의해 주세요.",
+];
+
 export function useFeeConfig(seasonId?: string) {
   return useQuery({
     queryKey: ["fee-config", seasonId],

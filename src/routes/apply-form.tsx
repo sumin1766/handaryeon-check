@@ -20,7 +20,7 @@ export const Route = createFileRoute("/apply-form")({
 function ApplyFormPage() {
   return (
     <AppShell>
-      <ApplyForm showLookupLink={false} />
+      <ApplyForm />
     </AppShell>
   );
 }
