@@ -1,6 +1,7 @@
 // 교회 단위 화면(접수시트·접수 명단)에서 담당자 표시.
-// 여러 담당자를 모두 나열하고, 대표 담당자는 맨 위에 굵게 표시한다.
-// 전체관리자는 대표 담당자를 지정/해제할 수 있다(표시용 값만 변경).
+// - 전체관리자: 모든 담당자를 보고, 대표 담당자는 굵게(별표) 표시하며 지정/해제할 수 있다.
+// - 접수담당자·일반사용자: 대표가 지정돼 있으면 대표 1명만, 없으면 모든 담당자를 본다.
+// 어떤 경우에도 원본 제출 데이터(담당자·연락처)는 바뀌지 않는다. 표시 규칙일 뿐이다.
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Star } from "lucide-react";
@@ -55,40 +56,29 @@ export function ChurchManagersCell({
     );
   }
 
-  const primaryId = info?.primary?.preRegistrationId ?? null;
+  const primaryId = info?.primaryPreRegistrationId ?? null;
   const ordered = [...managers].sort(
     (a, b) => Number(b.preRegistrationId === primaryId) - Number(a.preRegistrationId === primaryId),
   );
+  // 비관리자는 대표가 지정된 경우 대표 1명만 본다(미지정이면 전원).
+  const shown =
+    !isAdmin && primaryId ? ordered.filter((m) => m.preRegistrationId === primaryId) : ordered;
 
   return (
     <div className="space-y-0.5 text-xs">
-      {ordered.map((m) => {
+      {shown.map((m) => {
         const isPrimary = m.preRegistrationId === primaryId;
         return (
           <div key={m.preRegistrationId} className="flex items-center gap-1">
             {isAdmin && (
               <button
                 type="button"
-                title={
-                  info?.primaryPreRegistrationId === m.preRegistrationId
-                    ? "대표 지정 해제"
-                    : "대표 담당자로 지정"
-                }
+                title={isPrimary ? "대표 지정 해제" : "대표 담당자로 지정"}
                 disabled={setPrimary.isPending}
-                onClick={() =>
-                  setPrimary.mutate(
-                    info?.primaryPreRegistrationId === m.preRegistrationId ? null : m.preRegistrationId,
-                  )
-                }
+                onClick={() => setPrimary.mutate(isPrimary ? null : m.preRegistrationId)}
                 className="shrink-0 text-muted-foreground hover:text-amber-500"
               >
-                <Star
-                  className={`h-3.5 w-3.5 ${
-                    info?.primaryPreRegistrationId === m.preRegistrationId
-                      ? "fill-amber-400 text-amber-500"
-                      : ""
-                  }`}
-                />
+                <Star className={`h-3.5 w-3.5 ${isPrimary ? "fill-amber-400 text-amber-500" : ""}`} />
               </button>
             )}
             <span className={isPrimary ? "font-semibold" : "text-muted-foreground"}>{m.name}</span>

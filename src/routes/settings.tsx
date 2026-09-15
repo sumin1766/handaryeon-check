@@ -5,6 +5,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { sdb } from "@/lib/secure-db";
 import { getOcrStatusFn, updateOcrConfigFn, updateOcrBackupKeyFn } from "@/lib/auth.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { getApplyFormNotices, saveApplyFormNotices } from "@/lib/apply-form-notices.functions";
 import { getSessionPassword } from "@/lib/session-password";
 import { fetchAll } from "@/lib/fetch-all";
 import { Button } from "@/components/ui/button";
@@ -94,7 +96,15 @@ function SettingsContent({ isAdmin }: { isAdmin: boolean }) {
   }, [savedKey]);
 
   const CARDS: Record<string, ReactNode> = {
-    "apply-link": <ApplyQuickLinkCard />,
+    "apply-form": (
+      <SettingsCard
+        icon={<ExternalLink className="h-5 w-5" />}
+        title="사전접수 폼 관리"
+        summary={<ApplyFormSummary />}
+      >
+        <ApplyFormSection />
+      </SettingsCard>
+    ),
     seasons: (
       <SettingsCard icon={<Calendar className="h-5 w-5" />} title="시즌 관리" summary={<SeasonsSummary />}>
         <SeasonsSection />
@@ -274,30 +284,114 @@ function SettingsCard({
   );
 }
 
-function ApplyQuickLinkCard() {
+/** 공개 사전접수 폼 안내 문구 조회 (전체관리자) */
+function useApplyFormNotices(seasonId?: string) {
+  const getFn = useServerFn(getApplyFormNotices);
+  return useQuery({
+    queryKey: ["apply-form-notices", seasonId],
+    enabled: !!seasonId,
+    queryFn: async (): Promise<string[]> => {
+      const password = getSessionPassword();
+      if (!password) return [];
+      return getFn({ data: { password, seasonId: seasonId! } });
+    },
+  });
+}
+
+function ApplyFormSummary() {
+  const { season } = useActiveSeason();
+  const { data: notices = [] } = useApplyFormNotices(season?.id);
   return (
-    <a
-      href="/apply"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block text-left w-full"
-    >
-      <Card className="p-4 transition hover:shadow-md hover:border-primary/50 cursor-pointer h-full">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-              <ExternalLink className="h-5 w-5" />
+    <div>
+      <div>
+        추가 안내 문구 <b className="text-foreground">{notices.length}</b>개
+      </div>
+      <div className="truncate">{notices[0] ?? "공개 폼 안내 문구를 직접 추가할 수 있습니다."}</div>
+    </div>
+  );
+}
+
+function ApplyFormSection() {
+  const { season } = useActiveSeason();
+  const qc = useQueryClient();
+  const { data: saved = [], isLoading } = useApplyFormNotices(season?.id);
+  const [items, setItems] = useState<string[]>([]);
+  const savedKey = JSON.stringify(saved);
+  useEffect(() => {
+    setItems(saved);
+  }, [savedKey]);
+
+  const saveFn = useServerFn(saveApplyFormNotices);
+  const save = useMutation({
+    mutationFn: async (notices: string[]) => {
+      const password = getSessionPassword();
+      if (!password) throw new Error("세션이 만료되었습니다. 다시 로그인해 주세요.");
+      if (!season?.id) throw new Error("활성 시즌이 없습니다.");
+      return saveFn({ data: { password, seasonId: season.id, notices } });
+    },
+    onSuccess: () => {
+      toast.success("안내 문구를 저장했습니다. 공개 폼에 즉시 반영됩니다.");
+      qc.invalidateQueries({ queryKey: ["apply-form-notices"] });
+      qc.invalidateQueries({ queryKey: ["public-pre-reg-fee"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "저장 실패"),
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">
+          공개 사전접수 폼 상단에 표시되는 안내 문구입니다. 저장하면 곧바로 반영됩니다.
+        </p>
+        <Button variant="outline" asChild>
+          <a href="/apply" target="_blank" rel="noopener noreferrer">
+            <ExternalLink className="h-4 w-4 mr-1" />
+            공개 폼 새 탭에서 열기
+          </a>
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="text-sm text-muted-foreground">불러오는 중…</div>
+      ) : (
+        <div className="space-y-2">
+          {items.map((v, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input
+                value={v}
+                maxLength={500}
+                placeholder="예: 입금 후 신청서를 작성해 주세요."
+                onChange={(e) =>
+                  setItems((p) => p.map((x, idx) => (idx === i ? e.target.value : x)))
+                }
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="문구 삭제"
+                onClick={() => setItems((p) => p.filter((_, idx) => idx !== i))}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
-            <h2 className="text-base font-semibold truncate">사전접수 폼 바로가기</h2>
-          </div>
-          <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+          ))}
+          {items.length === 0 && (
+            <div className="text-sm text-muted-foreground">추가된 안내 문구가 없습니다.</div>
+          )}
         </div>
-        <div className="mt-3 text-sm text-muted-foreground">
-          공개 사전접수 폼(<span className="text-foreground font-medium">/apply</span>)을 새 탭에서 엽니다.
-        </div>
-        <div className="mt-3 text-xs text-primary font-medium">새 탭에서 열기 →</div>
-      </Card>
-    </a>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" onClick={() => setItems((p) => [...p, ""])}>
+          <Plus className="h-4 w-4 mr-1" />
+          문구 추가
+        </Button>
+        <Button onClick={() => save.mutate(items)} disabled={save.isPending}>
+          {save.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
+          저장
+        </Button>
+      </div>
+    </div>
   );
 }
 

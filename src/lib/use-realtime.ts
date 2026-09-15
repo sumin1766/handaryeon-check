@@ -97,3 +97,87 @@ export function useRealtimeInvalidate(tables: string[], invalidateKeys: unknown[
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tables.join(","), JSON.stringify(invalidateKeys)]);
 }
+
+/** 데이터가 바뀌는 모든 테이블 — 전역 무효화 신호의 구독 대상. */
+export const ALL_DATA_TABLES = [
+  "churches",
+  "people",
+  "lodgings",
+  "places",
+  "bath_coupons",
+  "church_payments",
+  "pre_registrations",
+  "pre_registration_members",
+  "pre_registration_changes",
+  "duplicate_dismissals",
+  "app_settings",
+  "seasons",
+] as const;
+
+/**
+ * 앱 전역에서 한 번만 마운트한다. 어떤 테이블이 바뀌든(또는 다른 탭에서 변경 신호가 와도)
+ * 모든 화면의 조회를 한꺼번에 무효화해, 어느 탭을 열어도 즉시 최신 데이터가 보이게 한다.
+ */
+export function useGlobalRealtime() {
+  const qc = useQueryClient();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingRef = useRef(false);
+
+  useEffect(() => {
+    const flush = () => {
+      pendingRef.current = false;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      qc.invalidateQueries({ refetchType: "all" });
+    };
+    const invalidateSoon = () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+        pendingRef.current = true;
+        return;
+      }
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(flush, 400);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && pendingRef.current) flush();
+    };
+
+    const ch = supabase.channel(`rt-global-${Math.random()}`);
+    for (const t of ALL_DATA_TABLES) {
+      ch.on("postgres_changes", { event: "*", schema: "public", table: t }, () => invalidateSoon());
+    }
+    // 실시간 연결이 끊겼다 다시 붙으면(모바일·미리보기에서 흔함) 한 번 전체 최신화.
+    let wasConnected = false;
+    ch.subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        if (wasConnected) invalidateSoon();
+        wasConnected = true;
+      }
+    });
+
+    const channel = getChannel();
+    const onCrossTab = () => invalidateSoon();
+    if (channel) channel.addEventListener("message", onCrossTab);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === CROSS_TAB_STORAGE_KEY) invalidateSoon();
+    };
+    window.addEventListener("storage", onStorage);
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    window.addEventListener(LOCAL_CHANGE_EVT, flush);
+    window.addEventListener("online", flush);
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (channel) channel.removeEventListener("message", onCrossTab);
+      window.removeEventListener("storage", onStorage);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+      window.removeEventListener(LOCAL_CHANGE_EVT, flush);
+      window.removeEventListener("online", flush);
+      supabase.removeChannel(ch);
+    };
+  }, [qc]);
+}

@@ -28,6 +28,7 @@ import { useAuthRole, setAuthRole, type AuthRole } from "@/lib/use-auth-role";
 import { useTheme } from "@/lib/use-theme";
 import { setReadOnlyMode } from "@/lib/read-only";
 import { useNavMenuConfig, applyNavConfig } from "@/lib/nav-menu-config";
+import { useGlobalRealtime } from "@/lib/use-realtime";
 import logoAsset from "@/assets/handaryeon-symbol.png.asset.json";
 
 type RoleSet = readonly AuthRole[];
@@ -49,6 +50,7 @@ const TABS = [
   { to: "/rosters", label: "명단 출력", icon: ClipboardList, roles: STAFF },
   { to: "/bath-coupons", label: "목욕쿠폰", icon: Bath, roles: STAFF },
   { to: "/receipt", label: "영수증", icon: ReceiptText, roles: STAFF },
+  { to: "/apply-form", label: "사전접수 폼", icon: ClipboardList, roles: STAFF },
   { to: "/settings", label: "설정", icon: Settings, allowEnded: true, roles: ADMIN },
 ] as const;
 
@@ -102,6 +104,8 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   } = useActiveSeason();
   const { failing, failures } = useBackendKeepalive();
   const backendDown = failing || (isError && !season);
+  // 모든 탭이 같은 전역 갱신 신호를 구독한다(데이터 변경 → 즉시 최신화).
+  useGlobalRealtime();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const router = useRouter();
   const role = useAuthRole();
@@ -302,7 +306,9 @@ function SlidingTabs({
 }) {
   const containerRef = useRef<HTMLUListElement | null>(null);
   const itemRefs = useRef<Array<HTMLLIElement | null>>([]);
-  const [indicator, setIndicator] = useState<{ left: number; width: number } | null>(null);
+  const [indicator, setIndicator] = useState<{ left: number; top: number; width: number } | null>(
+    null,
+  );
 
   const activeIndex = tabs.findIndex((t) => t.to === pathname);
 
@@ -313,8 +319,12 @@ function SlidingTabs({
       if (!container || !el) return;
       const left = el.offsetLeft;
       const width = el.offsetWidth;
+      // 탭이 두 줄로 내려가도 밑줄이 해당 줄 아래에 붙도록 세로 위치까지 측정한다.
+      const top = el.offsetTop + el.offsetHeight - 2;
       setIndicator((prev) =>
-        prev && prev.left === left && prev.width === width ? prev : { left, width },
+        prev && prev.left === left && prev.width === width && prev.top === top
+          ? prev
+          : { left, top, width },
       );
     };
     measure();
@@ -333,7 +343,7 @@ function SlidingTabs({
     <nav className="relative">
       <ul
         ref={containerRef}
-        className="relative flex items-stretch justify-between gap-0"
+        className="relative flex flex-wrap items-stretch gap-y-0"
       >
         {tabs.map((t, i) => {
           const Icon = t.icon;
@@ -345,7 +355,7 @@ function SlidingTabs({
               ref={(el) => {
                 itemRefs.current[i] = el;
               }}
-              className="flex-1"
+              className="flex-1 basis-[9.5rem] min-w-[9.5rem]"
             >
               <Link
                 to={t.to}
@@ -353,12 +363,12 @@ function SlidingTabs({
                 aria-disabled={disabled}
                 onClick={(e) => disabled && e.preventDefault()}
                 className={cn(
-                  "flex w-full items-center justify-center gap-2 px-3 py-4 text-base font-medium transition-[color,background-color] duration-200 ease-out hover:bg-foreground/[0.04]",
+                  "flex h-full w-full items-center justify-center gap-2 whitespace-nowrap px-3 py-4 text-base font-medium transition-[color,background-color] duration-200 ease-out hover:bg-foreground/[0.04]",
                   isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                   disabled && "cursor-not-allowed opacity-40 hover:text-muted-foreground hover:bg-transparent",
                 )}
               >
-                <Icon className="h-[18px] w-[18px]" />
+                <Icon className="h-[18px] w-[18px] shrink-0" />
                 {t.label}
               </Link>
             </li>
@@ -367,7 +377,12 @@ function SlidingTabs({
         {indicator && (
           <span
             className="tab-indicator"
-            style={{ transform: `translateX(${indicator.left}px)`, width: indicator.width }}
+            style={{
+              transform: `translateX(${indicator.left}px)`,
+              width: indicator.width,
+              top: indicator.top,
+              bottom: "auto",
+            }}
           />
         )}
       </ul>

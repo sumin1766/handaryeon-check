@@ -8,7 +8,7 @@ import { saveSettingsCardOrderServer } from "@/lib/settings-card-order.functions
 
 /** 카드 식별자 — 기본 표시 순서 */
 export const DEFAULT_SETTINGS_CARD_ORDER: string[] = [
-  "apply-link",
+  "apply-form",
   "seasons",
   "lodgings",
   "places",

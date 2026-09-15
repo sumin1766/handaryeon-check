@@ -28,6 +28,7 @@ export const DEFAULT_NAV_ORDER: string[] = [
   "/rosters",
   "/bath-coupons",
   "/receipt",
+  "/apply-form",
   "/settings",
 ];
 
