@@ -162,6 +162,8 @@ export type SelfSummary = {
   status: PreRegistrationSelfDetail["status"];
   createdAt: string;
   updatedAt: string;
+  /** 카드에서 바로 펼쳐 보여줄 신청 명단 (조회 전용) */
+  members: { id: string; name: string; category: string; lodgingType: string }[];
 };
 
 const identitySchema = z.object({
@@ -189,6 +191,27 @@ export const listPreRegistrationsByIdentity = createServerFn({ method: "POST" })
       throw new Error("일치하는 접수 건이 없습니다. 입력값을 다시 확인해 주세요.");
     }
     clearFailures(ip);
+
+    const ids = rows.map((r: any) => r.id);
+    const { data: members } = await supabaseAdmin
+      .from("pre_registration_members")
+      .select("id, pre_registration_id, name, category, lodging_type")
+      .in("pre_registration_id", ids)
+      .order("created_at", { ascending: true });
+
+    const byReg = new Map<string, SelfSummary["members"]>();
+    for (const m of members ?? []) {
+      const key = (m as any).pre_registration_id as string;
+      const list = byReg.get(key) ?? [];
+      list.push({
+        id: (m as any).id,
+        name: (m as any).name,
+        category: (m as any).category ?? "male_student",
+        lodgingType: (m as any).lodging_type ?? "church",
+      });
+      byReg.set(key, list);
+    }
+
     return rows.map((r: any) => ({
       id: r.id,
       churchName: r.church_name,
@@ -198,6 +221,7 @@ export const listPreRegistrationsByIdentity = createServerFn({ method: "POST" })
       status: (r.status as PreRegistrationSelfDetail["status"]) ?? "submitted",
       createdAt: r.created_at,
       updatedAt: r.updated_at,
+      members: byReg.get(r.id) ?? [],
     }));
   });
 

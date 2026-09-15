@@ -1,0 +1,1 @@
+ALTER TABLE public.app_settings ADD COLUMN IF NOT EXISTS apply_form_notices jsonb NOT NULL DEFAULT '[]'::jsonb;

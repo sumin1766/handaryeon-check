@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { sdb } from "@/lib/secure-db";
 import { fetchAll } from "@/lib/fetch-all";
 import { useRealtimeInvalidate } from "@/lib/use-realtime";
+import { useChurchManagers } from "@/lib/use-church-managers";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, Printer, Copy, Check } from "lucide-react";
@@ -20,7 +21,8 @@ export const Route = createFileRoute("/rosters")({
 
 function RostersPage() {
   const { season } = useActiveSeason();
-  useRealtimeInvalidate(["churches", "people"], [["rosters-page", season?.id]]);
+  useRealtimeInvalidate(["churches", "people"], [["rosters-page", season?.id], ["church-managers", season?.id]]);
+  const managers = useChurchManagers(season?.id);
   const { data } = useQuery({
     queryKey: ["rosters-page", season?.id],
     enabled: !!season?.id,
@@ -52,13 +54,20 @@ function RostersPage() {
   for (const p of people) countByChurch.set(p.church_id, (countByChurch.get(p.church_id) ?? 0) + 1);
 
   const rows = churches
-    .map((c: any) => ({
-      id: c.id,
-      name: c.name as string,
-      denomination: (c.denomination ?? "") as string,
-      contact: [c.contact_name, c.phone].filter(Boolean).join(" / ") || "-",
-      count: countByChurch.get(c.id) ?? 0,
-    }))
+    .map((c: any) => {
+      // 대표 담당자가 지정돼 있으면 표시만 대표 기준으로 통일한다(원본은 그대로).
+      const info = managers.map.get(c.id);
+      const primary = info?.primaryPreRegistrationId ? info.primary : null;
+      const contactName = primary?.name ?? c.contact_name;
+      const contactPhone = primary?.phone ?? c.phone;
+      return {
+        id: c.id,
+        name: c.name as string,
+        denomination: (c.denomination ?? "") as string,
+        contact: [contactName, contactPhone].filter(Boolean).join(" / ") || "-",
+        count: countByChurch.get(c.id) ?? 0,
+      };
+    })
     .sort((a: any, b: any) => a.name.localeCompare(b.name, "ko"));
 
   const totalPeople = rows.reduce((s: number, r: any) => s + r.count, 0);

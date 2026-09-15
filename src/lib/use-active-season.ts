@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { sdb } from "@/lib/secure-db";
 import { useAuthRole } from "@/lib/use-auth-role";
@@ -174,6 +174,8 @@ export function useActiveSeason() {
 export function useBackendKeepalive() {
   const qc = useQueryClient();
   const statusRef = useRef<{ ok: boolean; failures: number }>({ ok: true, failures: 0 });
+  // 배너는 "잠깐 끊김"이 아니라 일정 시간 이상 복구되지 않을 때만 띄운다.
+  const [sustainedDown, setSustainedDown] = useState(false);
 
   const q = useQuery({
     queryKey: ["backend-keepalive"],
@@ -189,10 +191,11 @@ export function useBackendKeepalive() {
         if (error) throw error;
         const wasDown = !statusRef.current.ok;
         statusRef.current = { ok: true, failures: 0 };
-        // On recovery, refresh root context only. Avoid invalidating every
-        // heavy list at once during live reception; route-level queries can
-        // recover on their own retry/reconnect cycle while showing cached data.
-        if (wasDown) qc.invalidateQueries({ queryKey: ["seasons"] });
+        // 복구되면 재시도 카운터를 초기화하고, 모든 화면 데이터를 한 번 최신화한다.
+        if (wasDown) {
+          qc.invalidateQueries({ queryKey: ["seasons"] });
+          qc.invalidateQueries({ refetchType: "all" });
+        }
         return true;
       } catch (e) {
         statusRef.current = {
@@ -210,6 +213,16 @@ export function useBackendKeepalive() {
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8_000),
     staleTime: 15_000,
   });
+
+  // 실패가 계속될 때만(약 10초 이상) 배너를 띄우고, 복구되면 즉시 내린다.
+  useEffect(() => {
+    if (!q.isError) {
+      setSustainedDown(false);
+      return;
+    }
+    const t = setTimeout(() => setSustainedDown(true), 10_000);
+    return () => clearTimeout(t);
+  }, [q.isError, q.errorUpdatedAt]);
 
   // Also refetch immediately when the tab regains focus or network comes back.
   useEffect(() => {
@@ -232,7 +245,7 @@ export function useBackendKeepalive() {
 
   return {
     online: !q.isError,
-    failing: q.isError,
+    failing: q.isError && sustainedDown,
     failures: statusRef.current.failures,
   };
 }

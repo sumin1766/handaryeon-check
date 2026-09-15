@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       app_settings: {
         Row: {
+          apply_form_notices: Json
           bath_unit_price: number
           category_fees: Json
           created_at: string
@@ -31,6 +32,7 @@ export type Database = {
           settings_card_order: Json
         }
         Insert: {
+          apply_form_notices?: Json
           bath_unit_price?: number
           category_fees?: Json
           created_at?: string
@@ -46,6 +48,7 @@ export type Database = {
           settings_card_order?: Json
         }
         Update: {
+          apply_form_notices?: Json
           bath_unit_price?: number
           category_fees?: Json
           created_at?: string

@@ -23,6 +23,7 @@ import { Route as NametagsRouteImport } from './routes/nametags'
 import { Route as LodgingsRouteImport } from './routes/lodgings'
 import { Route as IntakeSheetRouteImport } from './routes/intake-sheet'
 import { Route as BathCouponsRouteImport } from './routes/bath-coupons'
+import { Route as ApplyFormRouteImport } from './routes/apply-form'
 import { Route as ApplyRouteImport } from './routes/apply'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApplyLookupRouteImport } from './routes/apply_.lookup'
@@ -98,6 +99,11 @@ const BathCouponsRoute = BathCouponsRouteImport.update({
   path: '/bath-coupons',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApplyFormRoute = ApplyFormRouteImport.update({
+  id: '/apply-form',
+  path: '/apply-form',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApplyRoute = ApplyRouteImport.update({
   id: '/apply',
   path: '/apply',
@@ -122,6 +128,7 @@ const ApplyTokenRoute = ApplyTokenRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/apply': typeof ApplyRoute
+  '/apply-form': typeof ApplyFormRoute
   '/bath-coupons': typeof BathCouponsRoute
   '/intake-sheet': typeof IntakeSheetRoute
   '/lodgings': typeof LodgingsRoute
@@ -142,6 +149,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/apply': typeof ApplyRoute
+  '/apply-form': typeof ApplyFormRoute
   '/bath-coupons': typeof BathCouponsRoute
   '/intake-sheet': typeof IntakeSheetRoute
   '/lodgings': typeof LodgingsRoute
@@ -163,6 +171,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/apply': typeof ApplyRoute
+  '/apply-form': typeof ApplyFormRoute
   '/bath-coupons': typeof BathCouponsRoute
   '/intake-sheet': typeof IntakeSheetRoute
   '/lodgings': typeof LodgingsRoute
@@ -185,6 +194,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/apply'
+    | '/apply-form'
     | '/bath-coupons'
     | '/intake-sheet'
     | '/lodgings'
@@ -205,6 +215,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/apply'
+    | '/apply-form'
     | '/bath-coupons'
     | '/intake-sheet'
     | '/lodgings'
@@ -225,6 +236,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/apply'
+    | '/apply-form'
     | '/bath-coupons'
     | '/intake-sheet'
     | '/lodgings'
@@ -246,6 +258,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApplyRoute: typeof ApplyRoute
+  ApplyFormRoute: typeof ApplyFormRoute
   BathCouponsRoute: typeof BathCouponsRoute
   IntakeSheetRoute: typeof IntakeSheetRoute
   LodgingsRoute: typeof LodgingsRoute
@@ -364,6 +377,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BathCouponsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/apply-form': {
+      id: '/apply-form'
+      path: '/apply-form'
+      fullPath: '/apply-form'
+      preLoaderRoute: typeof ApplyFormRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/apply': {
       id: '/apply'
       path: '/apply'
@@ -398,6 +418,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApplyRoute: ApplyRoute,
+  ApplyFormRoute: ApplyFormRoute,
   BathCouponsRoute: BathCouponsRoute,
   IntakeSheetRoute: IntakeSheetRoute,
   LodgingsRoute: LodgingsRoute,

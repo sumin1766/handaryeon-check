@@ -9,7 +9,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { krw } from "@/lib/format";
+import { krw, formatKst } from "@/lib/format";
+import { CATEGORY_LABELS, type AnyMemberCategory } from "@/lib/member-categories";
 import { PreRegistrationSelfEditor } from "@/components/pre-registration-self-editor";
 import {
   listPreRegistrationsByIdentity,
@@ -89,7 +90,7 @@ function LookupPage() {
 
   if (list) {
     return (
-      <div className="mx-auto w-full max-w-md px-4 py-12">
+      <div className="mx-auto w-full max-w-2xl px-4 py-12">
         <h1 className="text-2xl font-bold">내 접수 건 {list.length}건</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           같은 담당자 이름·전화번호로 제출한 접수 건입니다. 수정할 건을 선택해 주세요.
@@ -97,19 +98,42 @@ function LookupPage() {
         <div className="mt-5 space-y-2">
           {list.map((r) => (
             <Card key={r.id} className="p-4">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="font-medium">{r.churchName}</div>
                   <div className="text-xs text-muted-foreground">
                     {STATUS_LABELS[r.status]} · {r.headCount}명 · {krw(r.expectedFee)}
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    제출 {new Date(r.createdAt).toLocaleDateString("ko-KR")}
-                  </div>
+                  <div className="text-xs text-muted-foreground">제출 {formatKst(r.createdAt)}</div>
+                  {r.updatedAt && r.updatedAt !== r.createdAt && (
+                    <div className="text-xs text-muted-foreground">
+                      최종 수정 {formatKst(r.updatedAt)}
+                    </div>
+                  )}
                 </div>
                 <Button size="sm" disabled={open.isPending} onClick={() => open.mutate(r.id)}>
-                  명단 보기
+                  명단 수정
                 </Button>
+              </div>
+              <div className="mt-3 rounded-md border bg-muted/30 p-3">
+                <div className="text-xs font-medium text-muted-foreground">
+                  신청 명단 ({r.members.length}명)
+                </div>
+                {r.members.length === 0 ? (
+                  <div className="mt-1 text-xs text-muted-foreground">명단이 없습니다.</div>
+                ) : (
+                  <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                    {r.members.map((m) => (
+                      <li key={m.id}>
+                        <span className="font-medium">{m.name}</span>
+                        <span className="text-muted-foreground">
+                          {" "}
+                          · {CATEGORY_LABELS[m.category as AnyMemberCategory] ?? m.category}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </Card>
           ))}

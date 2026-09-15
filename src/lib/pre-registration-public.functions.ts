@@ -149,9 +149,13 @@ export const submitPreRegistration = createServerFn({ method: "POST" })
     };
   });
 
-/** 공개 사전접수 폼에서 회비 안내를 표시하기 위한 조회 전용 서버 함수. */
+/** 공개 사전접수 폼에서 회비·안내 문구를 표시하기 위한 조회 전용 서버 함수. */
 export const getPublicFeeConfig = createServerFn({ method: "POST" }).handler(
-  async (): Promise<{ preRegFee: number; categoryFees: Record<string, number> }> => {
+  async (): Promise<{
+    preRegFee: number;
+    categoryFees: Record<string, number>;
+    notices: string[];
+  }> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: season } = await supabaseAdmin
       .from("seasons")
@@ -160,16 +164,24 @@ export const getPublicFeeConfig = createServerFn({ method: "POST" }).handler(
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (!season) return { preRegFee: DEFAULT_PRE_REG_FEE, categoryFees: {} };
+    if (!season) return { preRegFee: DEFAULT_PRE_REG_FEE, categoryFees: {}, notices: [] };
     const { data } = await supabaseAdmin
       .from("app_settings")
-      .select("pre_reg_fee, category_fees")
+      .select("*")
       .eq("season_id", season.id)
       .maybeSingle();
-    const s = data as { pre_reg_fee?: number; category_fees?: unknown } | null;
+    const s = data as
+      | { pre_reg_fee?: number; category_fees?: unknown; apply_form_notices?: unknown }
+      | null;
+    const notices = Array.isArray(s?.apply_form_notices)
+      ? (s!.apply_form_notices as unknown[]).filter(
+          (v): v is string => typeof v === "string" && v.trim().length > 0,
+        )
+      : [];
     return {
       preRegFee: s?.pre_reg_fee ?? DEFAULT_PRE_REG_FEE,
       categoryFees: parseCategoryFees(s?.category_fees) as Record<string, number>,
+      notices,
     };
   },
 );
