@@ -450,8 +450,11 @@ function RegistryPage() {
 }
 
 function ChurchDialog({
-  church, people, canEdit, onClose,
-}: { church: any; people: any[]; canEdit: boolean; onClose: () => void }) {
+  church, people, canEdit, onClose, managerInfo,
+}: { church: any; people: any[]; canEdit: boolean; onClose: () => void; managerInfo?: ChurchManagerInfo }) {
+  // 대표 담당자가 지정돼 있으면 "표시만" 대표 기준으로 통일한다(원본 저장값은 그대로).
+  const primaryManager =
+    managerInfo?.primaryPreRegistrationId ? managerInfo.primary ?? null : null;
   const qc = useQueryClient();
   const [name, setName] = useState(church.name ?? "");
   const [denom, setDenom] = useState(church.denomination ?? "");
