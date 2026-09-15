@@ -53,7 +53,7 @@ import {
 import { useChangePasswords } from "@/lib/auth-config";
 import {
   useFeeConfig, useSaveFeeConfig,
-  DEFAULT_PRE_REG_FEE, DEFAULT_SEGUE_MEMBER_FEE,
+  DEFAULT_PRE_REG_FEE, DEFAULT_SEGUE_MEMBER_FEE, DEFAULT_APPLY_NOTICES,
   type FeeConfig,
 } from "@/lib/pre-registration-config";
 

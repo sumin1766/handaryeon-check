@@ -422,6 +422,7 @@ function RegistryPage() {
           church={churchById.get(openId) as any}
           people={peopleByChurch.get(openId) ?? []}
           canEdit={canEdit}
+          managerInfo={managers.map.get(openId)}
           onClose={() => {
             setOpenId(null);
             if (from === "onsite") {
