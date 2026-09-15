@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { notifyDataChanged, useRealtimeInvalidate } from "@/lib/use-realtime";
 import { useAuthRole } from "@/lib/use-auth-role";
-import { useChurchManagers } from "@/lib/use-church-managers";
+import { useChurchManagers, type ChurchManagerInfo } from "@/lib/use-church-managers";
 import { ChurchManagersCell } from "@/components/church-managers-cell";
 import { num, formatKst } from "@/lib/format";
 import { Plus, Trash2, Pencil, X, Save, Search, Merge, RefreshCw } from "lucide-react";
@@ -575,12 +575,27 @@ function ChurchDialog({
             <Input value={denom} onChange={(e) => setDenom(e.target.value)} disabled={!canEdit} />
           </div>
           <div>
-            <Label className="text-xs">담당자</Label>
-            <Input value={contact} onChange={(e) => setContact(e.target.value)} disabled={!canEdit} />
+            <Label className="text-xs">담당자{primaryManager ? " (대표)" : ""}</Label>
+            <Input
+              value={primaryManager ? primaryManager.name : contact}
+              onChange={(e) => setContact(e.target.value)}
+              disabled={!canEdit || !!primaryManager}
+              readOnly={!!primaryManager}
+            />
+            {primaryManager && (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                대표 담당자로 통일 표시 중입니다. 원본 담당자 정보는 그대로 보존됩니다.
+              </p>
+            )}
           </div>
           <div>
-            <Label className="text-xs">전화번호</Label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} disabled={!canEdit} />
+            <Label className="text-xs">전화번호{primaryManager ? " (대표)" : ""}</Label>
+            <Input
+              value={primaryManager ? primaryManager.phone ?? "" : phone}
+              onChange={(e) => setPhone(e.target.value)}
+              disabled={!canEdit || !!primaryManager}
+              readOnly={!!primaryManager}
+            />
           </div>
           <div className="md:col-span-2">
             <Label className="text-xs">비고</Label>
