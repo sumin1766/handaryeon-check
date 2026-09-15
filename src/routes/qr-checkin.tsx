@@ -198,7 +198,9 @@ function CheckinContent({ password }: { password: string }) {
         <p className="text-sm text-muted-foreground">교회 QR을 스캔하면 사전접수 상세가 열립니다.</p>
       </header>
 
-      <QrScanner onResult={open} disabled={loading} />
+      <ScannerBoundary>
+        <QrScanner onResult={open} disabled={loading} />
+      </ScannerBoundary>
 
       <Card className="space-y-2 p-4">
         <Label htmlFor="manual-token">접근 코드 직접 입력</Label>
