@@ -32,7 +32,6 @@ import {
 import { krw } from "@/lib/format";
 import { AttendeeExcelBar } from "@/components/attendee-excel-bar";
 
-const EXTERNAL_NOTICE = "외부 숙박 관련 문의는 추후 안내문에 따라 별도로 문의해 주세요.";
 
 type LodgingType = "church" | "external" | "none";
 type Row = {
