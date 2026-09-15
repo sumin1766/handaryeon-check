@@ -5,6 +5,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { sdb } from "@/lib/secure-db";
 import { getOcrStatusFn, updateOcrConfigFn, updateOcrBackupKeyFn } from "@/lib/auth.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { getApplyFormNotices, saveApplyFormNotices } from "@/lib/apply-form-notices.functions";
 import { getSessionPassword } from "@/lib/session-password";
 import { fetchAll } from "@/lib/fetch-all";
 import { Button } from "@/components/ui/button";
