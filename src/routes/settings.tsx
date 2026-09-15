@@ -53,7 +53,7 @@ import {
 import { useChangePasswords } from "@/lib/auth-config";
 import {
   useFeeConfig, useSaveFeeConfig,
-  DEFAULT_PRE_REG_FEE, DEFAULT_SEGUE_MEMBER_FEE,
+  DEFAULT_PRE_REG_FEE, DEFAULT_SEGUE_MEMBER_FEE, DEFAULT_APPLY_NOTICES,
   type FeeConfig,
 } from "@/lib/pre-registration-config";
 
@@ -318,7 +318,8 @@ function ApplyFormSection() {
   const [items, setItems] = useState<string[]>([]);
   const savedKey = JSON.stringify(saved);
   useEffect(() => {
-    setItems(saved);
+    // 저장된 값이 없으면 공개 폼에 이미 표시 중인 기본 안내 문구를 그대로 불러와 편집하게 한다.
+    setItems(saved.length ? saved : DEFAULT_APPLY_NOTICES);
   }, [savedKey]);
 
   const saveFn = useServerFn(saveApplyFormNotices);

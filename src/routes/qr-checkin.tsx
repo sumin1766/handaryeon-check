@@ -2,7 +2,7 @@
 // 활성 시즌 전용. 조회·저장 모두 서버 함수에서 권한 재확인 후 처리(방식 B).
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useRef, useState } from "react";
+import { Component, useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
@@ -39,7 +39,39 @@ export const Route = createFileRoute("/qr-checkin")({
     ],
   }),
   component: QrCheckinPage,
+  errorComponent: () => (
+    <AppShell>
+      <Card className="mx-auto max-w-md space-y-3 p-6">
+        <h1 className="text-lg font-semibold">화면을 불러오지 못했습니다</h1>
+        <p className="text-sm text-muted-foreground">
+          페이지를 새로고침해 주세요. 카메라를 쓸 수 없는 기기에서는 접근 코드를 직접 입력해 조회할 수 있습니다.
+        </p>
+        <Button onClick={() => window.location.reload()}>새로고침</Button>
+      </Card>
+    </AppShell>
+  ),
 });
+
+/** 스캐너에서 어떤 예외가 나도 페이지 전체가 죽지 않도록 감싸는 경계. */
+class ScannerBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    if (this.state.failed) {
+      return (
+        <Card className="space-y-3 p-4">
+          <div className="flex h-40 items-center justify-center rounded-lg bg-muted text-sm text-muted-foreground">
+            카메라를 사용할 수 없습니다
+          </div>
+          <p className="text-xs text-muted-foreground">아래 칸에 접근 코드를 직접 입력해 조회하세요.</p>
+        </Card>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function QrCheckinPage() {
   const role = useAuthRole();
@@ -166,7 +198,9 @@ function CheckinContent({ password }: { password: string }) {
         <p className="text-sm text-muted-foreground">교회 QR을 스캔하면 사전접수 상세가 열립니다.</p>
       </header>
 
-      <QrScanner onResult={open} disabled={loading} />
+      <ScannerBoundary>
+        <QrScanner onResult={open} disabled={loading} />
+      </ScannerBoundary>
 
       <Card className="space-y-2 p-4">
         <Label htmlFor="manual-token">접근 코드 직접 입력</Label>
@@ -201,22 +235,30 @@ function QrScanner({ onResult, disabled }: { onResult: (t: string) => void; disa
     let cancelled = false;
     (async () => {
       try {
-        const md = typeof navigator !== "undefined" ? navigator.mediaDevices : undefined;
-        if (!md || !md.enumerateDevices || !md.getUserMedia) throw new Error("no camera");
+        if (typeof window === "undefined" || typeof navigator === "undefined") throw new Error("no camera");
+        if (window.isSecureContext === false) throw new Error("insecure context");
+        const md = navigator.mediaDevices as MediaDevices | undefined;
+        if (!md || typeof md.enumerateDevices !== "function" || typeof md.getUserMedia !== "function") {
+          throw new Error("no camera");
+        }
         const devices = await md.enumerateDevices();
-        const found = devices.some((d) => d.kind === "videoinput");
+        const found = Array.isArray(devices) && devices.some((d) => d.kind === "videoinput");
         if (cancelled) return;
         setHasCamera(found);
         setActive(found);
       } catch {
-        if (!cancelled) setHasCamera(false);
+        // 카메라가 없거나 접근 불가하면 스캐너를 아예 초기화하지 않고 수동 입력으로 폴백한다.
+        if (!cancelled) {
+          setHasCamera(false);
+          setActive(false);
+        }
       }
     })();
     return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || hasCamera !== true) return;
     let cancelled = false;
     doneRef.current = false;
     (async () => {
@@ -249,9 +291,13 @@ function QrScanner({ onResult, disabled }: { onResult: (t: string) => void; disa
       cancelled = true;
       const inst = instRef.current;
       instRef.current = null;
-      if (inst) inst.stop().then(() => inst.clear()).catch(() => {});
+      try {
+        if (inst) inst.stop().then(() => inst.clear()).catch(() => {});
+      } catch {
+        /* 정리 중 예외는 무시 — 페이지가 죽지 않게 한다. */
+      }
     };
-  }, [active, onResult]);
+  }, [active, hasCamera, onResult]);
 
   if (hasCamera === false) {
     return (

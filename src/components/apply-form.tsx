@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   DEFAULT_PRE_REG_FEE,
-  PRE_REG_FORM_NOTICES,
+  DEFAULT_APPLY_NOTICES,
 } from "@/lib/pre-registration-config";
 import {
   MEMBER_CATEGORIES,
@@ -32,7 +32,6 @@ import {
 import { krw } from "@/lib/format";
 import { AttendeeExcelBar } from "@/components/attendee-excel-bar";
 
-const EXTERNAL_NOTICE = "외부 숙박 관련 문의는 추후 안내문에 따라 별도로 문의해 주세요.";
 
 type LodgingType = "church" | "external" | "none";
 type Row = {
@@ -150,10 +149,7 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
       </div>
 
       <Card className="mt-5 space-y-2 p-4 text-sm leading-relaxed">
-        <p>• {PRE_REG_FORM_NOTICES.student}</p>
-        <p>• {PRE_REG_FORM_NOTICES.phone}</p>
-        <p>• {EXTERNAL_NOTICE}</p>
-        {extraNotices.map((n, i) => (
+        {(extraNotices.length ? extraNotices : DEFAULT_APPLY_NOTICES).map((n, i) => (
           <p key={i}>• {n}</p>
         ))}
       </Card>
