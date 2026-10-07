@@ -1,0 +1,1 @@
+ALTER TABLE public.pre_registrations ADD COLUMN IF NOT EXISTS region_sido text, ADD COLUMN IF NOT EXISTS region_sigungu text, ADD COLUMN IF NOT EXISTS road_address text;

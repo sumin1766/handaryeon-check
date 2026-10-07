@@ -543,6 +543,9 @@ export type Database = {
           manager_phone: string
           paid: boolean
           paid_at: string | null
+          region_sido: string | null
+          region_sigungu: string | null
+          road_address: string | null
           season_id: string
           status: string
           updated_at: string
@@ -561,6 +564,9 @@ export type Database = {
           manager_phone: string
           paid?: boolean
           paid_at?: string | null
+          region_sido?: string | null
+          region_sigungu?: string | null
+          road_address?: string | null
           season_id: string
           status?: string
           updated_at?: string
@@ -579,6 +585,9 @@ export type Database = {
           manager_phone?: string
           paid?: boolean
           paid_at?: string | null
+          region_sido?: string | null
+          region_sigungu?: string | null
+          road_address?: string | null
           season_id?: string
           status?: string
           updated_at?: string
