@@ -6,6 +6,7 @@ import { useMutation } from "@tanstack/react-query";
 import QRCode from "qrcode";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
+import { ChurchRegionFields, type ChurchRegion } from "@/components/church-region-fields";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -60,6 +61,11 @@ export function PreRegistrationSelfEditor({ initial }: { initial: PreRegistratio
   const [denomination, setDenomination] = useState(initial.denomination);
   const [managerName, setManagerName] = useState(initial.managerName);
   const [managerPhone, setManagerPhone] = useState(initial.managerPhone);
+  const [region, setRegion] = useState<ChurchRegion>({
+    sido: initial.regionSido ?? "",
+    sigungu: initial.regionSigungu ?? "",
+    road: initial.roadAddress ?? "",
+  });
   const [rows, setRows] = useState<SelfMember[]>(
     initial.members.length ? initial.members : [emptyRow()],
   );
@@ -82,6 +88,9 @@ export function PreRegistrationSelfEditor({ initial }: { initial: PreRegistratio
           denomination: denomination.trim(),
           managerName: managerName.trim(),
           managerPhone: managerPhone.trim(),
+          regionSido: region.sido,
+          regionSigungu: region.sido ? region.sigungu : "",
+          roadAddress: region.road.trim(),
           members: rows.map((r) => ({ ...r, name: r.name.trim(), phone: r.phone.trim() })),
         },
       }),
@@ -201,6 +210,11 @@ export function PreRegistrationSelfEditor({ initial }: { initial: PreRegistratio
               maxLength={30}
             />
           </label>
+          <ChurchRegionFields
+            value={region}
+            onChange={setRegion}
+            optional={!initial.regionSido && !initial.regionSigungu && !initial.roadAddress}
+          />
         </div>
       </Card>
 

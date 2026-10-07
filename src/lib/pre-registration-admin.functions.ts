@@ -20,6 +20,7 @@ export type AdminPreRegistration = {
   denomination: string | null;
   manager_name: string;
   manager_phone: string;
+  region: string;
   head_count: number;
   expected_fee: number;
   status: string;
@@ -114,6 +115,7 @@ export const listPreRegistrations = createServerFn({ method: "POST" })
         denomination: r.denomination ?? null,
         manager_name: r.manager_name,
         manager_phone: r.manager_phone,
+        region: [[r.region_sido, r.region_sigungu].filter(Boolean).join(" "), r.road_address].filter(Boolean).join(" · "),
         head_count: r.head_count,
         expected_fee: r.expected_fee,
         status: r.status,

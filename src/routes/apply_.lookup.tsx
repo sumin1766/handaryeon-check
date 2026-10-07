@@ -101,6 +101,7 @@ function LookupPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="font-medium">{r.churchName}</div>
+                  <div className="text-xs text-muted-foreground">교회 주소: {r.region || "미입력"}</div>
                   <div className="text-xs text-muted-foreground">
                     {STATUS_LABELS[r.status]} · {r.headCount}명 · {krw(r.expectedFee)}
                   </div>

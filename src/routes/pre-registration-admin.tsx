@@ -533,6 +533,7 @@ function DetailDialog({
             <div className="grid gap-2 text-sm sm:grid-cols-2">
               <div>교단명: {reg.denomination ?? "-"}</div>
               <div>담당자: {reg.manager_name} ({reg.manager_phone})</div>
+              <div className="sm:col-span-2">교회 주소: {reg.region || "-"}</div>
               <div>제출: {formatKst(reg.created_at)}</div>
               <div>수정: {formatKst(reg.updated_at)}</div>
             </div>

@@ -31,6 +31,7 @@ import {
 
 import { krw } from "@/lib/format";
 import { AttendeeExcelBar } from "@/components/attendee-excel-bar";
+import { ChurchRegionFields, type ChurchRegion } from "@/components/church-region-fields";
 
 
 type LodgingType = "church" | "external" | "none";
@@ -55,6 +56,7 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
   const [denomination, setDenomination] = useState("");
   const [managerName, setManagerName] = useState("");
   const [managerPhone, setManagerPhone] = useState("");
+  const [region, setRegion] = useState<ChurchRegion>({ sido: "", sigungu: "", road: "" });
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
   const [result, setResult] = useState<SubmitPreRegistrationResult | null>(null);
 
@@ -104,6 +106,10 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
       toast.error("교회명·담당자명·담당자 전화번호를 모두 입력해 주세요.");
       return;
     }
+    if (!region.sido || !region.sigungu || !region.road.trim()) {
+      toast.error("교회 주소(시/도·시군구·도로명 주소)를 모두 입력해 주세요.");
+      return;
+    }
     const cleaned = rows.map((r) => ({ ...r, name: r.name.trim(), phone: r.phone.trim() }));
     if (cleaned.length === 0) {
       toast.error("참석자를 1명 이상 입력해 주세요.");
@@ -123,6 +129,9 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
       denomination: denomination.trim(),
       managerName: managerName.trim(),
       managerPhone: managerPhone.trim(),
+      regionSido: region.sido,
+      regionSigungu: region.sigungu,
+      roadAddress: region.road.trim(),
       members: cleaned,
     });
   };
@@ -182,6 +191,7 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
               maxLength={30}
             />
           </label>
+          <ChurchRegionFields value={region} onChange={setRegion} />
         </div>
       </Card>
 
