@@ -34,6 +34,9 @@ export type PreRegistrationSelfDetail = {
   denomination: string;
   managerName: string;
   managerPhone: string;
+  regionSido: string;
+  regionSigungu: string;
+  roadAddress: string;
   status: "submitted" | "applied" | "needs_review";
   headCount: number;
   expectedFee: number;
@@ -118,6 +121,9 @@ async function loadDetail(id: string): Promise<PreRegistrationSelfDetail> {
     denomination: reg.denomination ?? "",
     managerName: reg.manager_name,
     managerPhone: reg.manager_phone,
+    regionSido: reg.region_sido ?? "",
+    regionSigungu: reg.region_sigungu ?? "",
+    roadAddress: reg.road_address ?? "",
     status: (reg.status as PreRegistrationSelfDetail["status"]) ?? "submitted",
     headCount: reg.head_count,
     expectedFee: reg.expected_fee,
@@ -157,6 +163,7 @@ export type SelfSummary = {
   id: string;
   churchName: string;
   managerName: string;
+  region: string;
   headCount: number;
   expectedFee: number;
   status: PreRegistrationSelfDetail["status"];
@@ -181,7 +188,7 @@ export const listPreRegistrationsByIdentity = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows } = await supabaseAdmin
       .from("pre_registrations")
-      .select("id, church_name, manager_name, head_count, expected_fee, status, created_at, updated_at")
+      .select("id, church_name, manager_name, head_count, expected_fee, status, created_at, updated_at, region_sido, region_sigungu, road_address")
       .eq("church_name", data.churchName)
       .eq("manager_name", data.managerName)
       .eq("manager_phone", data.managerPhone)
@@ -216,6 +223,7 @@ export const listPreRegistrationsByIdentity = createServerFn({ method: "POST" })
       id: r.id,
       churchName: r.church_name,
       managerName: r.manager_name,
+      region: [[r.region_sido, r.region_sigungu].filter(Boolean).join(" "), r.road_address].filter(Boolean).join(" · "),
       headCount: r.head_count ?? 0,
       expectedFee: r.expected_fee ?? 0,
       status: (r.status as PreRegistrationSelfDetail["status"]) ?? "submitted",
@@ -267,6 +275,10 @@ export const updatePreRegistrationSelf = createServerFn({ method: "POST" })
         denomination: z.string().trim().max(100).optional().default(""),
         managerName: z.string().trim().min(1).max(50),
         managerPhone: z.string().trim().min(1).max(30),
+        // 기존 건 호환: 지역은 비어 있어도 저장 가능
+        regionSido: z.string().trim().max(30).optional().default(""),
+        regionSigungu: z.string().trim().max(50).optional().default(""),
+        roadAddress: z.string().trim().max(200).optional().default(""),
         members: z.array(memberSchema).min(1).max(300),
       })
       .parse(data),
@@ -328,7 +340,10 @@ export const updatePreRegistrationSelf = createServerFn({ method: "POST" })
       reg.church_name !== data.churchName ||
       (reg.denomination ?? "") !== (data.denomination?.trim() ?? "") ||
       reg.manager_name !== data.managerName ||
-      reg.manager_phone !== data.managerPhone;
+      reg.manager_phone !== data.managerPhone ||
+      (reg.region_sido ?? "") !== data.regionSido ||
+      (reg.region_sigungu ?? "") !== data.regionSigungu ||
+      (reg.road_address ?? "") !== data.roadAddress;
 
     const changeType: UpdateSelfResult["changeType"] =
       afterCount > beforeCount
@@ -355,6 +370,9 @@ export const updatePreRegistrationSelf = createServerFn({ method: "POST" })
           denomination: reg.denomination,
           manager_name: reg.manager_name,
           manager_phone: reg.manager_phone,
+          region_sido: reg.region_sido,
+          region_sigungu: reg.region_sigungu,
+          road_address: reg.road_address,
           head_count: reg.head_count,
           expected_fee: reg.expected_fee,
           status: reg.status,
@@ -434,6 +452,9 @@ export const updatePreRegistrationSelf = createServerFn({ method: "POST" })
         denomination: data.denomination?.trim() ? data.denomination.trim() : null,
         manager_name: data.managerName,
         manager_phone: data.managerPhone,
+        region_sido: data.regionSido || null,
+        region_sigungu: data.regionSigungu || null,
+        road_address: data.roadAddress || null,
         head_count: afterCount,
         expected_fee: afterFee,
         status: nextStatus,

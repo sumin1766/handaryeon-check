@@ -43,6 +43,9 @@ const submitSchema = z.object({
   denomination: z.string().trim().max(100).optional().default(""),
   managerName: z.string().trim().min(1).max(50),
   managerPhone: z.string().trim().min(1).max(30),
+  regionSido: z.string().trim().min(1, "시/도를 선택해 주세요.").max(30),
+  regionSigungu: z.string().trim().min(1, "시군구를 선택해 주세요.").max(50),
+  roadAddress: z.string().trim().min(1, "도로명 주소를 입력해 주세요.").max(200),
   members: z.array(memberSchema).min(1).max(300),
 });
 
@@ -119,6 +122,9 @@ export const submitPreRegistration = createServerFn({ method: "POST" })
         denomination: data.denomination?.trim() ? data.denomination.trim() : null,
         manager_name: data.managerName,
         manager_phone: data.managerPhone,
+        region_sido: data.regionSido,
+        region_sigungu: data.regionSigungu,
+        road_address: data.roadAddress,
         head_count: headCount,
         expected_fee: expectedFee,
         status: "submitted",
