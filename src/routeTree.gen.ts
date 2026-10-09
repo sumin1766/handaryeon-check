@@ -9,99 +9,29 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as SegueMergeRouteImport } from './routes/segue-merge'
-import { Route as RostersRouteImport } from './routes/rosters'
-import { Route as RegistryRouteImport } from './routes/registry'
-import { Route as ReceiptRouteImport } from './routes/receipt'
-import { Route as QrCheckinRouteImport } from './routes/qr-checkin'
-import { Route as PreRegistrationAdminRouteImport } from './routes/pre-registration-admin'
-import { Route as PreRegistrationRouteImport } from './routes/pre-registration'
-import { Route as PlacesRouteImport } from './routes/places'
-import { Route as OnsiteRouteImport } from './routes/onsite'
-import { Route as NametagsRouteImport } from './routes/nametags'
-import { Route as LodgingsRouteImport } from './routes/lodgings'
-import { Route as IntakeSheetRouteImport } from './routes/intake-sheet'
-import { Route as BathCouponsRouteImport } from './routes/bath-coupons'
-import { Route as ApplyFormRouteImport } from './routes/apply-form'
-import { Route as ApplyRouteImport } from './routes/apply'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApplyLookupRouteImport } from './routes/apply_.lookup'
+import { Route as ApplyRouteImport } from './routes/apply'
+import { Route as ApplyFormRouteImport } from './routes/apply-form'
+import { Route as BathCouponsRouteImport } from './routes/bath-coupons'
+import { Route as IntakeSheetRouteImport } from './routes/intake-sheet'
+import { Route as LodgingsRouteImport } from './routes/lodgings'
+import { Route as NametagsRouteImport } from './routes/nametags'
+import { Route as OnsiteRouteImport } from './routes/onsite'
+import { Route as PlacesRouteImport } from './routes/places'
+import { Route as PreRegistrationRouteImport } from './routes/pre-registration'
+import { Route as PreRegistrationAdminRouteImport } from './routes/pre-registration-admin'
+import { Route as QrCheckinRouteImport } from './routes/qr-checkin'
+import { Route as ReceiptRouteImport } from './routes/receipt'
+import { Route as RegistryRouteImport } from './routes/registry'
+import { Route as RostersRouteImport } from './routes/rosters'
+import { Route as SegueMergeRouteImport } from './routes/segue-merge'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ApplyTokenRouteImport } from './routes/apply_.$token'
+import { Route as ApplyLookupRouteImport } from './routes/apply_.lookup'
 
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SegueMergeRoute = SegueMergeRouteImport.update({
-  id: '/segue-merge',
-  path: '/segue-merge',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RostersRoute = RostersRouteImport.update({
-  id: '/rosters',
-  path: '/rosters',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RegistryRoute = RegistryRouteImport.update({
-  id: '/registry',
-  path: '/registry',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReceiptRoute = ReceiptRouteImport.update({
-  id: '/receipt',
-  path: '/receipt',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const QrCheckinRoute = QrCheckinRouteImport.update({
-  id: '/qr-checkin',
-  path: '/qr-checkin',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreRegistrationAdminRoute = PreRegistrationAdminRouteImport.update({
-  id: '/pre-registration-admin',
-  path: '/pre-registration-admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreRegistrationRoute = PreRegistrationRouteImport.update({
-  id: '/pre-registration',
-  path: '/pre-registration',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PlacesRoute = PlacesRouteImport.update({
-  id: '/places',
-  path: '/places',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnsiteRoute = OnsiteRouteImport.update({
-  id: '/onsite',
-  path: '/onsite',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NametagsRoute = NametagsRouteImport.update({
-  id: '/nametags',
-  path: '/nametags',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LodgingsRoute = LodgingsRouteImport.update({
-  id: '/lodgings',
-  path: '/lodgings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IntakeSheetRoute = IntakeSheetRouteImport.update({
-  id: '/intake-sheet',
-  path: '/intake-sheet',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BathCouponsRoute = BathCouponsRouteImport.update({
-  id: '/bath-coupons',
-  path: '/bath-coupons',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApplyFormRoute = ApplyFormRouteImport.update({
-  id: '/apply-form',
-  path: '/apply-form',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApplyRoute = ApplyRouteImport.update({
@@ -109,19 +39,89 @@ const ApplyRoute = ApplyRouteImport.update({
   path: '/apply',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ApplyFormRoute = ApplyFormRouteImport.update({
+  id: '/apply-form',
+  path: '/apply-form',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApplyLookupRoute = ApplyLookupRouteImport.update({
-  id: '/apply_/lookup',
-  path: '/apply/lookup',
+const BathCouponsRoute = BathCouponsRouteImport.update({
+  id: '/bath-coupons',
+  path: '/bath-coupons',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IntakeSheetRoute = IntakeSheetRouteImport.update({
+  id: '/intake-sheet',
+  path: '/intake-sheet',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LodgingsRoute = LodgingsRouteImport.update({
+  id: '/lodgings',
+  path: '/lodgings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NametagsRoute = NametagsRouteImport.update({
+  id: '/nametags',
+  path: '/nametags',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnsiteRoute = OnsiteRouteImport.update({
+  id: '/onsite',
+  path: '/onsite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlacesRoute = PlacesRouteImport.update({
+  id: '/places',
+  path: '/places',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreRegistrationRoute = PreRegistrationRouteImport.update({
+  id: '/pre-registration',
+  path: '/pre-registration',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreRegistrationAdminRoute = PreRegistrationAdminRouteImport.update({
+  id: '/pre-registration-admin',
+  path: '/pre-registration-admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QrCheckinRoute = QrCheckinRouteImport.update({
+  id: '/qr-checkin',
+  path: '/qr-checkin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReceiptRoute = ReceiptRouteImport.update({
+  id: '/receipt',
+  path: '/receipt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegistryRoute = RegistryRouteImport.update({
+  id: '/registry',
+  path: '/registry',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RostersRoute = RostersRouteImport.update({
+  id: '/rosters',
+  path: '/rosters',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SegueMergeRoute = SegueMergeRouteImport.update({
+  id: '/segue-merge',
+  path: '/segue-merge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApplyTokenRoute = ApplyTokenRouteImport.update({
   id: '/apply_/$token',
   path: '/apply/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApplyLookupRoute = ApplyLookupRouteImport.update({
+  id: '/apply_/lookup',
+  path: '/apply/lookup',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -279,109 +279,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/segue-merge': {
-      id: '/segue-merge'
-      path: '/segue-merge'
-      fullPath: '/segue-merge'
-      preLoaderRoute: typeof SegueMergeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rosters': {
-      id: '/rosters'
-      path: '/rosters'
-      fullPath: '/rosters'
-      preLoaderRoute: typeof RostersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/registry': {
-      id: '/registry'
-      path: '/registry'
-      fullPath: '/registry'
-      preLoaderRoute: typeof RegistryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/receipt': {
-      id: '/receipt'
-      path: '/receipt'
-      fullPath: '/receipt'
-      preLoaderRoute: typeof ReceiptRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/qr-checkin': {
-      id: '/qr-checkin'
-      path: '/qr-checkin'
-      fullPath: '/qr-checkin'
-      preLoaderRoute: typeof QrCheckinRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pre-registration-admin': {
-      id: '/pre-registration-admin'
-      path: '/pre-registration-admin'
-      fullPath: '/pre-registration-admin'
-      preLoaderRoute: typeof PreRegistrationAdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pre-registration': {
-      id: '/pre-registration'
-      path: '/pre-registration'
-      fullPath: '/pre-registration'
-      preLoaderRoute: typeof PreRegistrationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/places': {
-      id: '/places'
-      path: '/places'
-      fullPath: '/places'
-      preLoaderRoute: typeof PlacesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onsite': {
-      id: '/onsite'
-      path: '/onsite'
-      fullPath: '/onsite'
-      preLoaderRoute: typeof OnsiteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/nametags': {
-      id: '/nametags'
-      path: '/nametags'
-      fullPath: '/nametags'
-      preLoaderRoute: typeof NametagsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lodgings': {
-      id: '/lodgings'
-      path: '/lodgings'
-      fullPath: '/lodgings'
-      preLoaderRoute: typeof LodgingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/intake-sheet': {
-      id: '/intake-sheet'
-      path: '/intake-sheet'
-      fullPath: '/intake-sheet'
-      preLoaderRoute: typeof IntakeSheetRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/bath-coupons': {
-      id: '/bath-coupons'
-      path: '/bath-coupons'
-      fullPath: '/bath-coupons'
-      preLoaderRoute: typeof BathCouponsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/apply-form': {
-      id: '/apply-form'
-      path: '/apply-form'
-      fullPath: '/apply-form'
-      preLoaderRoute: typeof ApplyFormRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/apply': {
@@ -391,18 +293,109 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApplyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/apply-form': {
+      id: '/apply-form'
+      path: '/apply-form'
+      fullPath: '/apply-form'
+      preLoaderRoute: typeof ApplyFormRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/apply_/lookup': {
-      id: '/apply_/lookup'
-      path: '/apply/lookup'
-      fullPath: '/apply/lookup'
-      preLoaderRoute: typeof ApplyLookupRouteImport
+    '/bath-coupons': {
+      id: '/bath-coupons'
+      path: '/bath-coupons'
+      fullPath: '/bath-coupons'
+      preLoaderRoute: typeof BathCouponsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/intake-sheet': {
+      id: '/intake-sheet'
+      path: '/intake-sheet'
+      fullPath: '/intake-sheet'
+      preLoaderRoute: typeof IntakeSheetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lodgings': {
+      id: '/lodgings'
+      path: '/lodgings'
+      fullPath: '/lodgings'
+      preLoaderRoute: typeof LodgingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nametags': {
+      id: '/nametags'
+      path: '/nametags'
+      fullPath: '/nametags'
+      preLoaderRoute: typeof NametagsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onsite': {
+      id: '/onsite'
+      path: '/onsite'
+      fullPath: '/onsite'
+      preLoaderRoute: typeof OnsiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/places': {
+      id: '/places'
+      path: '/places'
+      fullPath: '/places'
+      preLoaderRoute: typeof PlacesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pre-registration': {
+      id: '/pre-registration'
+      path: '/pre-registration'
+      fullPath: '/pre-registration'
+      preLoaderRoute: typeof PreRegistrationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pre-registration-admin': {
+      id: '/pre-registration-admin'
+      path: '/pre-registration-admin'
+      fullPath: '/pre-registration-admin'
+      preLoaderRoute: typeof PreRegistrationAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/qr-checkin': {
+      id: '/qr-checkin'
+      path: '/qr-checkin'
+      fullPath: '/qr-checkin'
+      preLoaderRoute: typeof QrCheckinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/receipt': {
+      id: '/receipt'
+      path: '/receipt'
+      fullPath: '/receipt'
+      preLoaderRoute: typeof ReceiptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/registry': {
+      id: '/registry'
+      path: '/registry'
+      fullPath: '/registry'
+      preLoaderRoute: typeof RegistryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rosters': {
+      id: '/rosters'
+      path: '/rosters'
+      fullPath: '/rosters'
+      preLoaderRoute: typeof RostersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/segue-merge': {
+      id: '/segue-merge'
+      path: '/segue-merge'
+      fullPath: '/segue-merge'
+      preLoaderRoute: typeof SegueMergeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/apply_/$token': {
@@ -410,6 +403,13 @@ declare module '@tanstack/react-router' {
       path: '/apply/$token'
       fullPath: '/apply/$token'
       preLoaderRoute: typeof ApplyTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/apply_/lookup': {
+      id: '/apply_/lookup'
+      path: '/apply/lookup'
+      fullPath: '/apply/lookup'
+      preLoaderRoute: typeof ApplyLookupRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
