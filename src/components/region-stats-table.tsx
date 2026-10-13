@@ -36,7 +36,7 @@ export function RegionStatsTableView({ stats, onRefresh }: { stats: RegionStats;
       const password = getSessionPassword();
       if (!password) throw new Error("다시 로그인해 주세요.");
       const list = await readList({ data: { password } });
-      if (list.seasonId !== stats.seasonId || list.rows.length !== stats.total) { onRefresh?.(); throw new Error("집계가 변경되었습니다. 새 집계를 확인한 뒤 다시 내보내 주세요."); }
+      if (list.seasonId !== stats.seasonId || list.rows.length !== stats.total || JSON.stringify(list.stats.rows) !== JSON.stringify(stats.rows)) { onRefresh?.(); throw new Error("집계가 변경되었습니다. 새 집계를 확인한 뒤 다시 내보내 주세요."); }
       await exportRegionChurchList(list, format);
       if (format === "csv") toast.success("지역별 교회 목록을 복사했습니다.");
     } catch (error) { toast.error(error instanceof Error ? error.message : "목록 내보내기에 실패했습니다."); }

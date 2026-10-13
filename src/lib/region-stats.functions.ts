@@ -63,5 +63,5 @@ export const getRegionChurchList = createServerFn({ method: "POST" })
         if ((rows?.length ?? 0) < 500) break;
       }
     }
-    return buildRegionChurchList(season.id, season.name, churches, registrations, people);
+    return { ...buildRegionChurchList(season.id, season.name, churches, registrations, people), stats: aggregateRegions(season.id, season.name, churches, registrations) };
   });
