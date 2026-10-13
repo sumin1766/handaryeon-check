@@ -1,3 +1,4 @@
+/// <reference types="bun" />
 import { describe, expect, test } from "bun:test";
 import { aggregateRegions, regionBins, regionLevel, type RegionRegistration } from "./region-stats";
 const reg = (id: string, church_id: string | null = null, region_sido: string | null = "서울특별시", region_sigungu: string | null = "관악구"): RegionRegistration => ({ id, church_id, region_sido, region_sigungu, season_id: "active", created_at: id });
