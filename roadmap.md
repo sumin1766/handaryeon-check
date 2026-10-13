@@ -1,4 +1,7 @@
 # Regional church visualization
+- [ ] Include shared dashboard map below summary table in PDF/PNG exports.
+- [ ] Add confirmed church-list PDF/XLSX/clipboard CSV with shared grouping and existing attendee counts.
+- [ ] Fix filled primary star after exact manager deduplication; run rule and export checks.
 - [x] Add duplicate summary using shared confirmed church total; preserve existing cards.
 - [x] Deduplicate exact name/phone intake display only, retaining primary and source counts.
 - [x] Run 20 rule tests, verify isolated desktop/mobile displays, and confirm live database 5−4=1; report changed locations.
