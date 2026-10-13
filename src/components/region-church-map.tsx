@@ -23,7 +23,7 @@ export function RegionChurchMapView({ stats }: { stats: RegionStats }) {
         <span className="region-total-badge">전국 합계 <strong>{stats.total.toLocaleString()}교회</strong></span>
       </div>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_140px] items-center">
-        <svg className="region-map w-full" viewBox="0 0 1100 620" role="img" aria-label={`전국 시도별 교회 수 지도, 전국 합계 ${stats.total}교회`}>
+        <svg className="region-map region-desktop-map w-full" viewBox="0 0 1100 620" role="img" aria-label={`전국 시도별 교회 수 지도, 전국 합계 ${stats.total}교회`}>
           <g className="region-map-shapes">
             {KOREA_MAP_PATHS.map((p) => <path key={p.name} d={p.d} className={`region-fill-${regionLevel(stats.provinces[p.name], bins)} region-boundary`}><title>{p.name}: {stats.provinces[p.name]}교회</title></path>)}
           </g>
@@ -42,11 +42,14 @@ export function RegionChurchMapView({ stats }: { stats: RegionStats }) {
             </g>;
           }))}
         </svg>
+        <svg className="region-map region-mobile-map w-full" viewBox="240 0 650 620" role="img" aria-label={`전국 시도별 교회 수 지도, 전국 합계 ${stats.total}교회`}>
+          {KOREA_MAP_PATHS.map((p) => <path key={p.name} d={p.d} className={`region-fill-${regionLevel(stats.provinces[p.name], bins)} region-boundary`}><title>{p.name}: {stats.provinces[p.name]}교회</title></path>)}
+        </svg>
         <aside aria-label="교회 수 범례" className="space-y-3">
           <h3 className="font-semibold text-sm">교회 수</h3>
           <div className="flex flex-wrap gap-x-5 gap-y-3 lg:flex-col">
             <div className="flex items-center gap-2 text-sm"><span className="region-swatch region-fill-0" />0교회 = 흰색</div>
-            {bins.map((b) => <div key={b.min} className="flex items-center gap-2 text-sm"><span className={`region-swatch region-fill-${b.level}`} />{b.min === b.max ? b.min : `${b.min}–${b.max}`}교회</div>)}
+            {bins.map((b) => <div key={b.min} className="flex items-center gap-2 text-sm"><span className={`region-swatch region-fill-${b.level}`} />{b.max === Infinity ? `${b.min}교회 이상` : `${b.min === b.max ? b.min : `${b.min}–${b.max}`}교회`}</div>)}
           </div>
         </aside>
       </div>

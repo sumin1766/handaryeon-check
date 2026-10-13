@@ -54,6 +54,7 @@ export function regionBins(provinces: Record<string, number>): ColorBin[] {
   const values = Object.values(provinces).filter((n) => n > 0);
   const max = Math.max(0, ...values);
   if (!max) return [];
+  if (max < 3) return [{ min: 1, max: 1, level: 1 }, { min: 2, max: 2, level: 3 }, { min: 3, max: Infinity, level: 5 }];
   const min = Math.min(...values);
   // At least three visual levels; only occupied integer ranges are shown for sparse data.
   const steps = Math.min(5, Math.max(3, new Set(values).size));
