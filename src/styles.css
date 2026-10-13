@@ -4,6 +4,47 @@
 
 @custom-variant dark (&:is(.dark *));
 
+:root {
+  --region-zero: #ffffff;
+  --region-1: #fde2eb;
+  --region-2: #f7a4bf;
+  --region-3: #e84a72;
+  --region-4: #be234b;
+  --region-5: #780b30;
+  --region-export-paper: #ffffff;
+  --region-export-ink: #221c20;
+  --region-export-muted: #63565e;
+  --region-export-rule: #ddd4d9;
+}
+.region-fill-0 { fill: var(--region-zero); background: var(--region-zero); }
+.region-fill-1 { fill: var(--region-1); background: var(--region-1); }
+.region-fill-2 { fill: var(--region-2); background: var(--region-2); }
+.region-fill-3 { fill: var(--region-3); background: var(--region-3); }
+.region-fill-4 { fill: var(--region-4); background: var(--region-4); }
+.region-fill-5 { fill: var(--region-5); background: var(--region-5); }
+.region-boundary { stroke: var(--region-export-muted); stroke-width: .7; stroke-linejoin: round; }
+.region-leader { fill: none; stroke: var(--muted-foreground); stroke-width: 1; opacity: .6; }
+.region-anchor { fill: var(--foreground); }
+.region-label-box { fill: var(--card); stroke: var(--border); }
+.region-label-name { fill: var(--foreground); font-size: 15px; font-weight: 600; }
+.region-label-count { fill: var(--muted-foreground); font-size: 14px; }
+.region-swatch { display: inline-block; width: 20px; height: 20px; border: 1px solid var(--region-export-rule); border-radius: 3px; flex-shrink: 0; }
+.region-total-badge { color: var(--region-5); background: var(--region-1); padding: 10px 14px; border-radius: 6px; font-size: 16px; }
+.region-mobile-labels { display: none; }
+.region-mobile-label { display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--border); padding: 10px 0; font-size: 13px; }
+.region-stats-table :is(th, td) { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.region-stats-table thead { background: var(--muted); }
+.region-row-subtotal { background: var(--region-1); color: var(--region-export-ink); font-weight: 600; }
+.region-row-total { background: var(--region-5); color: var(--region-zero); font-weight: 700; }
+.region-row-unknown { font-weight: 600; }
+@media (max-width: 639px) {
+  .region-leader-label { display: none; }
+  .region-mobile-labels { display: grid; }
+  .region-map { max-height: 400px; }
+  .region-map-shapes { transform: translateX(-78px) scale(1.18); transform-origin: 50% 50%; }
+  .region-stats-table :is(th, td) { padding-left: 8px; padding-right: 8px; white-space: normal; }
+}
+
 @theme inline {
   --font-sans: "Pretendard", "Pretendard Variable", -apple-system, BlinkMacSystemFont,
     system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo",

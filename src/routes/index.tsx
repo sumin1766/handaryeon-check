@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type * as React from "react";
 import { AppShell } from "@/components/app-shell";
+import { RegionChurchMap } from "@/components/region-church-map";
 import { useActiveSeason } from "@/lib/use-active-season";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +15,14 @@ import { Button } from "@/components/ui/button";
 import { useDashboardOrder, DEFAULT_DASHBOARD_ORDER } from "@/lib/dashboard-order";
 
 export const Route = createFileRoute("/")({
-  head: () => ({ meta: [{ title: "대시보드 — 한다련 캠프" }] }),
+  head: () => ({ meta: [
+    { title: "대시보드 — 한다련 캠프" },
+    { name: "description", content: "한다련 캠프 사전접수·실접수 현황과 활성 시즌의 지역별 참석 교회 지도." },
+    { property: "og:title", content: "대시보드 — 한다련 캠프" },
+    { property: "og:description", content: "캠프 접수 현황과 전국 지역별 교회 집계를 확인합니다." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: DashboardPage,
 });
 
@@ -276,6 +284,7 @@ function DashboardPage() {
             </Button>
           </header>
           {activeOrder.map((k) => sections[k])}
+          <RegionChurchMap />
         </div>
       </div>
     </AppShell>
