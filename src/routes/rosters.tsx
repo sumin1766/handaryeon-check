@@ -15,7 +15,14 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/rosters")({
-  head: () => ({ meta: [{ title: "명단 출력 — 한다련 캠프" }] }),
+  head: () => ({ meta: [
+    { title: "명단 출력 — 한다련 캠프" },
+    { name: "description", content: "한다련 캠프 참석자 명단을 출력합니다." },
+    { property: "og:title", content: "명단 출력 — 한다련 캠프" },
+    { property: "og:description", content: "한다련 캠프 참석자 명단을 출력합니다." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: RostersPage,
 });
 

@@ -12,7 +12,14 @@ import { ReceiptDocument, type ReceiptMode } from "@/components/receipt-document
 import { useReceiptLayout } from "@/lib/receipt-layout";
 
 export const Route = createFileRoute("/receipt")({
-  head: () => ({ meta: [{ title: "영수증 — 한다련 캠프" }] }),
+  head: () => ({ meta: [
+    { title: "영수증 — 한다련 캠프" },
+    { name: "description", content: "한다련 캠프 교회별 회비 영수증을 확인하고 출력합니다." },
+    { property: "og:title", content: "영수증 — 한다련 캠프" },
+    { property: "og:description", content: "한다련 캠프 교회별 회비 영수증을 확인하고 출력합니다." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: ReceiptPage,
 });
 

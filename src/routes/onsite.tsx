@@ -23,7 +23,14 @@ const ADULT_UNIT = 10000;
 const DEFAULT_UNIT = 20000;
 
 export const Route = createFileRoute("/onsite")({
-  head: () => ({ meta: [{ title: "현장접수 — 한다련 캠프" }] }),
+  head: () => ({ meta: [
+    { title: "현장접수 — 한다련 캠프" },
+    { name: "description", content: "현장 참석자 접수와 등록 정보를 관리합니다." },
+    { property: "og:title", content: "현장접수 — 한다련 캠프" },
+    { property: "og:description", content: "현장 참석자 접수와 등록 정보를 관리합니다." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: OnsitePage,
 });
 

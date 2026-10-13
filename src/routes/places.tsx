@@ -19,7 +19,14 @@ import { cn } from "@/lib/utils";
 import { downloadRowsAsXlsx } from "@/lib/export-xlsx";
 
 export const Route = createFileRoute("/places")({
-  head: () => ({ meta: [{ title: "장소배치 — 한다련 캠프" }] }),
+  head: () => ({ meta: [
+    { title: "장소배치 — 한다련 캠프" },
+    { name: "description", content: "한다련 캠프 장소와 용도를 관리합니다." },
+    { property: "og:title", content: "장소배치 — 한다련 캠프" },
+    { property: "og:description", content: "한다련 캠프 장소와 용도를 관리합니다." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: PlacesPage,
 });
 

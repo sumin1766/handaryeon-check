@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
+import { RegionStatsTable } from "@/components/region-stats-table";
 import { useActiveSeason, useSeasons } from "@/lib/use-active-season";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,7 +59,14 @@ import {
 } from "@/lib/pre-registration-config";
 
 export const Route = createFileRoute("/settings")({
-  head: () => ({ meta: [{ title: "설정 — 한다련 캠프" }] }),
+  head: () => ({ meta: [
+    { title: "설정 — 한다련 캠프" },
+    { name: "description", content: "한다련 캠프 설정과 활성 시즌의 시도·시군구별 교회 집계 및 PDF·PNG 내보내기." },
+    { property: "og:title", content: "설정 — 한다련 캠프" },
+    { property: "og:description", content: "시즌 설정과 지역별 교회 집계표를 확인합니다." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: SettingsPage,
 });
 
@@ -211,6 +219,7 @@ function SettingsContent({ isAdmin }: { isAdmin: boolean }) {
             </div>
           )}
         </header>
+        <RegionStatsTable />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {order.map((id, i) =>
             CARDS[id] ? (

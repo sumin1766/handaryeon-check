@@ -35,7 +35,14 @@ import { DismissedPairsPanel } from "@/components/dismissed-pairs-panel";
 import { useDuplicateDismissals } from "@/lib/use-duplicate-dismissals";
 
 export const Route = createFileRoute("/pre-registration")({
-  head: () => ({ meta: [{ title: "사전접수 — 한다련 캠프" }] }),
+  head: () => ({ meta: [
+    { title: "사전접수 — 한다련 캠프" },
+    { name: "description", content: "한다련 캠프 사전접수 명단을 검토하고 등록합니다." },
+    { property: "og:title", content: "사전접수 — 한다련 캠프" },
+    { property: "og:description", content: "한다련 캠프 사전접수 명단을 검토하고 등록합니다." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: PreRegistrationPage,
 });
 
