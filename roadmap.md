@@ -1,6 +1,6 @@
 # Regional church visualization
-- [ ] Add list-export totals from existing row counts and Excel-friendly TSV clipboard; preserve comma-separated CSV serialization.
-- [ ] Test summary values, clipboard cell boundaries and PDF/XLSX outputs; report changed locations.
+- [x] Add list-export totals from existing row counts and Excel-friendly TSV clipboard; preserve comma-separated CSV serialization.
+- [x] Run 32 tests and browser PDF/XLSX downloads + clipboard parsing (4 churches, 8 people); document changed locations and real Excel paste limitation.
 - [x] Add OAuth-protected MCP reference tools, consent/login and browser navigation tools without changing shared-password permissions.
 - [x] Extract MCP manifest; 30 tests, unauthorized 401, metadata 200 and consent/login screens verified.
 - [ ] Verify real OAuth approve/deny and authenticated tool calls — blocked: no account-auth users exist; camp shared passwords are not OAuth accounts.

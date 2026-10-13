@@ -18,3 +18,4 @@
 - Dashboard and exported maps share path, label geometry and bin definitions; this prevents geographic and legend drift while browser Canvas supplies portable PDF/PNG output.
 - MCP uses OAuth with client-claim verification and static reference-only tools; shared-password authorization does not establish OAuth row access, so private camp data remains outside MCP until an explicitly approved identity mapping exists.
 - Browser tools mount inside the unlocked app shell and resolve targets from visible permitted navigation; this preserves role and season gates without introducing data mutations.
+- Church-list export summaries derive only from unchanged grouped rows, with separate CSV and TSV serializers; this keeps presentation totals consistent and clipboard spreadsheet columns intact without altering server calculations.
