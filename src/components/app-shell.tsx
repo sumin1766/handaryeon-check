@@ -30,6 +30,8 @@ import { setReadOnlyMode } from "@/lib/read-only";
 import { useNavMenuConfig, applyNavConfig } from "@/lib/nav-menu-config";
 import { useGlobalRealtime } from "@/lib/use-realtime";
 import logoAsset from "@/assets/handaryeon-symbol.png.asset.json";
+import { useWebMCP } from "use-webmcp-tool";
+import { runWebMCPTool } from "@/lib/webmcp-telemetry";
 
 type RoleSet = readonly AuthRole[];
 const ALL: RoleSet = ["admin", "staff", "user"];
@@ -76,7 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 /** 로그인/비밀번호 없이 접근하는 공개 경로 (사전접수 폼 등) */
-const PUBLIC_PATHS = ["/apply"];
+const PUBLIC_PATHS = ["/apply", "/agent-login", "/.lovable/oauth/consent"];
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -120,6 +122,27 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   // read-only. Locking for staff/general users is unchanged.
   const isEnded = seasonEnded && !isAdmin;
   const readOnly = isAdmin && (seasonEnded || isViewingPast);
+  useWebMCP({
+    name: "read_camp_navigation",
+    description: "현재 사용자가 접근할 수 있는 캠프 메뉴와 표시 중인 시즌을 확인합니다.",
+    enabled: role !== null,
+    annotations: { readOnlyHint: true, untrustedContentHint: true },
+    execute: () => runWebMCPTool("read_camp_navigation", () => `${season?.name ?? "시즌 조회 중"} · ${visibleTabs.map((tab) => tab.label).join(" · ")}`),
+  });
+  useWebMCP({
+    name: "open_camp_menu",
+    description: "현재 화면에 표시되는 메뉴로 이동합니다. 데이터는 수정하지 않습니다.",
+    enabled: role !== null,
+    inputSchema: { type: "object", properties: { menu: { type: "string", description: "표시된 메뉴의 정확한 이름" } }, required: ["menu"] },
+    execute: ({ menu }: { menu: string }) => runWebMCPTool("open_camp_menu", async () => {
+      if (typeof menu !== "string") throw new Error("메뉴 이름이 필요합니다.");
+      const matches = visibleTabs.filter((tab) => tab.label === menu);
+      const tab = matches[0];
+      if (matches.length !== 1 || !tab || (isEnded && !("allowEnded" in tab && tab.allowEnded))) throw new Error("접근 가능한 메뉴가 아닙니다.");
+      await router.navigate({ to: tab.to });
+      return `${menu} 화면으로 이동했습니다.`;
+    }),
+  });
 
   useEffect(() => {
     setReadOnlyMode(readOnly);
