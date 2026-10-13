@@ -20,7 +20,7 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
     return data;
   },
   head: () => ({ meta: [{ title: "에이전트 연결 승인 · 한다련 캠프" }, { name: "description", content: "에이전트 연결 요청을 확인하고 승인하거나 거절합니다." }, { property: "og:title", content: "에이전트 연결 승인 · 한다련 캠프" }, { property: "og:description", content: "캠프 앱 에이전트 연결 승인 및 거절" }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
-  errorComponent: ({ error }) => <main className="mx-auto max-w-lg px-6 py-16"><h1 className="text-xl font-semibold">연결 요청을 확인할 수 없습니다</h1><p role="alert" className="mt-4 text-sm text-destructive">{error.message}</p></main>,
+  errorComponent: ({ error }) => <main className="mx-auto max-w-lg px-6 py-16"><h1 className="text-xl font-semibold">연결 요청을 확인할 수 없습니다</h1><p role="alert" className="mt-4 text-sm text-destructive">{error instanceof Error ? error.message : "연결 요청을 다시 시작해 주세요."}</p></main>,
   component: Consent,
 });
 function Consent() {
