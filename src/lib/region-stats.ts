@@ -1,7 +1,7 @@
 import { KOREA_REGIONS, SIDO_LIST } from "@/lib/korea-regions";
 
 export type RegionChurch = { id: string; season_id: string; primary_pre_registration_id: string | null };
-export type RegionRegistration = { id: string; season_id: string; church_id: string | null; region_sido: string | null; region_sigungu: string | null; created_at: string };
+export type RegionRegistration = { id: string; season_id: string; church_id: string | null; region_sido: string | null; region_sigungu: string | null; created_at: string; status: string };
 export type RegionRow = { sido: string; sigungu: string; count: number; kind: "district" | "subtotal" | "unknown" | "total" };
 export type RegionStats = { seasonId: string; seasonName: string; total: number; unknown: number; provinces: Record<string, number>; rows: RegionRow[] };
 
@@ -11,13 +11,12 @@ function validRegion(r: RegionRegistration) {
   return KOREA_REGIONS[sido]?.includes(sigungu) ? { sido, sigungu } : null;
 }
 
-/** Display-only aggregation: linked submissions are one church; never merge by name. */
+/** Display-only aggregation: only confirmed (applied) submissions count; linked submissions are one church; never merge by name. */
 export function aggregateRegions(seasonId: string, seasonName: string, churches: RegionChurch[], registrations: RegionRegistration[]): RegionStats {
   const groups = new Map<string, RegionRegistration[]>();
   const currentChurches = churches.filter((c) => c.season_id === seasonId);
   const currentIds = new Set(currentChurches.map((c) => c.id));
-  for (const c of currentChurches) groups.set(`church:${c.id}`, []);
-  for (const r of registrations.filter((r) => r.season_id === seasonId)) {
+  for (const r of registrations.filter((r) => r.season_id === seasonId && r.status === "applied")) {
     const key = r.church_id && currentIds.has(r.church_id) ? `church:${r.church_id}` : `registration:${r.id}`;
     groups.set(key, [...(groups.get(key) ?? []), r]);
   }
@@ -28,7 +27,8 @@ export function aggregateRegions(seasonId: string, seasonName: string, churches:
   for (const [key, regs] of groups) {
     const ordered = [...regs].sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id));
     const primaryId = primary.get(key);
-    const selected = primaryId ? ordered.find((r) => r.id === primaryId) : ordered.find((r) => validRegion(r));
+    // A designated primary that is not confirmed falls back to the earliest confirmed valid address.
+    const selected = (primaryId ? ordered.find((r) => r.id === primaryId) : undefined) ?? ordered.find((r) => validRegion(r));
     const address = selected ? validRegion(selected) : null;
     if (!address) { unknown++; continue; }
     provinces[address.sido]++;
@@ -38,11 +38,11 @@ export function aggregateRegions(seasonId: string, seasonName: string, churches:
   const rows: RegionRow[] = [];
   for (const sido of SIDO_LIST) {
     if (!provinces[sido]) continue;
+    rows.push({ sido, sigungu: "소계", count: provinces[sido], kind: "subtotal" });
     for (const sigungu of KOREA_REGIONS[sido] ?? []) {
       const count = districts.get(`${sido}|${sigungu}`) ?? 0;
       if (count) rows.push({ sido, sigungu, count, kind: "district" });
     }
-    rows.push({ sido, sigungu: "소계", count: provinces[sido], kind: "subtotal" });
   }
   rows.push({ sido: "미입력/미분류", sigungu: "—", count: unknown, kind: "unknown" });
   rows.push({ sido: "전국 합계", sigungu: "", count: groups.size, kind: "total" });

@@ -15,6 +15,14 @@ export function RegionStatsTable() {
   return <RegionStatsTableView stats={stats} />;
 }
 
+export function RegionStatsSummary() {
+  const query = useRegionStats();
+  if (query.isViewingPast) return <>지난 시즌 조회 중에는 표시하지 않습니다.</>;
+  if (query.isError) return <>집계를 불러오지 못했습니다.</>;
+  if (!query.data) return <>{query.isLoading ? "불러오는 중…" : "활성 시즌이 없습니다."}</>;
+  return <>{query.data.seasonName} · 전국 합계 {query.data.total.toLocaleString()}교회 (확정 기준)</>;
+}
+
 export function RegionStatsTableView({ stats }: { stats: RegionStats }) {
   const [exporting, setExporting] = useState<"pdf" | "png" | null>(null);
   const save = async (format: "pdf" | "png") => {
@@ -23,9 +31,9 @@ export function RegionStatsTableView({ stats }: { stats: RegionStats }) {
     catch (error) { toast.error(error instanceof Error ? error.message : "내보내기에 실패했습니다."); }
     finally { setExporting(null); }
   };
-  return <section className="region-visual space-y-4 border-t border-border pt-6" aria-labelledby="region-table-title">
+  return <section className="region-visual space-y-4" aria-labelledby="region-table-title">
     <header className="flex flex-wrap items-center justify-between gap-3">
-      <div><h2 id="region-table-title" className="text-lg font-semibold">지역별 교회 집계</h2><p className="text-sm text-muted-foreground mt-1">{stats.seasonName} · 전국 합계 {stats.total}교회</p></div>
+      <div><h2 id="region-table-title" className="text-lg font-semibold">지역별 교회 집계</h2><p className="text-sm text-muted-foreground mt-1">{stats.seasonName} · 전국 합계 {stats.total}교회 · 확정된 사전접수 기준</p></div>
       <div className="flex gap-2">
         <Button variant="outline" disabled={!!exporting} onClick={() => save("pdf")}>{exporting === "pdf" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}PDF</Button>
         <Button variant="outline" disabled={!!exporting} onClick={() => save("png")}>{exporting === "png" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageDown className="h-4 w-4" />}PNG</Button>
