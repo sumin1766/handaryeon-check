@@ -2,9 +2,7 @@ import { KOREA_MAP_PATHS } from "@/lib/korea-map-paths";
 import { regionBins, regionLevel, type RegionStats } from "@/lib/region-stats";
 import { useRegionStats } from "@/lib/use-region-stats";
 import { RegionLoadState } from "@/components/region-load-state";
-
-const left = ["서울특별시", "인천광역시", "경기도", "충청남도", "세종특별자치시", "대전광역시", "전북특별자치도", "광주광역시", "전라남도", "제주특별자치도"];
-const right = ["강원특별자치도", "충청북도", "경상북도", "대구광역시", "울산광역시", "경상남도", "부산광역시"];
+import { REGION_MAP_LABELS } from "@/lib/region-map-layout";
 
 export function RegionChurchMap() {
   const query = useRegionStats();
@@ -27,20 +25,15 @@ export function RegionChurchMapView({ stats }: { stats: RegionStats }) {
           <g className="region-map-shapes">
             {KOREA_MAP_PATHS.map((p) => <path key={p.name} d={p.d} className={`region-fill-${regionLevel(stats.provinces[p.name], bins)} region-boundary`}><title>{p.name}: {stats.provinces[p.name]}교회</title></path>)}
           </g>
-          {[left, right].map((names, side) => names.map((name, index) => {
-            const shape = KOREA_MAP_PATHS.find((p) => p.name === name);
-            if (!shape) return null;
-            const y = 22 + index * (side ? 78 : 57), x = side ? 895 : 5;
-            const edge = side ? x : x + 205;
-            const elbow = side ? 720 + index * 4 : 322 - index * 4;
+          {REGION_MAP_LABELS.map(({ name, center, y, x, edge, elbow }) => {
             return <g className="region-leader-label" key={name}>
-              <polyline points={`${shape.center[0]},${shape.center[1]} ${elbow},${shape.center[1]} ${edge},${y + 23}`} className="region-leader" />
-              <circle cx={shape.center[0]} cy={shape.center[1]} r="2.5" className="region-anchor" />
+              <polyline points={`${center[0]},${center[1]} ${elbow},${center[1]} ${edge},${y + 23}`} className="region-leader" />
+              <circle cx={center[0]} cy={center[1]} r="2.5" className="region-anchor" />
               <rect x={x} y={y} width="200" height="46" rx="6" className="region-label-box" />
               <text x={x + 11} y={y + 19} className="region-label-name">{name}</text>
               <text x={x + 11} y={y + 37} className="region-label-count">{stats.provinces[name]}교회</text>
             </g>;
-          }))}
+          })}
         </svg>
         <svg className="region-map region-mobile-map w-full" viewBox="240 0 650 620" role="img" aria-label={`전국 시도별 교회 수 지도, 전국 합계 ${stats.total}교회`}>
           {KOREA_MAP_PATHS.map((p) => <path key={p.name} d={p.d} className={`region-fill-${regionLevel(stats.provinces[p.name], bins)} region-boundary`}><title>{p.name}: {stats.provinces[p.name]}교회</title></path>)}
