@@ -45,7 +45,14 @@ function useIsTouchDevice() {
 }
 
 export const Route = createFileRoute("/intake-sheet")({
-  head: () => ({ meta: [{ title: "접수시트 — 한다련 캠프" }] }),
+  head: () => ({ meta: [
+    { title: "접수시트 — 한다련 캠프" },
+    { name: "description", content: "교회별 접수 상태와 담당자 및 현장 접수를 확인합니다." },
+    { property: "og:title", content: "접수시트 — 한다련 캠프" },
+    { property: "og:description", content: "교회별 접수 상태와 담당자 및 현장 접수를 확인합니다." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: IntakeSheetPage,
 });
 

@@ -16,7 +16,14 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/segue-merge")({
-  head: () => ({ meta: [{ title: "세계로교회 취합 — 한다련 캠프" }] }),
+  head: () => ({ meta: [
+    { title: "세계로교회 취합 — 한다련 캠프" },
+    { name: "description", content: "세계로교회 접수 그룹과 병합 내역을 확인합니다." },
+    { property: "og:title", content: "세계로교회 취합 — 한다련 캠프" },
+    { property: "og:description", content: "세계로교회 접수 그룹과 병합 내역을 확인합니다." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: SegueMergePage,
 });
 

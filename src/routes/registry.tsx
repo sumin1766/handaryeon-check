@@ -72,7 +72,14 @@ function useSyncedChurchDelete() {
 }
 
 export const Route = createFileRoute("/registry")({
-  head: () => ({ meta: [{ title: "접수 명단 — 한다련 캠프" }] }),
+  head: () => ({ meta: [
+    { title: "접수 명단 — 한다련 캠프" },
+    { name: "description", content: "접수된 교회와 참석자 명단을 조회합니다." },
+    { property: "og:title", content: "접수 명단 — 한다련 캠프" },
+    { property: "og:description", content: "접수된 교회와 참석자 명단을 조회합니다." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   validateSearch: (s: Record<string, unknown>) => ({
     openChurch: typeof s.openChurch === "string" ? s.openChurch : undefined,
     from: s.from === "onsite" || s.from === "intake-sheet" ? s.from : undefined,

@@ -24,7 +24,14 @@ import { sortLodgings } from "@/lib/lodging-sort";
 const TARGET_PCT = 80;
 
 export const Route = createFileRoute("/lodgings")({
-  head: () => ({ meta: [{ title: "숙소배치 — 한다련 캠프" }] }),
+  head: () => ({ meta: [
+    { title: "숙소배치 — 한다련 캠프" },
+    { name: "description", content: "캠프 숙소와 참석자 숙박 배정을 확인합니다." },
+    { property: "og:title", content: "숙소배치 — 한다련 캠프" },
+    { property: "og:description", content: "캠프 숙소와 참석자 숙박 배정을 확인합니다." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: LodgingsPage,
 });
 
