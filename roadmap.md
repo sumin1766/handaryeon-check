@@ -1,4 +1,8 @@
 # Regional church visualization
+- [x] Include shared dashboard map below summary table in PDF/PNG exports.
+- [x] Add confirmed church-list PDF/XLSX/clipboard CSV with shared grouping and existing attendee counts.
+- [x] Fix filled primary star after exact manager deduplication; 28 rule tests and isolated browser export checks passed.
+- [ ] Verify signed-in settings church-list read→export and intake primary star — blocked: app-specific shared-password session unavailable; ordinary auth session does not unlock this gate.
 - [x] Add duplicate summary using shared confirmed church total; preserve existing cards.
 - [x] Deduplicate exact name/phone intake display only, retaining primary and source counts.
 - [x] Run 20 rule tests, verify isolated desktop/mobile displays, and confirm live database 5−4=1; report changed locations.

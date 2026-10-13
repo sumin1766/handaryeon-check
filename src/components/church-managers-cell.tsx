@@ -12,6 +12,7 @@ import { setPrimaryChurchManager } from "@/lib/church-managers.functions";
 import { notifyDataChanged } from "@/lib/use-realtime";
 import type { ChurchManagerInfo } from "@/lib/use-church-managers";
 import { uniqueManagerDisplay } from "@/lib/pre-registration-display";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   churchId: string;
@@ -76,15 +77,17 @@ export function ChurchManagersCell({
         return (
           <div key={m.preRegistrationId} className="flex items-center gap-1">
             {isAdmin && (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon"
                 title={isPrimary ? "대표 지정 해제" : "대표 담당자로 지정"}
                 disabled={setPrimary.isPending}
                 onClick={() => setPrimary.mutate(isPrimary ? null : m.preRegistrationId)}
-                className="shrink-0 text-muted-foreground hover:text-amber-500"
+                className="h-4 w-4 shrink-0 text-muted-foreground hover:text-primary"
               >
-                <Star className={`h-3.5 w-3.5 ${isPrimary ? "fill-amber-400 text-amber-500" : ""}`} />
-              </button>
+                <Star fill={isPrimary ? "currentColor" : "none"} className={`h-3.5 w-3.5 ${isPrimary ? "manager-primary-star" : ""}`} />
+              </Button>
             )}
             <span className={isPrimary ? "font-semibold" : "text-muted-foreground"}>{m.name}</span>
             {m.phone && <span className="text-muted-foreground">· {m.phone}</span>}

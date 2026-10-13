@@ -15,7 +15,9 @@
   --region-export-ink: #221c20;
   --region-export-muted: #63565e;
   --region-export-rule: #ddd4d9;
+  --manager-primary-star: #f59e0b;
 }
+.manager-primary-star { color: var(--manager-primary-star); }
 .region-fill-0 { fill: var(--region-zero); background: var(--region-zero); }
 .region-fill-1 { fill: var(--region-1); background: var(--region-1); }
 .region-fill-2 { fill: var(--region-2); background: var(--region-2); }

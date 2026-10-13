@@ -14,3 +14,5 @@
 - Both regional views consume the same query and pure aggregation module; this keeps map, subtotals, and exports consistent without introducing persisted aggregates.
 - The pre-registration duplicate summary consumes the shared regional query, and intake-only manager deduplication is opt-in at rendering time; this preserves other tabs, source counts and representative actions.
 - Embed simplified licensed province SVG paths locally and generate paginated PDF/PNG exports in browser event handlers; this avoids paid map services and server-only rendering dependencies.
+- Regional list exports reuse confirmedRegionUnits with an on-demand SELECT-only password-authorized read, and intake/registry people-row counts; this keeps contact data out of the map query and totals consistent without persisted calculations.
+- Dashboard and exported maps share path, label geometry and bin definitions; this prevents geographic and legend drift while browser Canvas supplies portable PDF/PNG output.
