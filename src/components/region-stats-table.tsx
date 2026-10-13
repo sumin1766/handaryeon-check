@@ -5,13 +5,18 @@ import { Button } from "@/components/ui/button";
 import { useRegionStats } from "@/lib/use-region-stats";
 import { exportRegionStats } from "@/lib/region-export";
 import { RegionLoadState } from "@/components/region-load-state";
+import type { RegionStats } from "@/lib/region-stats";
 
 export function RegionStatsTable() {
   const query = useRegionStats();
-  const [exporting, setExporting] = useState<"pdf" | "png" | null>(null);
   if (query.isViewingPast) return null;
   const stats = query.data;
   if (!stats) return <RegionLoadState query={query} />;
+  return <RegionStatsTableView stats={stats} />;
+}
+
+export function RegionStatsTableView({ stats }: { stats: RegionStats }) {
+  const [exporting, setExporting] = useState<"pdf" | "png" | null>(null);
   const save = async (format: "pdf" | "png") => {
     setExporting(format);
     try { await exportRegionStats(stats, format); }

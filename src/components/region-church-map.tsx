@@ -1,5 +1,5 @@
 import { KOREA_MAP_PATHS } from "@/lib/korea-map-paths";
-import { regionBins, regionLevel } from "@/lib/region-stats";
+import { regionBins, regionLevel, type RegionStats } from "@/lib/region-stats";
 import { useRegionStats } from "@/lib/use-region-stats";
 import { RegionLoadState } from "@/components/region-load-state";
 
@@ -11,6 +11,10 @@ export function RegionChurchMap() {
   if (query.isViewingPast) return null;
   const stats = query.data;
   if (!stats) return <RegionLoadState query={query} />;
+  return <RegionChurchMapView stats={stats} />;
+}
+
+export function RegionChurchMapView({ stats }: { stats: RegionStats }) {
   const bins = regionBins(stats.provinces);
   return (
     <section aria-labelledby="region-map-title" className="region-visual space-y-4 border-t border-border pt-8">
