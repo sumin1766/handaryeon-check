@@ -107,6 +107,7 @@ export async function exportRegionStats(stats: RegionStats, format: "pdf" | "png
   const tablePages = Math.max(1, Math.ceil(stats.rows.length / chunkSize)), pages = tablePages + 1;
   for (let i = 0; i < pages; i++) {
     const canvas = i === tablePages ? await renderMap(stats, timestamp) : await renderPage(stats, stats.rows.slice(i * chunkSize, (i + 1) * chunkSize), timestamp, `${i + 1} / ${pages}`);
+    if (i === tablePages) { const ctx = canvas.getContext("2d"); if (ctx) { ctx.fillStyle = palette().muted; ctx.font = '32px "Pretendard", sans-serif'; ctx.textAlign = "right"; ctx.fillText(`${i + 1} / ${pages}`, canvas.width - 120, canvas.height - 14); } }
     const image = await pdf.embedPng(canvas.toDataURL("image/png"));
     const page = pdf.addPage([595.28, 841.89]);
     const width = 555.28, height = width * canvas.height / canvas.width;
@@ -162,7 +163,7 @@ export async function exportRegionChurchList(list: RegionChurchList, format: "pd
     for (const row of chunks[p]) { x = 50; ctx.fillStyle = colors.ink; row.cells.forEach((lines, i) => { lines.forEach((line, j) => ctx.fillText(line, x + 11, y + 30 + j * 27)); x += widths[i]; }); y += row.height; ctx.strokeStyle = colors.rule; ctx.beginPath(); ctx.moveTo(50, y); ctx.lineTo(1110, y); ctx.stroke(); }
     if (!list.rows.length) { ctx.fillStyle = colors.muted; ctx.fillText("확정 교회 없음", 61, 270); }
     ctx.fillStyle = colors.muted; ctx.font = `16px ${font}`; ctx.textAlign = "right"; ctx.fillText(`${p + 1} / ${chunks.length}`, 1110, 1490);
-    const image = await pdf.embedPng(canvas.toDataURL("image/png")); const page = pdf.addPage([595.28, 841.89]); page.drawImage(image, { x: 20, y: 20, width: 555.28, height: 727.6 });
+    const image = await pdf.embedPng(canvas.toDataURL("image/png")); const page = pdf.addPage([595.28, 841.89]); page.drawImage(image, { x: 20, y: 821.89 - 727.6, width: 555.28, height: 727.6 });
   }
   const bytes = await pdf.save(); download(new Blob([new Uint8Array(bytes)], { type: "application/pdf" }), base + ".pdf");
 }
