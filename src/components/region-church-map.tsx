@@ -57,6 +57,7 @@ export function RegionChurchMapView({ stats }: { stats: RegionStats }) {
         {KOREA_MAP_PATHS.map((p) => <div className="region-mobile-label" key={p.name}><span className={`region-swatch region-fill-${regionLevel(stats.provinces[p.name], bins)}`} /><span>{p.name}<strong className="block">{stats.provinces[p.name]}교회</strong></span></div>)}
       </div>
       <p className="text-sm text-muted-foreground">미입력/미분류 <strong className="text-foreground">{stats.unknown}교회</strong></p>
+      <p className="text-xs text-muted-foreground">경계 출처: 통계청 SGIS(공공누리 제1유형) · 가공: vuski/admdongkor(CC BY 4.0), 2025.01 · 표시용 단순화</p>
     </section>
   );
 }
