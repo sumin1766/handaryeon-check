@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
-import { RegionStatsTable } from "@/components/region-stats-table";
+import { RegionStatsTable, RegionStatsSummary } from "@/components/region-stats-table";
+import { MapPinned } from "lucide-react";
 import { useActiveSeason, useSeasons } from "@/lib/use-active-season";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -113,6 +114,11 @@ function SettingsContent({ isAdmin }: { isAdmin: boolean }) {
         <ApplyFormSection />
       </SettingsCard>
     ),
+    "region-stats": (
+      <SettingsCard icon={<MapPinned className="h-5 w-5" />} title="지역별 교회 집계" summary={<RegionStatsSummary />}>
+        <RegionStatsTable />
+      </SettingsCard>
+    ),
     seasons: (
       <SettingsCard icon={<Calendar className="h-5 w-5" />} title="시즌 관리" summary={<SeasonsSummary />}>
         <SeasonsSection />
@@ -219,7 +225,6 @@ function SettingsContent({ isAdmin }: { isAdmin: boolean }) {
             </div>
           )}
         </header>
-        <RegionStatsTable />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {order.map((id, i) =>
             CARDS[id] ? (

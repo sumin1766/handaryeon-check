@@ -22,7 +22,7 @@ export const getRegionStats = createServerFn({ method: "POST" })
       if ((rows?.length ?? 0) < 500) break;
     }
     for (let offset = 0; ; offset += 500) {
-      const { data: rows, error: e } = await db.from("pre_registrations").select("id, season_id, church_id, region_sido, region_sigungu, created_at").eq("season_id", season.id).order("id").range(offset, offset + 499);
+      const { data: rows, error: e } = await db.from("pre_registrations").select("id, season_id, church_id, region_sido, region_sigungu, created_at, status").eq("season_id", season.id).eq("status", "applied").order("id").range(offset, offset + 499);
       if (e) throw new Error("교회 주소를 불러오지 못했습니다.");
       registrations.push(...(rows ?? []));
       if ((rows?.length ?? 0) < 500) break;
