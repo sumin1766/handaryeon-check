@@ -37,6 +37,8 @@ import {
 } from "@/lib/pre-registration-confirm.functions";
 import { deletePreRegistration } from "@/lib/pre-registration-delete.functions";
 import { notifyDataChanged, useRealtimeInvalidate } from "@/lib/use-realtime";
+import { useRegionStats } from "@/lib/use-region-stats";
+import { DuplicateChurchStat } from "@/components/duplicate-church-stat";
 
 export const Route = createFileRoute("/pre-registration-admin")({
   head: () => ({
@@ -149,6 +151,7 @@ function ReAuth({ onDone }: { onDone: (pw: string) => void }) {
 }
 
 function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuthLost: () => void }) {
+  const regionStats = useRegionStats();
   const list = useServerFn(listPreRegistrations);
   const setPaid = useServerFn(setPreRegistrationPaid);
   const delReg = useServerFn(deletePreRegistration);
@@ -266,7 +269,7 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
             교회가 직접 제출한 활성 시즌 사전접수 건
           </p>
         </div>
-        <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
+        <Button variant="outline" onClick={() => { void refetch(); if (!regionStats.isViewingPast) void regionStats.refetch(); }} disabled={isFetching || regionStats.isFetching}>
           <RefreshCw className={`h-4 w-4 mr-1 ${isFetching ? "animate-spin" : ""}`} />
           새로고침
         </Button>
@@ -279,10 +282,17 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
       )}
 
       <Card className="p-4">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className={`grid gap-3 ${regionStats.isViewingPast ? "sm:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-4"}`}>
           <GroupStat title="전체" g={summary.all} feeLabel="회비 합계" />
           <GroupStat title="확정" g={summary.confirmed} feeLabel="확정 회비 합계" />
           <GroupStat title="미확정 (검토대기+재검토)" g={summary.pending} feeLabel="미확정 회비 합계" />
+          {!regionStats.isViewingPast && (
+            <DuplicateChurchStat
+              confirmedCount={summary.confirmed.count}
+              churchCount={!isLoading && !isError && !regionStats.isError && data?.seasonId === regionStats.data?.seasonId ? regionStats.data?.total ?? null : null}
+              failed={regionStats.isError || isError}
+            />
+          )}
         </div>
         <div className="mt-3 text-xs text-muted-foreground">
           숙박 유형(전체): 교회 {summary.lodging.church} · 외부 {summary.lodging.external} · 비숙박 {summary.lodging.none}

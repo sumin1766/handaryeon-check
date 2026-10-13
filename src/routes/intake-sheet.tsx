@@ -57,7 +57,7 @@ export const Route = createFileRoute("/intake-sheet")({
 });
 
 function IntakeSheetPage() {
-  const { season } = useActiveSeason();
+  const { season, isViewingPast } = useActiveSeason();
   const qc = useQueryClient();
   const role = useAuthRole();
   const isAdmin = role === "admin";
@@ -227,6 +227,7 @@ function IntakeSheetPage() {
                         fallbackName={c.contact_name}
                         fallbackPhone={c.phone}
                         isAdmin={isAdmin}
+                        deduplicateExact={!!season?.is_active && !isViewingPast}
                         onChanged={() => managers.refetch()}
                       />
                     </td>
