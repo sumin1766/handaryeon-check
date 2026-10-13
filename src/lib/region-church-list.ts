@@ -28,9 +28,27 @@ export function buildRegionChurchList(seasonId: string, seasonName: string, chur
 export function churchListRecords(list: RegionChurchList, timestamp: string) {
   return list.rows.map((r) => ({ "시즌": list.seasonName, "생성 일시": timestamp, "시/도": r.sido, "시군구": r.sigungu, "교회명": r.churchName, "(대표)담당자": r.managerName, "연락처": r.phone, "인원수": r.peopleCount }));
 }
-export function churchListCsv(list: RegionChurchList, timestamp: string) {
+/** Display-only totals of the unchanged, already grouped export rows. */
+export function churchListSummary(list: RegionChurchList) {
+  return { churchCount: list.rows.length, peopleCount: list.rows.reduce((sum, row) => sum + row.peopleCount, 0) };
+}
+export function churchListSummaryText(list: RegionChurchList) {
+  const summary = churchListSummary(list);
+  return `확정 교회 ${summary.churchCount}곳 · 신청 인원 ${summary.peopleCount}명`;
+}
+function churchListDelimited(list: RegionChurchList, timestamp: string, delimiter: "," | "\t") {
   const records = churchListRecords(list, timestamp);
   const headers = ["시즌", "생성 일시", "시/도", "시군구", "교회명", "(대표)담당자", "연락처", "인원수"];
-  const quote = (v: unknown) => { const text = String(v ?? ""); return `"${(/^[=+@\-\t\r]/.test(text) ? "'" + text : text).replace(/"/g, '""')}"`; };
-  return [headers, ...records.map((r) => Object.values(r)), ...(records.length ? [] : [[list.seasonName, timestamp, "", "", "", "", "", ""]])].map((row) => row.map(quote).join(",")).join("\r\n");
+  const quote = (v: unknown) => {
+    const raw = String(v ?? "");
+    const text = /^[=+@\-\t\r]/.test(raw) ? "'" + raw : raw;
+    return delimiter === "," || /[\t\r\n"]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  return [[list.seasonName, timestamp], [churchListSummaryText(list)], headers, ...records.map((r) => Object.values(r))].map((row) => row.map(quote).join(delimiter)).join("\r\n");
+}
+export function churchListCsv(list: RegionChurchList, timestamp: string) {
+  return churchListDelimited(list, timestamp, ",");
+}
+export function churchListClipboard(list: RegionChurchList, timestamp: string) {
+  return churchListDelimited(list, timestamp, "\t");
 }

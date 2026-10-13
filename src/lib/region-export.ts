@@ -2,7 +2,7 @@ import type { RegionStats, RegionRow } from "@/lib/region-stats";
 import { regionBins, regionLevel } from "@/lib/region-stats";
 import { KOREA_MAP_PATHS } from "@/lib/korea-map-paths";
 import { REGION_MAP_LABELS } from "@/lib/region-map-layout";
-import { churchListCsv, churchListRecords, type RegionChurchList } from "@/lib/region-church-list";
+import { churchListClipboard, churchListRecords, churchListSummaryText, type RegionChurchList } from "@/lib/region-church-list";
 
 function download(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -120,18 +120,21 @@ export async function exportRegionStats(stats: RegionStats, format: "pdf" | "png
 export async function exportRegionChurchList(list: RegionChurchList, format: "pdf" | "xlsx" | "csv") {
   const generatedAt = new Date(), timestamp = exportTimestamp(generatedAt);
   const base = `${list.seasonName.replace(/[\\/:*?"<>|]/g, "-")}_지역별교회목록_${generatedAt.toISOString().replace(/[:.]/g, "-")}`;
-  if (format === "csv") { await navigator.clipboard.writeText(churchListCsv(list, timestamp)); return; }
+  if (format === "csv") { await navigator.clipboard.writeText(churchListClipboard(list, timestamp)); return; }
   if (format === "xlsx") {
     const ExcelJS = await import("exceljs");
     const workbook = new ExcelJS.Workbook(); workbook.creator = "한다련 캠프"; workbook.created = generatedAt;
     const sheet = workbook.addWorksheet("지역별 교회 목록");
     sheet.columns = [20, 29, 24, 22, 32, 24, 24, 12].map((width) => ({ width }));
+    sheet.addRow([`${list.seasonName} · 생성 일시: ${timestamp}`]); sheet.mergeCells("A1:H1");
+    sheet.addRow([churchListSummaryText(list)]); sheet.mergeCells("A2:H2");
     sheet.addRow(["시즌", "생성 일시", "시/도", "시군구", "교회명", "(대표)담당자", "연락처", "인원수"]);
     for (const row of churchListRecords(list, timestamp)) sheet.addRow(Object.values(row));
-    if (!list.rows.length) sheet.addRow([list.seasonName, timestamp]);
     sheet.eachRow((row) => { row.font = { name: "Arial", size: 11 }; row.alignment = { vertical: "middle", wrapText: true }; row.height = 32; });
     sheet.getRow(1).font = { name: "Arial", size: 11, bold: true };
-    sheet.views = [{ state: "frozen", ySplit: 1 }]; sheet.autoFilter = "A1:H1";
+    sheet.getRow(2).font = { name: "Arial", size: 12, bold: true };
+    sheet.getRow(3).font = { name: "Arial", size: 11, bold: true };
+    sheet.views = [{ state: "frozen", ySplit: 3 }]; sheet.autoFilter = "A3:H3";
     sheet.getColumn(7).numFmt = "@"; sheet.getColumn(8).numFmt = '0;[Red](0);"-"';
     const bytes = await workbook.xlsx.writeBuffer();
     download(new Blob([new Uint8Array(bytes)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), base + ".xlsx"); return;
@@ -155,11 +158,12 @@ export async function exportRegionChurchList(list: RegionChurchList, format: "pd
     const ctx = canvas.getContext("2d"); if (!ctx) throw new Error("목록을 만들 수 없습니다.");
     ctx.scale(2, 2); ctx.fillStyle = colors.paper; ctx.fillRect(0, 0, 1160, 1520);
     ctx.fillStyle = colors.ink; ctx.font = `bold 32px ${font}`; ctx.fillText("지역별 교회 목록", 50, 65);
-    ctx.font = `23px ${font}`; ctx.fillText(`${list.seasonName} · 확정 교회 ${list.rows.length}곳`, 50, 106);
-    ctx.fillStyle = colors.muted; ctx.font = `18px ${font}`; ctx.fillText(`생성 일시: ${timestamp}`, 50, 143);
-    ctx.fillStyle = colors.band; ctx.fillRect(50, 173, 1060, 52); ctx.fillStyle = colors.ink; ctx.font = `bold 20px ${font}`;
-    let x = 50; headers.forEach((h, i) => { ctx.fillText(h, x + 11, 207); x += widths[i]; });
-    let y = 225; ctx.font = `20px ${font}`;
+    ctx.font = `23px ${font}`; ctx.fillText(list.seasonName, 50, 106);
+    ctx.font = `bold 23px ${font}`; ctx.fillText(churchListSummaryText(list), 50, 140);
+    ctx.fillStyle = colors.muted; ctx.font = `18px ${font}`; ctx.fillText(`생성 일시: ${timestamp}`, 50, 173);
+    ctx.fillStyle = colors.band; ctx.fillRect(50, 195, 1060, 52); ctx.fillStyle = colors.ink; ctx.font = `bold 20px ${font}`;
+    let x = 50; headers.forEach((h, i) => { ctx.fillText(h, x + 11, 229); x += widths[i]; });
+    let y = 247; ctx.font = `20px ${font}`;
     for (const row of chunks[p]) { x = 50; ctx.fillStyle = colors.ink; row.cells.forEach((lines, i) => { lines.forEach((line, j) => ctx.fillText(line, x + 11, y + 30 + j * 27)); x += widths[i]; }); y += row.height; ctx.strokeStyle = colors.rule; ctx.beginPath(); ctx.moveTo(50, y); ctx.lineTo(1110, y); ctx.stroke(); }
     if (!list.rows.length) { ctx.fillStyle = colors.muted; ctx.fillText("확정 교회 없음", 61, 270); }
     ctx.fillStyle = colors.muted; ctx.font = `16px ${font}`; ctx.textAlign = "right"; ctx.fillText(`${p + 1} / ${chunks.length}`, 1110, 1490);
