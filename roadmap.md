@@ -1,4 +1,7 @@
 # Regional church visualization
+- [ ] Add duplicate summary using shared confirmed church total; preserve existing cards.
+- [ ] Deduplicate exact name/phone intake display only, retaining primary and source counts.
+- [ ] Run rule tests and verify updated displays; report changed locations.
 - [x] Add read-only active-season regional aggregation and rule tests.
 - [x] Add province map with labels, leaders, adaptive legend and unknown count.
 - [x] Add settings table and PDF/PNG export with season/time.
