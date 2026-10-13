@@ -16,3 +16,5 @@
 - Embed simplified licensed province SVG paths locally and generate paginated PDF/PNG exports in browser event handlers; this avoids paid map services and server-only rendering dependencies.
 - Regional list exports reuse confirmedRegionUnits with an on-demand SELECT-only password-authorized read, and intake/registry people-row counts; this keeps contact data out of the map query and totals consistent without persisted calculations.
 - Dashboard and exported maps share path, label geometry and bin definitions; this prevents geographic and legend drift while browser Canvas supplies portable PDF/PNG output.
+- MCP uses OAuth with client-claim verification and static reference-only tools; shared-password authorization does not establish OAuth row access, so private camp data remains outside MCP until an explicitly approved identity mapping exists.
+- Browser tools mount inside the unlocked app shell and resolve targets from visible permitted navigation; this preserves role and season gates without introducing data mutations.

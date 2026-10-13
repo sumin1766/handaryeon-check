@@ -1,4 +1,7 @@
 # Regional church visualization
+- [x] Add OAuth-protected MCP reference tools, consent/login and browser navigation tools without changing shared-password permissions.
+- [x] Extract MCP manifest; 30 tests, unauthorized 401, metadata 200 and consent/login screens verified.
+- [ ] Verify real OAuth approve/deny and authenticated tool calls — blocked: no account-auth users exist; camp shared passwords are not OAuth accounts.
 - [x] Include shared dashboard map below summary table in PDF/PNG exports.
 - [x] Add confirmed church-list PDF/XLSX/clipboard CSV with shared grouping and existing attendee counts.
 - [x] Fix filled primary star after exact manager deduplication; 28 rule tests and isolated browser export checks passed.
