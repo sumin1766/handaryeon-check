@@ -11,6 +11,7 @@ import { getSessionPassword } from "@/lib/session-password";
 import { setPrimaryChurchManager } from "@/lib/church-managers.functions";
 import { notifyDataChanged } from "@/lib/use-realtime";
 import type { ChurchManagerInfo } from "@/lib/use-church-managers";
+import { uniqueManagerDisplay } from "@/lib/pre-registration-display";
 
 type Props = {
   churchId: string;
@@ -19,6 +20,8 @@ type Props = {
   fallbackName?: string | null;
   fallbackPhone?: string | null;
   isAdmin?: boolean;
+  /** Active-season intake sheet only; never changes submission records. */
+  deduplicateExact?: boolean;
   onChanged?: () => void;
 };
 
@@ -28,6 +31,7 @@ export function ChurchManagersCell({
   fallbackName,
   fallbackPhone,
   isAdmin,
+  deduplicateExact = false,
   onChanged,
 }: Props) {
   const setPrimaryFn = useServerFn(setPrimaryChurchManager);
@@ -57,7 +61,8 @@ export function ChurchManagersCell({
   }
 
   const primaryId = info?.primaryPreRegistrationId ?? null;
-  const ordered = [...managers].sort(
+  const displayManagers = deduplicateExact ? uniqueManagerDisplay(managers, primaryId) : managers;
+  const ordered = [...displayManagers].sort(
     (a, b) => Number(b.preRegistrationId === primaryId) - Number(a.preRegistrationId === primaryId),
   );
   // 비관리자는 대표가 지정된 경우 대표 1명만 본다(미지정이면 전원).
