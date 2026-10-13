@@ -10,11 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AgentLoginRouteImport } from './routes/agent-login'
 import { Route as ApplyRouteImport } from './routes/apply'
 import { Route as ApplyFormRouteImport } from './routes/apply-form'
 import { Route as BathCouponsRouteImport } from './routes/bath-coupons'
 import { Route as IntakeSheetRouteImport } from './routes/intake-sheet'
 import { Route as LodgingsRouteImport } from './routes/lodgings'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as NametagsRouteImport } from './routes/nametags'
 import { Route as OnsiteRouteImport } from './routes/onsite'
 import { Route as PlacesRouteImport } from './routes/places'
@@ -26,12 +28,19 @@ import { Route as RegistryRouteImport } from './routes/registry'
 import { Route as RostersRouteImport } from './routes/rosters'
 import { Route as SegueMergeRouteImport } from './routes/segue-merge'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as ApplyTokenRouteImport } from './routes/apply_.$token'
 import { Route as ApplyLookupRouteImport } from './routes/apply_.lookup'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentLoginRoute = AgentLoginRouteImport.update({
+  id: '/agent-login',
+  path: '/agent-login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApplyRoute = ApplyRouteImport.update({
@@ -57,6 +66,11 @@ const IntakeSheetRoute = IntakeSheetRouteImport.update({
 const LodgingsRoute = LodgingsRouteImport.update({
   id: '/lodgings',
   path: '/lodgings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NametagsRoute = NametagsRouteImport.update({
@@ -114,6 +128,12 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApplyTokenRoute = ApplyTokenRouteImport.update({
   id: '/apply_/$token',
   path: '/apply/$token',
@@ -124,14 +144,21 @@ const ApplyLookupRoute = ApplyLookupRouteImport.update({
   path: '/apply/lookup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agent-login': typeof AgentLoginRoute
   '/apply': typeof ApplyRoute
   '/apply-form': typeof ApplyFormRoute
   '/bath-coupons': typeof BathCouponsRoute
   '/intake-sheet': typeof IntakeSheetRoute
   '/lodgings': typeof LodgingsRoute
+  '/mcp': typeof McpRoute
   '/nametags': typeof NametagsRoute
   '/onsite': typeof OnsiteRoute
   '/places': typeof PlacesRoute
@@ -143,16 +170,20 @@ export interface FileRoutesByFullPath {
   '/rosters': typeof RostersRoute
   '/segue-merge': typeof SegueMergeRoute
   '/settings': typeof SettingsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/apply/$token': typeof ApplyTokenRoute
   '/apply/lookup': typeof ApplyLookupRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agent-login': typeof AgentLoginRoute
   '/apply': typeof ApplyRoute
   '/apply-form': typeof ApplyFormRoute
   '/bath-coupons': typeof BathCouponsRoute
   '/intake-sheet': typeof IntakeSheetRoute
   '/lodgings': typeof LodgingsRoute
+  '/mcp': typeof McpRoute
   '/nametags': typeof NametagsRoute
   '/onsite': typeof OnsiteRoute
   '/places': typeof PlacesRoute
@@ -164,17 +195,21 @@ export interface FileRoutesByTo {
   '/rosters': typeof RostersRoute
   '/segue-merge': typeof SegueMergeRoute
   '/settings': typeof SettingsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/apply/$token': typeof ApplyTokenRoute
   '/apply/lookup': typeof ApplyLookupRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agent-login': typeof AgentLoginRoute
   '/apply': typeof ApplyRoute
   '/apply-form': typeof ApplyFormRoute
   '/bath-coupons': typeof BathCouponsRoute
   '/intake-sheet': typeof IntakeSheetRoute
   '/lodgings': typeof LodgingsRoute
+  '/mcp': typeof McpRoute
   '/nametags': typeof NametagsRoute
   '/onsite': typeof OnsiteRoute
   '/places': typeof PlacesRoute
@@ -186,18 +221,22 @@ export interface FileRoutesById {
   '/rosters': typeof RostersRoute
   '/segue-merge': typeof SegueMergeRoute
   '/settings': typeof SettingsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/apply_/$token': typeof ApplyTokenRoute
   '/apply_/lookup': typeof ApplyLookupRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/agent-login'
     | '/apply'
     | '/apply-form'
     | '/bath-coupons'
     | '/intake-sheet'
     | '/lodgings'
+    | '/mcp'
     | '/nametags'
     | '/onsite'
     | '/places'
@@ -209,16 +248,20 @@ export interface FileRouteTypes {
     | '/rosters'
     | '/segue-merge'
     | '/settings'
+    | '/.well-known/oauth-protected-resource'
     | '/apply/$token'
     | '/apply/lookup'
+    | '/.lovable/oauth/consent'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/agent-login'
     | '/apply'
     | '/apply-form'
     | '/bath-coupons'
     | '/intake-sheet'
     | '/lodgings'
+    | '/mcp'
     | '/nametags'
     | '/onsite'
     | '/places'
@@ -230,16 +273,20 @@ export interface FileRouteTypes {
     | '/rosters'
     | '/segue-merge'
     | '/settings'
+    | '/.well-known/oauth-protected-resource'
     | '/apply/$token'
     | '/apply/lookup'
+    | '/.lovable/oauth/consent'
   id:
     | '__root__'
     | '/'
+    | '/agent-login'
     | '/apply'
     | '/apply-form'
     | '/bath-coupons'
     | '/intake-sheet'
     | '/lodgings'
+    | '/mcp'
     | '/nametags'
     | '/onsite'
     | '/places'
@@ -251,17 +298,21 @@ export interface FileRouteTypes {
     | '/rosters'
     | '/segue-merge'
     | '/settings'
+    | '/.well-known/oauth-protected-resource'
     | '/apply_/$token'
     | '/apply_/lookup'
+    | '/.lovable/oauth/consent'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgentLoginRoute: typeof AgentLoginRoute
   ApplyRoute: typeof ApplyRoute
   ApplyFormRoute: typeof ApplyFormRoute
   BathCouponsRoute: typeof BathCouponsRoute
   IntakeSheetRoute: typeof IntakeSheetRoute
   LodgingsRoute: typeof LodgingsRoute
+  McpRoute: typeof McpRoute
   NametagsRoute: typeof NametagsRoute
   OnsiteRoute: typeof OnsiteRoute
   PlacesRoute: typeof PlacesRoute
@@ -273,8 +324,10 @@ export interface RootRouteChildren {
   RostersRoute: typeof RostersRoute
   SegueMergeRoute: typeof SegueMergeRoute
   SettingsRoute: typeof SettingsRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ApplyTokenRoute: typeof ApplyTokenRoute
   ApplyLookupRoute: typeof ApplyLookupRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -284,6 +337,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agent-login': {
+      id: '/agent-login'
+      path: '/agent-login'
+      fullPath: '/agent-login'
+      preLoaderRoute: typeof AgentLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/apply': {
@@ -319,6 +379,13 @@ declare module '@tanstack/react-router' {
       path: '/lodgings'
       fullPath: '/lodgings'
       preLoaderRoute: typeof LodgingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/nametags': {
@@ -398,6 +465,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/apply_/$token': {
       id: '/apply_/$token'
       path: '/apply/$token'
@@ -412,16 +486,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApplyLookupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgentLoginRoute: AgentLoginRoute,
   ApplyRoute: ApplyRoute,
   ApplyFormRoute: ApplyFormRoute,
   BathCouponsRoute: BathCouponsRoute,
   IntakeSheetRoute: IntakeSheetRoute,
   LodgingsRoute: LodgingsRoute,
+  McpRoute: McpRoute,
   NametagsRoute: NametagsRoute,
   OnsiteRoute: OnsiteRoute,
   PlacesRoute: PlacesRoute,
@@ -433,8 +516,11 @@ const rootRouteChildren: RootRouteChildren = {
   RostersRoute: RostersRoute,
   SegueMergeRoute: SegueMergeRoute,
   SettingsRoute: SettingsRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ApplyTokenRoute: ApplyTokenRoute,
   ApplyLookupRoute: ApplyLookupRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
