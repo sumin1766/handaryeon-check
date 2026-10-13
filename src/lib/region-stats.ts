@@ -11,8 +11,8 @@ function validRegion(r: RegionRegistration) {
   return KOREA_REGIONS[sido]?.includes(sigungu) ? { sido, sigungu } : null;
 }
 
-/** Display-only aggregation: only confirmed (applied) submissions count; linked submissions are one church; never merge by name. */
-export function aggregateRegions(seasonId: string, seasonName: string, churches: RegionChurch[], registrations: RegionRegistration[]): RegionStats {
+/** Shared display units for totals and exports; no persisted merging or new counting rules. */
+export function confirmedRegionUnits(seasonId: string, churches: RegionChurch[], registrations: RegionRegistration[]) {
   const groups = new Map<string, RegionRegistration[]>();
   const currentChurches = churches.filter((c) => c.season_id === seasonId);
   const currentIds = new Set(currentChurches.map((c) => c.id));
@@ -21,15 +21,22 @@ export function aggregateRegions(seasonId: string, seasonName: string, churches:
     groups.set(key, [...(groups.get(key) ?? []), r]);
   }
   const primary = new Map(currentChurches.map((c) => [`church:${c.id}`, c.primary_pre_registration_id]));
-  const provinces = Object.fromEntries(SIDO_LIST.map((s) => [s, 0]));
-  const districts = new Map<string, number>();
-  let unknown = 0;
-  for (const [key, regs] of groups) {
+  return [...groups].map(([key, regs]) => {
     const ordered = [...regs].sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id));
     const primaryId = primary.get(key);
     // A designated primary that is not confirmed falls back to the earliest confirmed valid address.
     const selected = (primaryId ? ordered.find((r) => r.id === primaryId) : undefined) ?? ordered.find((r) => validRegion(r));
-    const address = selected ? validRegion(selected) : null;
+    return { key, churchId: key.startsWith("church:") ? key.slice(7) : null, registrations: ordered, address: selected ? validRegion(selected) : null };
+  });
+}
+
+/** Display-only aggregation: only confirmed (applied) submissions count; linked submissions are one church; never merge by name. */
+export function aggregateRegions(seasonId: string, seasonName: string, churches: RegionChurch[], registrations: RegionRegistration[]): RegionStats {
+  const units = confirmedRegionUnits(seasonId, churches, registrations);
+  const provinces = Object.fromEntries(SIDO_LIST.map((s) => [s, 0]));
+  const districts = new Map<string, number>();
+  let unknown = 0;
+  for (const { address } of units) {
     if (!address) { unknown++; continue; }
     provinces[address.sido]++;
     const districtKey = `${address.sido}|${address.sigungu}`;
@@ -45,8 +52,8 @@ export function aggregateRegions(seasonId: string, seasonName: string, churches:
     }
   }
   rows.push({ sido: "미입력/미분류", sigungu: "—", count: unknown, kind: "unknown" });
-  rows.push({ sido: "전국 합계", sigungu: "", count: groups.size, kind: "total" });
-  return { seasonId, seasonName, total: groups.size, unknown, provinces, rows };
+  rows.push({ sido: "전국 합계", sigungu: "", count: units.length, kind: "total" });
+  return { seasonId, seasonName, total: units.length, unknown, provinces, rows };
 }
 
 export type ColorBin = { min: number; max: number; level: number };
