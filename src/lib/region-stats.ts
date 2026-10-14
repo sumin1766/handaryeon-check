@@ -24,8 +24,8 @@ export function confirmedRegionUnits(seasonId: string, churches: RegionChurch[],
   return [...groups].map(([key, regs]) => {
     const ordered = [...regs].sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id));
     const primaryId = primary.get(key);
-    // A designated primary that is not confirmed falls back to the earliest confirmed valid address.
-    const selected = (primaryId ? ordered.find((r) => r.id === primaryId) : undefined) ?? ordered.find((r) => validRegion(r));
+    // Missing/invalid primary addresses also fall back within the same confirmed church unit.
+    const selected = (primaryId ? ordered.find((r) => r.id === primaryId && validRegion(r)) : undefined) ?? ordered.find((r) => validRegion(r));
     return { key, churchId: key.startsWith("church:") ? key.slice(7) : null, registrations: ordered, address: selected ? validRegion(selected) : null };
   });
 }

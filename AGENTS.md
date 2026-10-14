@@ -10,7 +10,7 @@
 <!-- LOVABLE:END -->
 
 - Regional church statistics use a dedicated SELECT-only shared-password server function resolving the active season internally; this preserves existing storage, fee, and attendee calculations.
-- Region display deduplicates linked submissions by church ID and chooses a designated representative's address, otherwise the earliest valid address; unlinked submissions and legacy churches remain visible without automatic name merging.
+- Region display and list exports deduplicate linked submissions by church ID and choose a designated representative's valid address, otherwise the earliest valid confirmed address; this preserves shared classification without automatic name merging or data mutations.
 - Both regional views consume the same query and pure aggregation module; this keeps map, subtotals, and exports consistent without introducing persisted aggregates.
 - The pre-registration duplicate summary consumes the shared regional query, and intake-only manager deduplication is opt-in at rendering time; this preserves other tabs, source counts and representative actions.
 - Embed simplified licensed province SVG paths locally and generate paginated PDF/PNG exports in browser event handlers; this avoids paid map services and server-only rendering dependencies.

@@ -6,7 +6,8 @@ const church = { id: "c", season_id: "active", primary_pre_registration_id: null
 describe("지역별 교회 표시 집계", () => {
   test("같은 교회로 연결된 2건은 1교회", () => { assert.equal(aggregateRegions("active", "2027 겨울캠프", [church], [reg("1", "c"), reg("2", "c")]).total, 1); });
   test("대표 주소로 집계", () => { assert.equal(aggregateRegions("active", "2027 겨울캠프", [{ ...church, primary_pre_registration_id: "2" }], [reg("1", "c"), reg("2", "c", "부산광역시", "강서구")]).provinces["부산광역시"], 1); });
-  test("대표 미입력은 미분류", () => { assert.equal(aggregateRegions("active", "2027 겨울캠프", [{ ...church, primary_pre_registration_id: "1" }], [reg("1", "c", null, null), reg("2", "c")]).unknown, 1); });
+  test("대표 미입력은 같은 교회의 확정 대구 주소 사용", () => { const stats = aggregateRegions("active", "2027 겨울캠프", [{ ...church, primary_pre_registration_id: "1" }], [reg("1", "c", null, null), reg("2", "c", "대구광역시", "북구")]); assert.equal(stats.unknown, 0); assert.equal(stats.provinces["대구광역시"], 1); assert.equal(stats.total, 1); });
+  test("주소 없는 확정 건과 주소 있는 미확정 건만 있으면 미분류", () => { const stats = aggregateRegions("active", "2027 겨울캠프", [church], [reg("1", "c", null, null), { ...reg("2", "c", "대구광역시", "북구"), status: "submitted" }]); assert.equal(stats.unknown, 1); assert.equal(stats.provinces["대구광역시"], 0); });
   test("대표가 없으면 최초 유효 주소 사용", () => { assert.equal(aggregateRegions("active", "2027 겨울캠프", [church], [reg("1", "c", null, null), reg("2", "c")]).provinces["서울특별시"], 1); });
   test("확정 건 없는 교회는 집계 제외", () => { assert.equal(aggregateRegions("active", "2027 겨울캠프", [church], []).total, 0); });
   test("미확정 제출은 제외", () => { assert.equal(aggregateRegions("active", "2027 겨울캠프", [], [reg("1"), { ...reg("2"), status: "submitted" }, { ...reg("3"), status: "needs_review" }]).total, 1); });

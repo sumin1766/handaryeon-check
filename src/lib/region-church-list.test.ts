@@ -9,7 +9,21 @@ describe("지역 교회 목록 내보내기 규칙", () => {
   test("미확정·과거 시즌은 목록에서 제외", () => { const list = buildRegionChurchList("active", "2027 겨울캠프", [], [{ ...reg("1", null), status: "submitted" }, { ...reg("2", null), season_id: "past" }], []); assert.equal(list.rows.length, 0); });
   test("대표 담당자·전화번호 유지, 인원은 기존 people 2행이지 신청 99명의 합이 아님", () => { const list = buildRegionChurchList("active", "2027 겨울캠프", [church], [reg("1"), reg("2")], [{ church_id: "c" }, { church_id: "c" }]); assert.equal(list.rows[0]?.managerName, "담당자2"); assert.equal(list.rows[0]?.phone, "01012345678"); assert.equal(list.rows[0]?.peopleCount, 2); });
   test("시도·시군구 순서와 미분류 마지막은 집계표와 동일", () => { const regs = [reg("1", null, null, null), reg("2", null, "부산광역시", "강서구"), reg("3", null, "서울특별시", "강남구"), reg("4", null, "서울특별시", "관악구")]; const list = buildRegionChurchList("active", "2027 겨울캠프", [], regs, []); assert.deepEqual(list.rows.map((r) => `${r.sido}|${r.sigungu}`), ["서울특별시|강남구", "서울특별시|관악구", "부산광역시|강서구", "미입력/미분류|—"]); });
-  test("대표 주소 미입력은 목록도 미분류", () => { const list = buildRegionChurchList("active", "2027 겨울캠프", [church], [reg("1"), reg("2", "c", null, null)], []); assert.equal(list.rows[0]?.sido, "미입력/미분류"); });
+  test("대표 주소 미입력도 병합된 확정 대구 주소 사용, 대표·2명·지도 일치와 원본 유지", () => {
+    const churches = [{ ...church, name: "테스트", primary_pre_registration_id: "1" }];
+    const registrations = [{ ...reg("1", "c", null, null), manager_name: "홍길동" }, reg("2", "c", "대구광역시", "북구")];
+    const before = JSON.stringify({ churches, registrations });
+    const list = buildRegionChurchList("active", "2027 겨울캠프", churches, registrations, [{ church_id: "c" }, { church_id: "c" }]);
+    const stats = aggregateRegions("active", "2027 겨울캠프", churches, registrations);
+    assert.deepEqual(list.rows[0], { sido: "대구광역시", sigungu: "북구", churchName: "테스트", managerName: "홍길동", phone: "01012345678", peopleCount: 2 });
+    assert.equal(stats.provinces["대구광역시"], list.rows.length);
+    assert.equal(stats.total, 1); assert.equal(stats.unknown, 0);
+    assert.deepEqual(churchListSummary(list), { churchCount: 1, peopleCount: 2 });
+    assert.ok(churchListCsv(list, "KST").includes('"대구광역시","북구","테스트"'));
+    assert.ok(churchListClipboard(list, "KST").includes("대구광역시\t북구\t테스트"));
+    assert.equal(JSON.stringify({ churches, registrations }), before);
+  });
+  test("같은 교회의 모든 확정 주소가 없을 때만 목록도 미분류", () => { const list = buildRegionChurchList("active", "2027 겨울캠프", [church], [reg("1", "c", null, null), reg("2", "c", null, null)], []); assert.equal(list.rows[0]?.sido, "미입력/미분류"); assert.equal(list.rows.length, 1); });
    test("CSV는 시즌·일시·연락처와 한 교회 한 행, 특수 문자 인용", () => { const list = buildRegionChurchList("active", "2027 겨울캠프", [], [{ ...reg("1", null), church_name: '교회,"이름"' }], []); const csv = churchListCsv(list, "2026-10-13 17:49:00 (KST)"); assert.equal(csv.split("\r\n").length, 4); assert.ok(csv.includes('"2027 겨울캠프","2026-10-13 17:49:00 (KST)"')); assert.ok(csv.includes('"교회,""이름"""')); assert.ok(csv.includes('"01012345678"')); });
   test("CSV 수식 입력은 실행되지 않도록 문자로 인용", () => { const csv = churchListCsv({ seasonId: "active", seasonName: "2027 겨울캠프", rows: [{ sido: "미입력/미분류", sigungu: "—", churchName: "=1+1", managerName: "홍길동", phone: "01012345678", peopleCount: 2 }] }, "KST"); assert.ok(csv.includes('"\'=1+1"')); });
    test("교회 4곳의 기존 인원 2명씩은 표시 합계 8명, 원본 불변", () => {
@@ -25,7 +39,7 @@ describe("지역 교회 목록 내보내기 규칙", () => {
      assert.equal(tsv[2].split("\t").length, 8);
      assert.equal(tsv[3].split("\t").length, 8);
      assert.equal(tsv[3].split("\t")[4], "교회,이름");
-     assert.equal(tsv[1], "확정 교회 1곳 · 신청 인원 8명");
+      assert.equal(tsv[1], "사전신청 1교회 · 신청 인원 8명");
      assert.ok(churchListCsv(list, "KST").split("\r\n")[2].includes('\",\"'));
    });
    test("탭·개행·따옴표가 든 셀과 수식은 복사에서도 안전하게 인용", () => {

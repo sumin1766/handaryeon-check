@@ -34,7 +34,7 @@ export function churchListSummary(list: RegionChurchList) {
 }
 export function churchListSummaryText(list: RegionChurchList) {
   const summary = churchListSummary(list);
-  return `확정 교회 ${summary.churchCount}곳 · 신청 인원 ${summary.peopleCount}명`;
+  return `사전신청 ${summary.churchCount}교회 · 신청 인원 ${summary.peopleCount}명`;
 }
 function churchListDelimited(list: RegionChurchList, timestamp: string, delimiter: "," | "\t") {
   const records = churchListRecords(list, timestamp);
