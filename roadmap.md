@@ -1,4 +1,5 @@
 # Regional church visualization
+- [ ] Fix shared address fallback for merged confirmed churches and change only list summary wording; verify regression tests and export formats.
 - [x] Add list-export totals from existing row counts and Excel-friendly TSV clipboard; preserve comma-separated CSV serialization.
 - [x] Run 32 tests and browser PDF/XLSX downloads + clipboard parsing (4 churches, 8 people); document changed locations and real Excel paste limitation.
 - [x] Add OAuth-protected MCP reference tools, consent/login and browser navigation tools without changing shared-password permissions.
