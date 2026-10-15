@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, test } from "node:test";
+import { strict as assert } from "node:assert";
 import { isTestSeasonName } from "./test-season";
 
 describe("isTestSeasonName", () => {
-  it("treats names starting with __ as test", () => expect(isTestSeasonName("__임시")).toBe(true));
-  it("treats names containing LOADTEST as test", () => expect(isTestSeasonName("__LOADTEST_시즌")).toBe(true));
-  it("treats LOADTEST anywhere as test", () => expect(isTestSeasonName("2027 LOADTEST")).toBe(true));
-  it("keeps operating seasons as non-test", () => expect(isTestSeasonName("2027 겨울캠프")).toBe(false));
-  it("handles empty", () => expect(isTestSeasonName(null)).toBe(false));
+  test("names starting with __ are test", () => assert.equal(isTestSeasonName("__임시"), true));
+  test("names containing LOADTEST are test", () => assert.equal(isTestSeasonName("2027 LOADTEST"), true));
+  test("the load-test season is test", () => assert.equal(isTestSeasonName("__LOADTEST_시즌"), true));
+  test("operating seasons are not test", () => assert.equal(isTestSeasonName("2027 겨울캠프"), false));
+  test("empty name is not test", () => assert.equal(isTestSeasonName(null), false));
 });
