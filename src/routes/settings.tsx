@@ -19,6 +19,11 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { isTestSeasonName } from "@/lib/test-season";
 import { DEFAULT_LODGINGS } from "@/lib/default-lodgings";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { sortLodgings } from "@/lib/lodging-sort";
@@ -462,6 +467,8 @@ function SeasonsSection() {
   const { data: seasons = [] } = useSeasons();
   const qc = useQueryClient();
   const [form, setForm] = useState({ name: "", start_date: "", end_date: "" });
+  const [confirmTarget, setConfirmTarget] = useState<{ id: string; name: string } | null>(null);
+  const [confirmText, setConfirmText] = useState("");
 
   const createSeason = useMutation({
     mutationFn: async () => {
@@ -543,43 +550,112 @@ function SeasonsSection() {
         </div>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>활성</TableHead>
-            <TableHead>이름</TableHead>
-            <TableHead>시작일</TableHead>
-            <TableHead>종료일</TableHead>
-            <TableHead></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {seasons.map((s) => (
-            <TableRow key={s.id}>
-              <TableCell>
-                {s.is_active ? (
-                  <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                    <Star className="h-3 w-3" /> 활성
-                  </span>
-                ) : (
-                  <Button size="sm" variant="ghost" onClick={() => activate.mutate(s.id)}>활성화</Button>
-                )}
-              </TableCell>
-              <TableCell>
-                <Input defaultValue={s.name} onBlur={(e) => updateSeason.mutate({ ...s, name: e.target.value })} className="h-8" />
-              </TableCell>
-              <TableCell>
-                <Input type="date" defaultValue={s.start_date ?? ""} onBlur={(e) => updateSeason.mutate({ ...s, start_date: e.target.value || null })} className="h-8 w-40" />
-              </TableCell>
-              <TableCell>
-                <Input type="date" defaultValue={s.end_date ?? ""} onBlur={(e) => updateSeason.mutate({ ...s, end_date: e.target.value || null })} className="h-8 w-40" />
-              </TableCell>
-              <TableCell></TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <SeasonTable
+        rows={seasons.filter((s) => !isTestSeasonName(s.name))}
+        onActivate={(s) => activate.mutate(s.id)}
+        onUpdate={(s) => updateSeason.mutate(s)}
+      />
+
+      {seasons.some((s) => isTestSeasonName(s.name)) && (
+        <details className="mt-6 rounded-md border border-destructive/40 bg-destructive/5 p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-destructive">
+            테스트 전용 시즌 ({seasons.filter((s) => isTestSeasonName(s.name)).length})
+          </summary>
+          <p className="mt-2 text-xs text-muted-foreground">
+            부하 테스트용 시즌입니다. 활성화하려면 시즌 이름을 직접 입력해 재확인해야 합니다.
+          </p>
+          <SeasonTable
+            rows={seasons.filter((s) => isTestSeasonName(s.name))}
+            onActivate={(s) => { setConfirmTarget(s); setConfirmText(""); }}
+            onUpdate={(s) => updateSeason.mutate(s)}
+            test
+          />
+        </details>
+      )}
+
+      <AlertDialog open={!!confirmTarget} onOpenChange={(o) => { if (!o) setConfirmTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>테스트 시즌 활성화</AlertDialogTitle>
+            <AlertDialogDescription className="text-destructive font-medium">
+              주의: 부하 테스트 전용 시즌입니다. 활성화하면 실제 운영 시즌이 비활성화되고 외부 사전신청이 차단됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-1">
+            <Label className="text-xs">확인을 위해 시즌 이름 <b>{confirmTarget?.name}</b> 을(를) 입력하세요</Label>
+            <Input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} autoFocus />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={!confirmTarget || confirmText !== confirmTarget.name || activate.isPending}
+              onClick={() => {
+                if (!confirmTarget || confirmText !== confirmTarget.name) return;
+                activate.mutate(confirmTarget.id, { onSuccess: () => setConfirmTarget(null) });
+              }}
+            >
+              테스트 시즌 활성화
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+  );
+}
+
+function SeasonTable({
+  rows, onActivate, onUpdate, test = false,
+}: {
+  rows: any[];
+  onActivate: (s: any) => void;
+  onUpdate: (s: any) => void;
+  test?: boolean;
+}) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>활성</TableHead>
+          <TableHead>이름</TableHead>
+          <TableHead>시작일</TableHead>
+          <TableHead>종료일</TableHead>
+          <TableHead></TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((s) => (
+          <TableRow key={s.id}>
+            <TableCell>
+              {s.is_active ? (
+                <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                  <Star className="h-3 w-3" /> 활성
+                </span>
+              ) : (
+                <Button size="sm" variant="ghost" onClick={() => onActivate(s)}>활성화</Button>
+              )}
+            </TableCell>
+            <TableCell>
+              <div className="flex items-center gap-2">
+                {test && (
+                  <span className="shrink-0 rounded bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-destructive-foreground">
+                    [테스트]
+                  </span>
+                )}
+                <Input defaultValue={s.name} onBlur={(e) => onUpdate({ ...s, name: e.target.value })} className="h-8" />
+              </div>
+            </TableCell>
+            <TableCell>
+              <Input type="date" defaultValue={s.start_date ?? ""} onBlur={(e) => onUpdate({ ...s, start_date: e.target.value || null })} className="h-8 w-40" />
+            </TableCell>
+            <TableCell>
+              <Input type="date" defaultValue={s.end_date ?? ""} onBlur={(e) => onUpdate({ ...s, end_date: e.target.value || null })} className="h-8 w-40" />
+            </TableCell>
+            <TableCell></TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 
