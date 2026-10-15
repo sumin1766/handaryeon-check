@@ -18,6 +18,7 @@ export {
   type AnyMemberCategory,
 } from "./member-categories";
 
+import { isTestSeasonName, TEST_SEASON_MAINTENANCE_MESSAGE } from "./test-season";
 import {
   ALL_MEMBER_CATEGORIES,
   isPhoneOptional,
@@ -87,13 +88,14 @@ export const submitPreRegistration = createServerFn({ method: "POST" })
 
     const { data: season, error: seasonErr } = await supabaseAdmin
       .from("seasons")
-      .select("id")
+      .select("id, name")
       .eq("is_active", true)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
     if (seasonErr) throw new Error("시즌 정보를 불러오지 못했습니다.");
     if (!season) throw new Error("현재 접수 가능한 캠프가 없습니다.");
+    if (isTestSeasonName(season.name)) throw new Error(TEST_SEASON_MAINTENANCE_MESSAGE);
 
     const { data: settings } = await supabaseAdmin
       .from("app_settings")
@@ -161,16 +163,20 @@ export const getPublicFeeConfig = createServerFn({ method: "POST" }).handler(
     preRegFee: number;
     categoryFees: Record<string, number>;
     notices: string[];
+    maintenance?: boolean;
   }> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: season } = await supabaseAdmin
       .from("seasons")
-      .select("id")
+      .select("id, name")
       .eq("is_active", true)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
     if (!season) return { preRegFee: DEFAULT_PRE_REG_FEE, categoryFees: {}, notices: [] };
+    if (isTestSeasonName(season.name)) {
+      return { preRegFee: DEFAULT_PRE_REG_FEE, categoryFees: {}, notices: [], maintenance: true };
+    }
     const { data } = await supabaseAdmin
       .from("app_settings")
       .select("*")
