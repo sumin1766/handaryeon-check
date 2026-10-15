@@ -62,3 +62,50 @@ export const saveApplyFormNotices = createServerFn({ method: "POST" })
     if (error) throw new Error("안내 문구 저장에 실패했습니다.");
     return { notices };
   });
+
+export type ApplyFormBlock = { blocked: boolean; message: string };
+
+/** 사전접수 수동 차단 상태 조회 (시즌별) */
+export const getApplyFormBlock = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z.object({ password: z.string().min(1), seasonId: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data }): Promise<ApplyFormBlock> => {
+    const db = await requireAdmin(data.password);
+    const { data: row } = await db
+      .from("app_settings")
+      .select("apply_blocked, apply_block_message")
+      .eq("season_id", data.seasonId)
+      .maybeSingle();
+    return { blocked: !!row?.apply_blocked, message: row?.apply_block_message ?? "" };
+  });
+
+/** 사전접수 수동 차단 저장 — 활성 시즌에만 적용 */
+export const saveApplyFormBlock = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        password: z.string().min(1),
+        seasonId: z.string().uuid(),
+        blocked: z.boolean(),
+        message: z.string().max(500),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }): Promise<ApplyFormBlock> => {
+    const db = await requireAdmin(data.password);
+    const { data: season } = await db
+      .from("seasons")
+      .select("is_active")
+      .eq("id", data.seasonId)
+      .maybeSingle();
+    if (!season?.is_active) throw new Error("활성 시즌에서만 수정할 수 있습니다.");
+    const message = data.message.trim();
+    const { error } = await db.from("app_settings").upsert({
+      season_id: data.seasonId,
+      apply_blocked: data.blocked,
+      apply_block_message: message || null,
+    } as never);
+    if (error) throw new Error("차단 설정 저장에 실패했습니다.");
+    return { blocked: data.blocked, message };
+  });
