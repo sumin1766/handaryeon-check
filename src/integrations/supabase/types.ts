@@ -16,6 +16,8 @@ export type Database = {
     Tables: {
       app_settings: {
         Row: {
+          apply_block_message: string | null
+          apply_blocked: boolean
           apply_form_notices: Json
           bath_unit_price: number
           category_fees: Json
@@ -32,6 +34,8 @@ export type Database = {
           settings_card_order: Json
         }
         Insert: {
+          apply_block_message?: string | null
+          apply_blocked?: boolean
           apply_form_notices?: Json
           bath_unit_price?: number
           category_fees?: Json
@@ -48,6 +52,8 @@ export type Database = {
           settings_card_order?: Json
         }
         Update: {
+          apply_block_message?: string | null
+          apply_blocked?: boolean
           apply_form_notices?: Json
           bath_unit_price?: number
           category_fees?: Json
