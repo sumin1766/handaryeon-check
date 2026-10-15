@@ -71,6 +71,7 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
       categoryFees: CategoryFeeMap;
       notices: string[];
       maintenance: boolean;
+      blockMessage: string;
     }> => {
       const cfg = await getPublicFeeConfig();
       return {
@@ -78,6 +79,7 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
         categoryFees: cfg.categoryFees as CategoryFeeMap,
         notices: cfg.notices ?? [],
         maintenance: !!cfg.maintenance,
+        blockMessage: cfg.blockMessage ?? "",
       };
     },
   });
@@ -85,6 +87,9 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
   const categoryFees = feeCfg?.categoryFees ?? {};
   const extraNotices = feeCfg?.notices ?? [];
   const maintenance = !!feeCfg?.maintenance;
+  // 운영 시즌 수동 차단 (테스트 시즌 점검이 우선)
+  const blockMessage = maintenance ? "" : (feeCfg?.blockMessage ?? "");
+  const blocked = maintenance || !!blockMessage;
   const expectedFee = sumCategoryFees(rows.map((r) => r.category), categoryFees, preRegFee);
 
   const submitFn = useServerFn(submitPreRegistration);
@@ -108,6 +113,10 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
   const onSubmit = () => {
     if (maintenance) {
       toast.error(TEST_SEASON_MAINTENANCE_MESSAGE);
+      return;
+    }
+    if (blockMessage) {
+      toast.error(blockMessage);
       return;
     }
     if (!churchName.trim() || !managerName.trim() || !managerPhone.trim()) {
@@ -171,6 +180,15 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
           className="mt-5 rounded-md border border-destructive bg-destructive/10 p-4 text-sm font-semibold text-destructive"
         >
           {TEST_SEASON_MAINTENANCE_MESSAGE}. 잠시 후 다시 이용해 주세요.
+        </div>
+      )}
+
+      {blockMessage && (
+        <div
+          role="alert"
+          className="mt-5 rounded-md border border-destructive bg-destructive/10 p-4 text-sm font-semibold text-destructive"
+        >
+          {blockMessage}
         </div>
       )}
 
@@ -314,8 +332,8 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
           </div>
           <div className="text-2xl font-bold">{krw(expectedFee)}</div>
         </div>
-        <Button size="lg" onClick={onSubmit} disabled={submit.isPending || maintenance}>
-          {maintenance ? "접수 일시 중단" : submit.isPending ? "제출 중..." : "사전접수 제출"}
+        <Button size="lg" onClick={onSubmit} disabled={submit.isPending || blocked}>
+          {blocked ? "접수 일시 중단" : submit.isPending ? "제출 중..." : "사전접수 제출"}
         </Button>
       </Card>
     </div>

@@ -8,7 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { sdb } from "@/lib/secure-db";
 import { getOcrStatusFn, updateOcrConfigFn, updateOcrBackupKeyFn } from "@/lib/auth.functions";
 import { useServerFn } from "@tanstack/react-start";
-import { getApplyFormNotices, saveApplyFormNotices } from "@/lib/apply-form-notices.functions";
+import { getApplyFormNotices, saveApplyFormNotices, getApplyFormBlock, saveApplyFormBlock } from "@/lib/apply-form-notices.functions";
+import { DEFAULT_APPLY_BLOCK_MESSAGE } from "@/lib/test-season";
 import { getSessionPassword } from "@/lib/session-password";
 import { fetchAll } from "@/lib/fetch-all";
 import { Button } from "@/components/ui/button";
@@ -371,6 +372,8 @@ function ApplyFormSection() {
         </Button>
       </div>
 
+      <ApplyBlockSection seasonId={season?.id} />
+
       {isLoading ? (
         <div className="text-sm text-muted-foreground">불러오는 중…</div>
       ) : (
@@ -412,6 +415,86 @@ function ApplyFormSection() {
         </Button>
       </div>
     </div>
+  );
+}
+
+/** 사전접수 수동 차단 토글 + 차단 안내 문구 (활성 시즌별 저장) */
+function ApplyBlockSection({ seasonId }: { seasonId?: string }) {
+  const qc = useQueryClient();
+  const getFn = useServerFn(getApplyFormBlock);
+  const saveFn = useServerFn(saveApplyFormBlock);
+  const { data } = useQuery({
+    queryKey: ["apply-form-block", seasonId],
+    enabled: !!seasonId,
+    queryFn: async () => {
+      const password = getSessionPassword();
+      if (!password) return { blocked: false, message: "" };
+      return getFn({ data: { password, seasonId: seasonId! } });
+    },
+  });
+  const [blocked, setBlocked] = useState(false);
+  const [message, setMessage] = useState("");
+  useEffect(() => {
+    if (data) {
+      setBlocked(data.blocked);
+      setMessage(data.message);
+    }
+  }, [data?.blocked, data?.message]);
+
+  const save = useMutation({
+    mutationFn: async (v: { blocked: boolean; message: string }) => {
+      const password = getSessionPassword();
+      if (!password) throw new Error("세션이 만료되었습니다. 다시 로그인해 주세요.");
+      if (!seasonId) throw new Error("활성 시즌이 없습니다.");
+      return saveFn({ data: { password, seasonId, ...v } });
+    },
+    onSuccess: (r) => {
+      toast.success(r.blocked ? "공개 사전접수를 차단했습니다." : "공개 사전접수를 허용했습니다.");
+      qc.invalidateQueries({ queryKey: ["apply-form-block"] });
+      qc.invalidateQueries({ queryKey: ["public-pre-reg-fee"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "저장 실패"),
+  });
+
+  return (
+    <Card className={cn("space-y-3 p-4", blocked && "border-destructive")}>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="font-semibold">사전접수 차단</div>
+          <div className="text-xs text-muted-foreground">
+            켜면 공개 폼(/apply) 제출만 막힙니다. 관리자 화면과 QR 체크인은 그대로 동작합니다.
+          </div>
+        </div>
+        <Switch
+          checked={blocked}
+          onCheckedChange={(v) => {
+            setBlocked(v);
+            save.mutate({ blocked: v, message });
+          }}
+          disabled={save.isPending || !seasonId}
+          aria-label="사전접수 차단"
+        />
+      </div>
+      <label className="block space-y-1">
+        <span className="text-sm font-medium">차단 안내 문구</span>
+        <div className="flex gap-2">
+          <Input
+            value={message}
+            maxLength={500}
+            placeholder={`비어 있으면 기본 문구: ${DEFAULT_APPLY_BLOCK_MESSAGE}`}
+            onChange={(e) => setMessage(e.target.value)}
+          />
+          <Button
+            variant="outline"
+            onClick={() => save.mutate({ blocked, message })}
+            disabled={save.isPending || !seasonId}
+          >
+            <Save className="h-4 w-4 mr-1" />
+            저장
+          </Button>
+        </div>
+      </label>
+    </Card>
   );
 }
 
