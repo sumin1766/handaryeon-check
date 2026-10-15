@@ -30,6 +30,7 @@ import {
 } from "@/lib/pre-registration-public.functions";
 
 import { krw } from "@/lib/format";
+import { TEST_SEASON_MAINTENANCE_MESSAGE } from "@/lib/test-season";
 import { AttendeeExcelBar } from "@/components/attendee-excel-bar";
 import { ChurchRegionFields, type ChurchRegion } from "@/components/church-region-fields";
 
@@ -69,18 +70,21 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
       preRegFee: number;
       categoryFees: CategoryFeeMap;
       notices: string[];
+      maintenance: boolean;
     }> => {
       const cfg = await getPublicFeeConfig();
       return {
         preRegFee: cfg.preRegFee,
         categoryFees: cfg.categoryFees as CategoryFeeMap,
         notices: cfg.notices ?? [],
+        maintenance: !!cfg.maintenance,
       };
     },
   });
   const preRegFee = feeCfg?.preRegFee ?? DEFAULT_PRE_REG_FEE;
   const categoryFees = feeCfg?.categoryFees ?? {};
   const extraNotices = feeCfg?.notices ?? [];
+  const maintenance = !!feeCfg?.maintenance;
   const expectedFee = sumCategoryFees(rows.map((r) => r.category), categoryFees, preRegFee);
 
   const submitFn = useServerFn(submitPreRegistration);
@@ -102,6 +106,10 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
 
   const onSubmit = () => {
+    if (maintenance) {
+      toast.error(TEST_SEASON_MAINTENANCE_MESSAGE);
+      return;
+    }
     if (!churchName.trim() || !managerName.trim() || !managerPhone.trim()) {
       toast.error("교회명·담당자명·담당자 전화번호를 모두 입력해 주세요.");
       return;
@@ -156,6 +164,15 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
           </Button>
         )}
       </div>
+
+      {maintenance && (
+        <div
+          role="alert"
+          className="mt-5 rounded-md border border-destructive bg-destructive/10 p-4 text-sm font-semibold text-destructive"
+        >
+          {TEST_SEASON_MAINTENANCE_MESSAGE}. 잠시 후 다시 이용해 주세요.
+        </div>
+      )}
 
       <Card className="mt-5 space-y-2 p-4 text-sm leading-relaxed">
         {(extraNotices.length ? extraNotices : DEFAULT_APPLY_NOTICES).map((n, i) => (
@@ -297,8 +314,8 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
           </div>
           <div className="text-2xl font-bold">{krw(expectedFee)}</div>
         </div>
-        <Button size="lg" onClick={onSubmit} disabled={submit.isPending}>
-          {submit.isPending ? "제출 중..." : "사전접수 제출"}
+        <Button size="lg" onClick={onSubmit} disabled={submit.isPending || maintenance}>
+          {maintenance ? "접수 일시 중단" : submit.isPending ? "제출 중..." : "사전접수 제출"}
         </Button>
       </Card>
     </div>

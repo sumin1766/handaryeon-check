@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useActiveSeason, useBackendKeepalive } from "@/lib/use-active-season";
+import { isTestSeasonName } from "@/lib/test-season";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { PasswordGate } from "@/components/password-gate";
@@ -192,17 +193,34 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
                   if (!id || id === activeSeason?.id) clearSelection();
                   else selectSeason(id);
                 }}
-                className="rounded-full border bg-muted/40 px-2.5 py-1 text-[11px] font-medium max-w-[180px]"
+                className={`rounded-full border px-2.5 py-1 text-[11px] font-medium max-w-[180px] ${
+                  isTestSeasonName(season?.name) ? "border-destructive bg-destructive/10 text-destructive" : "bg-muted/40"
+                }`}
                 title="조회할 시즌 선택"
                 aria-label="조회할 시즌 선택"
               >
-                {allSeasons.map((s) => (
+                {allSeasons.filter((s) => !isTestSeasonName(s.name)).map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
                     {s.id === activeSeason?.id ? " (현재)" : ""}
                   </option>
                 ))}
+                {allSeasons.some((s) => isTestSeasonName(s.name)) && (
+                  <optgroup label="── 테스트 전용 ──">
+                    {allSeasons.filter((s) => isTestSeasonName(s.name)).map((s) => (
+                      <option key={s.id} value={s.id}>
+                        [테스트] {s.name}
+                        {s.id === activeSeason?.id ? " (현재)" : ""}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
+            )}
+            {isTestSeasonName(season?.name) && (
+              <span className="rounded bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-destructive-foreground">
+                [테스트]
+              </span>
             )}
             {season && (
               <div className="hidden md:flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 tabular-nums">
