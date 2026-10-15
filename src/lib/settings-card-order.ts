@@ -20,6 +20,7 @@ export const DEFAULT_SETTINGS_CARD_ORDER: string[] = [
   "ocr",
   "dashboard-order",
   "nav-menu",
+  "data-reset",
 ];
 
 export function sanitizeCardOrder(raw: unknown, known: string[]): string[] {
