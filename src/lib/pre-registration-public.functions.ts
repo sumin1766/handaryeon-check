@@ -18,7 +18,7 @@ export {
   type AnyMemberCategory,
 } from "./member-categories";
 
-import { isTestSeasonName, TEST_SEASON_MAINTENANCE_MESSAGE } from "./test-season";
+import { isTestSeasonName, TEST_SEASON_MAINTENANCE_MESSAGE, resolveApplyBlockMessage } from "./test-season";
 import {
   ALL_MEMBER_CATEGORIES,
   isPhoneOptional,
@@ -102,7 +102,18 @@ export const submitPreRegistration = createServerFn({ method: "POST" })
       .select("*")
       .eq("season_id", season.id)
       .maybeSingle();
-    const s = settings as { pre_reg_fee?: number; category_fees?: unknown } | null;
+    const s = settings as {
+      pre_reg_fee?: number;
+      category_fees?: unknown;
+      apply_blocked?: boolean;
+      apply_block_message?: string | null;
+    } | null;
+    const blockMsg = resolveApplyBlockMessage({
+      isTestSeason: false,
+      manualBlocked: !!s?.apply_blocked,
+      manualMessage: s?.apply_block_message,
+    });
+    if (blockMsg) throw new Error(blockMsg);
     const fee = s?.pre_reg_fee ?? DEFAULT_PRE_REG_FEE;
     const categoryFees = parseCategoryFees(s?.category_fees);
 
@@ -164,6 +175,7 @@ export const getPublicFeeConfig = createServerFn({ method: "POST" }).handler(
     categoryFees: Record<string, number>;
     notices: string[];
     maintenance?: boolean;
+    blockMessage?: string;
   }> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: season } = await supabaseAdmin
@@ -183,8 +195,19 @@ export const getPublicFeeConfig = createServerFn({ method: "POST" }).handler(
       .eq("season_id", season.id)
       .maybeSingle();
     const s = data as
-      | { pre_reg_fee?: number; category_fees?: unknown; apply_form_notices?: unknown }
+      | {
+          pre_reg_fee?: number;
+          category_fees?: unknown;
+          apply_form_notices?: unknown;
+          apply_blocked?: boolean;
+          apply_block_message?: string | null;
+        }
       | null;
+    const blockMessage = resolveApplyBlockMessage({
+      isTestSeason: false,
+      manualBlocked: !!s?.apply_blocked,
+      manualMessage: s?.apply_block_message,
+    });
     const notices = Array.isArray(s?.apply_form_notices)
       ? (s!.apply_form_notices as unknown[]).filter(
           (v): v is string => typeof v === "string" && v.trim().length > 0,
@@ -194,6 +217,7 @@ export const getPublicFeeConfig = createServerFn({ method: "POST" }).handler(
       preRegFee: s?.pre_reg_fee ?? DEFAULT_PRE_REG_FEE,
       categoryFees: parseCategoryFees(s?.category_fees) as Record<string, number>,
       notices,
+      ...(blockMessage ? { blockMessage } : {}),
     };
   },
 );
