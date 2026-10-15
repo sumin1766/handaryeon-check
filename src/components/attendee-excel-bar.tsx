@@ -12,9 +12,12 @@ import {
 export function AttendeeExcelBar({
   onAdd,
   onClear,
+  hasInput = true,
 }: {
   onAdd: (rows: ParsedAttendee[]) => void;
   onClear?: () => void;
+  /** 명단에 이름·전화번호 입력값이 하나라도 있으면 true → "명단 전체 삭제"를 빨간색으로 강조 */
+  hasInput?: boolean;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -77,7 +80,13 @@ export function AttendeeExcelBar({
             <Button type="button" variant="outline" size="sm" disabled={busy} onClick={clearAndUpload}>
               <RefreshCw className="mr-1 h-4 w-4" /> 명단 삭제 후 재업로드
             </Button>
-            <Button type="button" variant="destructive" size="sm" disabled={busy} onClick={clearAll}>
+            <Button
+              type="button"
+              variant={hasInput ? "destructive" : "outline"}
+              size="sm"
+              disabled={busy}
+              onClick={clearAll}
+            >
               <Trash2 className="mr-1 h-4 w-4" /> 명단 전체 삭제
             </Button>
           </>

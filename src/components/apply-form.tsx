@@ -261,6 +261,7 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
             ])
           }
           onClear={() => setRows([])}
+          hasInput={rows.some((r) => r.name.trim() !== "" || r.phone.trim() !== "")}
         />
 
         <div className="mt-3 space-y-2">
