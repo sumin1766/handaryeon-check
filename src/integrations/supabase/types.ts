@@ -715,6 +715,10 @@ export type Database = {
         Returns: Json
       }
       ocr_status: { Args: never; Returns: Json }
+      reset_season_items: {
+        Args: { p_items: string[]; p_season: string }
+        Returns: Json
+      }
       verify_password: { Args: { p: string }; Returns: string }
     }
     Enums: {

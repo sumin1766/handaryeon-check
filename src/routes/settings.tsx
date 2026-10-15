@@ -64,6 +64,9 @@ import {
   DEFAULT_PRE_REG_FEE, DEFAULT_SEGUE_MEMBER_FEE, DEFAULT_APPLY_NOTICES,
   type FeeConfig,
 } from "@/lib/pre-registration-config";
+import { RotateCcw } from "lucide-react";
+import { SeasonImportButton } from "@/components/season-import-dialog";
+import { SeasonResetSection, SeasonResetSummary } from "@/components/season-reset-panel";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [
@@ -175,6 +178,15 @@ function SettingsContent({ isAdmin }: { isAdmin: boolean }) {
         <NavMenuSection />
       </SettingsCard>
     ),
+    ...(isAdmin
+      ? {
+          "data-reset": (
+            <SettingsCard icon={<RotateCcw className="h-5 w-5" />} title="데이터 초기화" summary={<SeasonResetSummary />}>
+              <SeasonResetSection />
+            </SettingsCard>
+          ),
+        }
+      : {}),
   };
 
   const moveTo = (from: number, to: number) => {
@@ -742,6 +754,11 @@ function SeasonTable({
   );
 }
 
+type LodgingDraft = {
+  name: string; building: string; floor: string; capacity: number;
+  gender: "M" | "F" | "none"; active: boolean; note: string;
+};
+
 function LodgingsSection() {
   const { season } = useActiveSeason();
   const qc = useQueryClient();
@@ -909,10 +926,137 @@ function LodgingsSection() {
     onError: (e: any) => toast.error(e.message ?? "추가 실패"),
   });
 
+  // 지난 시즌 가져오기 초안 — 저장 전까지 현재 시즌에 쓰지 않는다.
+  const { isViewingPast } = useActiveSeason();
+  const [draft, setDraft] = useState<LodgingDraft[] | null>(null);
+  const saveDraft = useMutation({
+    mutationFn: async (rows: LodgingDraft[]) => {
+      if (!season) throw new Error("시즌이 없습니다");
+      const clean = rows.filter((r) => r.name.trim());
+      const { error: delErr } = await sdb.from("lodgings").delete().eq("season_id", season.id);
+      if (delErr) throw delErr;
+      if (clean.length) {
+        const { error } = await sdb.from("lodgings").insert(
+          clean.map((r, i) => ({
+            season_id: season.id,
+            name: r.name.trim(),
+            building: r.building || "기타",
+            floor: r.floor.trim() || null,
+            capacity: r.capacity || 0,
+            gender: r.gender === "none" ? null : r.gender,
+            active: r.active,
+            note: r.note.trim() || null,
+            sort_order: i + 1,
+          })),
+        );
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("현재 시즌에 숙소를 저장했습니다.");
+      setDraft(null);
+      qc.invalidateQueries({ queryKey: ["lodgings-settings-full"] });
+      qc.invalidateQueries({ queryKey: ["lodgings-assigned-count"] });
+      qc.invalidateQueries({ queryKey: ["lodgings-page"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "저장 실패"),
+  });
+
   if (!season) return <div className="text-sm text-muted-foreground">시즌이 없습니다.</div>;
+
+  if (draft) {
+    const set = (i: number, patch: Partial<LodgingDraft>) =>
+      setDraft((d) => d!.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+    const assignedTotal = Object.values(assignedMap as Record<string, number>).reduce((a, b) => a + b, 0);
+    return (
+      <div className="space-y-3">
+        <div className="rounded-md border border-primary/40 bg-primary/5 p-2 text-sm">
+          지난 시즌에서 불러온 숙소 {draft.length}개입니다. 자유롭게 고친 뒤 <b>저장</b>을 누르면 현재 시즌(<b>{season.name}</b>)의 숙소가 이 목록으로 교체됩니다.
+          {assignedTotal > 0 && <span className="block text-destructive">현재 숙소에 배정된 {assignedTotal}명은 저장 시 배정이 해제됩니다.</span>}
+        </div>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>숙소명</TableHead><TableHead>건물</TableHead><TableHead>층</TableHead>
+                <TableHead className="text-right">정원</TableHead><TableHead>성별</TableHead><TableHead>활성</TableHead><TableHead>비고</TableHead><TableHead></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {draft.map((r, i) => (
+                <TableRow key={i}>
+                  <TableCell><Input value={r.name} onChange={(e) => set(i, { name: e.target.value })} className="h-8" /></TableCell>
+                  <TableCell>
+                    <Select value={r.building} onValueChange={(v) => set(i, { building: v })}>
+                      <SelectTrigger className="h-8 w-24"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="교육관">교육관</SelectItem>
+                        <SelectItem value="본당">본당</SelectItem>
+                        <SelectItem value="기타">기타</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell><Input value={r.floor} onChange={(e) => set(i, { floor: e.target.value })} className="h-8 w-20" /></TableCell>
+                  <TableCell><Input type="number" value={r.capacity} onChange={(e) => set(i, { capacity: parseInt(e.target.value) || 0 })} className="h-8 w-20 text-right tabular-nums" /></TableCell>
+                  <TableCell>
+                    <Select value={r.gender} onValueChange={(v: any) => set(i, { gender: v })}>
+                      <SelectTrigger className="h-8 w-24"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="M">남</SelectItem>
+                        <SelectItem value="F">여</SelectItem>
+                        <SelectItem value="none">미지정</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell><Switch checked={r.active} onCheckedChange={(v) => set(i, { active: v })} /></TableCell>
+                  <TableCell><Input value={r.note} onChange={(e) => set(i, { note: e.target.value })} className="h-8" /></TableCell>
+                  <TableCell>
+                    <Button size="icon" variant="ghost" aria-label="행 삭제" onClick={() => setDraft((d) => d!.filter((_, idx) => idx !== i))}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => setDraft((d) => [...d!, { name: "", building: "교육관", floor: "", capacity: 0, gender: "none", active: true, note: "" }])}>
+            <Plus className="h-3 w-3 mr-1" /> 행 추가
+          </Button>
+          <div className="flex-1" />
+          <Button size="sm" variant="outline" onClick={() => setDraft(null)}>취소</Button>
+          <Button size="sm" onClick={() => saveDraft.mutate(draft)} disabled={saveDraft.isPending}>
+            {saveDraft.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}저장
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
-      <p className="text-xs text-muted-foreground mb-3">성별(남=하늘색, 여=분홍색, 미지정=회색)은 숙소배치·접수시트에 동일하게 표시됩니다.</p>
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+        <p className="text-xs text-muted-foreground">성별(남=하늘색, 여=분홍색, 미지정=회색)은 숙소배치·접수시트에 동일하게 표시됩니다.</p>
+        <SeasonImportButton
+          currentSeasonId={season.id}
+          what="숙소"
+          hasCurrentData={rawLodgings.length > 0}
+          disabled={isViewingPast}
+          onLoad={async (src) => {
+            const { data, error } = await sdb.from("lodgings").select("*").eq("season_id", src).order("sort_order");
+            if (error) { toast.error("불러오기에 실패했습니다."); throw error; }
+            const rows: LodgingDraft[] = (data ?? []).map((l: any) => ({
+              name: l.name ?? "", building: l.building ?? "기타", floor: l.floor ?? "",
+              capacity: l.capacity ?? 0, gender: l.gender === "M" || l.gender === "F" ? l.gender : "none",
+              active: l.active !== false, note: l.note ?? "",
+            }));
+            if (!rows.length) { toast.warning("선택한 시즌에 저장된 숙소가 없습니다."); return 0; }
+            setDraft(rows);
+            return rows.length;
+          }}
+        />
+      </div>
 
       <Card className="p-3 mb-4 bg-muted/30">
         <div className="text-xs font-semibold mb-2">숙소 추가</div>
@@ -1940,12 +2084,95 @@ function PlacesSection() {
     onError: (e: any) => toast.error(e.message ?? "추가 실패"),
   });
 
+  // 지난 시즌 가져오기 초안 — 저장 전까지 현재 시즌에 쓰지 않는다.
+  const { isViewingPast } = useActiveSeason();
+  const [draft, setDraft] = useState<{ name: string; purpose: string; note: string }[] | null>(null);
+  const saveDraft = useMutation({
+    mutationFn: async (rows: { name: string; purpose: string; note: string }[]) => {
+      if (!season) throw new Error("시즌이 없습니다");
+      const clean = rows.filter((r) => r.name.trim());
+      const { error: delErr } = await (sdb.from as any)("places").delete().eq("season_id", season.id);
+      if (delErr) throw delErr;
+      if (clean.length) {
+        const { error } = await (sdb.from as any)("places").insert(
+          clean.map((r) => ({ season_id: season.id, name: r.name.trim(), purpose: r.purpose.trim() || null, note: r.note.trim() || null })),
+        );
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("현재 시즌에 장소를 저장했습니다.");
+      setDraft(null);
+      qc.invalidateQueries({ queryKey: ["places-full"] });
+      qc.invalidateQueries({ queryKey: ["places-summary"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "저장 실패"),
+  });
+
   if (!season) return <div className="text-sm text-muted-foreground">시즌이 없습니다.</div>;
+
+  if (draft) {
+    const set = (i: number, patch: Partial<{ name: string; purpose: string; note: string }>) =>
+      setDraft((d) => d!.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+    return (
+      <div className="space-y-3">
+        <div className="rounded-md border border-primary/40 bg-primary/5 p-2 text-sm">
+          지난 시즌에서 불러온 장소 {draft.length}개입니다. 자유롭게 고친 뒤 <b>저장</b>을 누르면 현재 시즌(<b>{season.name}</b>)의 장소가 이 목록으로 교체됩니다.
+        </div>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader><TableRow><TableHead>장소명</TableHead><TableHead>용도</TableHead><TableHead>비고</TableHead><TableHead></TableHead></TableRow></TableHeader>
+            <TableBody>
+              {draft.map((r, i) => (
+                <TableRow key={i}>
+                  <TableCell><Input value={r.name} onChange={(e) => set(i, { name: e.target.value })} className="h-8" /></TableCell>
+                  <TableCell><Input value={r.purpose} onChange={(e) => set(i, { purpose: e.target.value })} className="h-8" /></TableCell>
+                  <TableCell><Input value={r.note} onChange={(e) => set(i, { note: e.target.value })} className="h-8" /></TableCell>
+                  <TableCell>
+                    <Button size="icon" variant="ghost" aria-label="행 삭제" onClick={() => setDraft((d) => d!.filter((_, idx) => idx !== i))}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => setDraft((d) => [...d!, { name: "", purpose: "", note: "" }])}>
+            <Plus className="h-3 w-3 mr-1" /> 행 추가
+          </Button>
+          <div className="flex-1" />
+          <Button size="sm" variant="outline" onClick={() => setDraft(null)}>취소</Button>
+          <Button size="sm" onClick={() => saveDraft.mutate(draft)} disabled={saveDraft.isPending}>
+            {saveDraft.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}저장
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
-      <p className="text-xs text-muted-foreground mb-3">
-        장소는 숙소와 분리된 자유 공간(예: 세미나실, 식당, 카페)입니다. 용도는 자유롭게 입력하세요.
-      </p>
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          장소는 숙소와 분리된 자유 공간(예: 세미나실, 식당, 카페)입니다. 용도는 자유롭게 입력하세요.
+        </p>
+        <SeasonImportButton
+          currentSeasonId={season.id}
+          what="장소"
+          hasCurrentData={places.length > 0}
+          disabled={isViewingPast}
+          onLoad={async (src) => {
+            const { data, error } = await (sdb.from as any)("places").select("name, purpose, note").eq("season_id", src).order("created_at");
+            if (error) { toast.error("불러오기에 실패했습니다."); throw error; }
+            const rows = (data ?? []).map((p: any) => ({ name: p.name ?? "", purpose: p.purpose ?? "", note: p.note ?? "" }));
+            if (!rows.length) { toast.warning("선택한 시즌에 저장된 장소가 없습니다."); return 0; }
+            setDraft(rows);
+            return rows.length;
+          }}
+        />
+      </div>
       <Card className="p-3 mb-4 bg-muted/30">
         <div className="text-xs font-semibold mb-2">장소 추가</div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
