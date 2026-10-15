@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { RESET_ITEMS } from "./season-reset";
 
-const ITEM_KEYS = [...RESET_ITEMS.map((i) => i.key), "all"] as [string, ...string[]];
+const ITEM_KEYS = ["all", ...RESET_ITEMS.map((i) => i.key)] as [string, ...string[]];
 
 export const resetSeasonItem = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
