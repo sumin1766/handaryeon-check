@@ -330,7 +330,7 @@ function SeasonSelect({
   allSeasons,
   onSelect,
 }: {
-  season: Season | null;
+  season: Season | null | undefined;
   activeSeasonId: string | null;
   allSeasons: Season[];
   onSelect: (id: string) => void;
