@@ -20,7 +20,7 @@ import {
   QrCode,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { useActiveSeason, useBackendKeepalive } from "@/lib/use-active-season";
+import { useActiveSeason, useBackendKeepalive, type Season } from "@/lib/use-active-season";
 import { isTestSeasonName } from "@/lib/test-season";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
@@ -186,37 +186,17 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
           </Link>
           <div className="flex items-center gap-2 text-xs">
             {isAdmin && allSeasons.length > 0 && (
-              <select
-                value={season?.id ?? ""}
-                onChange={(e) => {
-                  const id = e.target.value;
+              <SeasonSelect
+                season={season}
+                activeSeasonId={activeSeason?.id ?? null}
+                allSeasons={allSeasons}
+                onSelect={(id) => {
                   if (!id || id === activeSeason?.id) clearSelection();
                   else selectSeason(id);
                 }}
-                className={`rounded-full border px-2.5 py-1 text-[11px] font-medium max-w-[180px] ${
-                  isTestSeasonName(season?.name) ? "border-destructive bg-destructive/10 text-destructive" : "bg-muted/40"
-                }`}
-                title="조회할 시즌 선택"
-                aria-label="조회할 시즌 선택"
-              >
-                {allSeasons.filter((s) => !isTestSeasonName(s.name)).map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                    {s.id === activeSeason?.id ? " (현재)" : ""}
-                  </option>
-                ))}
-                {allSeasons.some((s) => isTestSeasonName(s.name)) && (
-                  <optgroup label="── 테스트 전용 ──">
-                    {allSeasons.filter((s) => isTestSeasonName(s.name)).map((s) => (
-                      <option key={s.id} value={s.id}>
-                        [테스트] {s.name}
-                        {s.id === activeSeason?.id ? " (현재)" : ""}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-              </select>
+              />
             )}
+
             {isTestSeasonName(season?.name) && (
               <span className="rounded bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-destructive-foreground">
                 [테스트]
@@ -336,7 +316,84 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * 시즌 선택 드롭다운.
+ *
+ * 네이티브 select는 목록에서 가장 긴 옵션에 맞춰 폭이 정해지기 때문에,
+ * 선택한 시즌 이름이 짧아도 버튼에 큰 빈 공간이 남는다. 현재 선택된 라벨을
+ * 숨겨 둔 요소로 먼저 그려 폭을 만들고, select를 그 위에 절대 위치로 덮어써
+ * 내용 기반 가변폭으로 만든다. 최대 폭을 넘으면 말줄임 처리한다.
+ */
+function SeasonSelect({
+  season,
+  activeSeasonId,
+  allSeasons,
+  onSelect,
+}: {
+  season: Season | null | undefined;
+  activeSeasonId: string | null;
+  allSeasons: Season[];
+  onSelect: (id: string) => void;
+}) {
+  const label = season
+    ? `${isTestSeasonName(season.name) ? "[테스트] " : ""}${season.name}${season.id === activeSeasonId ? " (현재)" : ""}`
+    : "시즌 미설정";
+  const isTest = isTestSeasonName(season?.name);
+  return (
+    <span
+      className={cn(
+        "relative inline-block max-w-[min(13rem,45vw)] align-middle",
+        isTest && "text-destructive",
+      )}
+    >
+      {/* 선택된 라벨이 버튼 폭을 결정한다. 최대 폭을 넘으면 말줄임 처리한다. */}
+      <span
+        aria-hidden
+        className="pointer-events-none relative z-10 block truncate border border-transparent px-2.5 py-1 pr-7 text-[11px] font-medium"
+      >
+        {label}
+      </span>
+      {/* select는 배경·테두리·드롭다운 기능만 담당하고 글자는 숨긴다(말줄임은 라벨이 담당). */}
+      <select
+        value={season?.id ?? ""}
+        onChange={(e) => onSelect(e.target.value)}
+        className={cn(
+          "absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full border border-border px-2.5 text-[11px] font-medium text-transparent",
+          isTest ? "border-destructive bg-destructive/10" : "bg-muted/40",
+        )}
+        title="조회할 시즌 선택"
+        aria-label="조회할 시즌 선택"
+      >
+
+        {allSeasons
+          .filter((s) => !isTestSeasonName(s.name))
+          .map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+              {s.id === activeSeasonId ? " (현재)" : ""}
+            </option>
+          ))}
+        {allSeasons.some((s) => isTestSeasonName(s.name)) && (
+          <optgroup label="── 테스트 전용 ──">
+            {allSeasons
+              .filter((s) => isTestSeasonName(s.name))
+              .map((s) => (
+                <option key={s.id} value={s.id}>
+                  [테스트] {s.name}
+                  {s.id === activeSeasonId ? " (현재)" : ""}
+                </option>
+              ))}
+          </optgroup>
+        )}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 z-10 h-3 w-3 -translate-y-1/2 opacity-60" />
+    </span>
+
+  );
+}
+
 function SlidingTabs({
+
   tabs,
   pathname,
   isEnded,
