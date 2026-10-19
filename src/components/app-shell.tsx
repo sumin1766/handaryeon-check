@@ -338,26 +338,33 @@ function SeasonSelect({
   const label = season
     ? `${isTestSeasonName(season.name) ? "[테스트] " : ""}${season.name}${season.id === activeSeasonId ? " (현재)" : ""}`
     : "시즌 미설정";
+  const isTest = isTestSeasonName(season?.name);
   return (
-    <span className="relative inline-block max-w-[min(13rem,45vw)] align-middle">
+    <span
+      className={cn(
+        "relative inline-block max-w-[min(13rem,45vw)] align-middle",
+        isTest && "text-destructive",
+      )}
+    >
+      {/* 선택된 라벨이 버튼 폭을 결정한다. 최대 폭을 넘으면 말줄임 처리한다. */}
       <span
         aria-hidden
-        className="invisible block truncate border border-transparent px-2.5 py-1 pr-7 text-[11px] font-medium"
+        className="pointer-events-none relative z-10 block truncate border border-transparent px-2.5 py-1 pr-7 text-[11px] font-medium"
       >
         {label}
       </span>
+      {/* select는 배경·테두리·드롭다운 기능만 담당하고 글자는 숨긴다(말줄임은 라벨이 담당). */}
       <select
         value={season?.id ?? ""}
         onChange={(e) => onSelect(e.target.value)}
         className={cn(
-          "absolute inset-0 h-full w-full cursor-pointer rounded-full border px-2.5 text-[11px] font-medium",
-          isTestSeasonName(season?.name)
-            ? "border-destructive bg-destructive/10 text-destructive"
-            : "bg-muted/40",
+          "absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full border border-border px-2.5 text-[11px] font-medium text-transparent",
+          isTest ? "border-destructive bg-destructive/10" : "bg-muted/40",
         )}
         title="조회할 시즌 선택"
         aria-label="조회할 시즌 선택"
       >
+
         {allSeasons
           .filter((s) => !isTestSeasonName(s.name))
           .map((s) => (
@@ -379,7 +386,9 @@ function SeasonSelect({
           </optgroup>
         )}
       </select>
+      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 z-10 h-3 w-3 -translate-y-1/2 opacity-60" />
     </span>
+
   );
 }
 
