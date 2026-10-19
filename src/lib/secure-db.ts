@@ -4,6 +4,7 @@
 import { dbGateway } from "./db-gateway.functions";
 import { getSessionPassword } from "./session-password";
 import { isReadOnlyMode, READ_ONLY_MESSAGE } from "./read-only";
+import { isSeasonActivationWrite } from "./season-activation";
 import { toast } from "sonner";
 
 type Result<T = any> = { data: T; error: { message: string } | null; count: number | null };
@@ -46,7 +47,9 @@ class SecureQuery implements PromiseLike<Result> {
   maybeSingle() { this.req.single = "maybeSingle"; return this; }
 
   private async run(): Promise<Result> {
-    if (this.req.action !== "select" && isReadOnlyMode()) {
+    // View-only mode blocks data/settings edits, but never the season
+    // activation switch itself (see season-activation.ts).
+    if (this.req.action !== "select" && isReadOnlyMode() && !isSeasonActivationWrite(this.req)) {
       toast.error(READ_ONLY_MESSAGE);
       throw new Error(READ_ONLY_MESSAGE);
     }
