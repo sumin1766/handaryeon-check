@@ -602,7 +602,8 @@ function SeasonsSection() {
 
   const activate = useMutation({
     mutationFn: async (id: string) => {
-      await sdb.from("seasons").update({ is_active: false }).neq("id", id);
+      const off = await sdb.from("seasons").update({ is_active: false }).neq("id", id);
+      if (off.error) throw off.error;
       const { error } = await sdb.from("seasons").update({ is_active: true }).eq("id", id);
       if (error) throw error;
     },
@@ -610,6 +611,7 @@ function SeasonsSection() {
       toast.success("활성 시즌 변경");
       qc.invalidateQueries({ queryKey: ["seasons"] });
     },
+    onError: (e: any) => toast.error(e?.message ?? "활성 시즌 변경 실패"),
   });
 
   const updateSeason = useMutation({
