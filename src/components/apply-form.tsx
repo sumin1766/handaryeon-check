@@ -207,12 +207,6 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
         </div>
       )}
 
-      <Card className="mt-5 space-y-2 p-4 text-sm leading-relaxed">
-        {(extraNotices.length ? extraNotices : DEFAULT_APPLY_NOTICES).map((n, i) => (
-          <p key={i}>• {n}</p>
-        ))}
-      </Card>
-
       <Card className="mt-5 space-y-3 p-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="space-y-1">
