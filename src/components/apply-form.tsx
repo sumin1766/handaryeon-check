@@ -350,6 +350,107 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
   );
 }
 
+// 인트로 화면: 안내 문구 + 개인정보 수집·이용 동의. 동의해야 기존 입력 폼으로 넘어간다.
+function IntroScreen({
+  notices,
+  showLookupLink,
+  maintenance,
+  blockMessage,
+  onAgree,
+}: {
+  notices: string[];
+  showLookupLink: boolean;
+  maintenance: boolean;
+  blockMessage: string;
+  onAgree: () => void;
+}) {
+  const [agreed, setAgreed] = useState(false);
+  const [agreedAt, setAgreedAt] = useState<string | null>(null);
+
+  const toggle = () => {
+    setAgreed((prev) => {
+      const next = !prev;
+      // 동의 시각은 화면 상태로만 기록(저장 안 함, 추후 저장 필요 시 사용).
+      setAgreedAt(next ? new Date().toISOString() : null);
+      return next;
+    });
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:py-12">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <h1 className="text-2xl font-bold sm:text-3xl">참석자 사전접수</h1>
+        {showLookupLink && (
+          <Button asChild variant="outline">
+            <Link to="/apply/lookup">
+              <Search className="mr-1 h-4 w-4" />
+              내 등록 조회
+            </Link>
+          </Button>
+        )}
+      </div>
+
+      {maintenance && (
+        <div
+          role="alert"
+          className="mt-5 rounded-md border border-destructive bg-destructive/10 p-4 text-sm font-semibold text-destructive"
+        >
+          {TEST_SEASON_MAINTENANCE_MESSAGE}. 잠시 후 다시 이용해 주세요.
+        </div>
+      )}
+
+      {blockMessage && (
+        <div
+          role="alert"
+          className="mt-5 rounded-md border border-destructive bg-destructive/10 p-4 text-sm font-semibold text-destructive"
+        >
+          {blockMessage}
+        </div>
+      )}
+
+      <Card className="mt-5 p-5 sm:p-6">
+        <h2 className="text-lg font-semibold sm:text-xl">접수 전 안내</h2>
+        <ul className="mt-3 space-y-3 text-base leading-relaxed sm:text-lg sm:leading-relaxed">
+          {notices.map((n, i) => (
+            <li key={i} className="flex gap-2">
+              <span aria-hidden className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/60" />
+              <span>{n}</span>
+            </li>
+          ))}
+        </ul>
+      </Card>
+
+      <Card className="mt-5 p-5 sm:p-6">
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            className="mt-1 h-5 w-5 shrink-0 accent-primary"
+            checked={agreed}
+            onChange={toggle}
+          />
+          <span className="text-base leading-relaxed">
+            개인정보 수집·이용 및 접수 안내 발송에 동의합니다.
+            <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
+              (수집 항목: 교회명, 담당자명·연락처, 참석자 명단 / 이용 목적: 캠프 접수 처리 및 접수 안내·QR 발송 /
+              입력하신 연락처로 접수 안내 및 QR이 발송될 수 있습니다.)
+            </span>
+          </span>
+        </label>
+      </Card>
+
+      <Button
+        size="lg"
+        className="mt-6 h-12 w-full text-base sm:w-auto sm:px-10"
+        disabled={!agreed}
+        onClick={onAgree}
+      >
+        {agreed ? "사전접수 작성 시작" : "동의 후 시작할 수 있습니다"}
+      </Button>
+      {agreedAt ? null : null}
+    </div>
+  );
+}
+
 function DoneScreen({ result }: { result: SubmitPreRegistrationResult }) {
   const [qr, setQr] = useState<string>("");
   useEffect(() => {
