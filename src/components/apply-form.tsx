@@ -157,6 +157,19 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
 
   if (result) return <DoneScreen result={result} />;
 
+  // 동의 전에는 인트로 화면만 보여준다 (기존 폼 로직은 그대로 유지).
+  if (!consentedAt) {
+    return (
+      <IntroScreen
+        notices={extraNotices.length ? extraNotices : DEFAULT_APPLY_NOTICES}
+        showLookupLink={showLookupLink}
+        maintenance={maintenance}
+        blockMessage={blockMessage}
+        onAgree={() => setConsentedAt(new Date().toISOString())}
+      />
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
