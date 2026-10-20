@@ -53,6 +53,8 @@ const LODGING_OPTIONS: { value: LodgingType; label: string }[] = [
 ];
 
 export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean }) {
+  // 인트로(안내 + 개인정보 동의) 통과 여부. 동의 시각만 화면에서 기록(선택 사항)하고 저장은 하지 않는다.
+  const [consentedAt, setConsentedAt] = useState<string | null>(null);
   const [churchName, setChurchName] = useState("");
   const [denomination, setDenomination] = useState("");
   const [managerName, setManagerName] = useState("");
