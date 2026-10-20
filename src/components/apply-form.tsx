@@ -365,16 +365,8 @@ function IntroScreen({
   onAgree: () => void;
 }) {
   const [agreed, setAgreed] = useState(false);
-  const [agreedAt, setAgreedAt] = useState<string | null>(null);
 
-  const toggle = () => {
-    setAgreed((prev) => {
-      const next = !prev;
-      // 동의 시각은 화면 상태로만 기록(저장 안 함, 추후 저장 필요 시 사용).
-      setAgreedAt(next ? new Date().toISOString() : null);
-      return next;
-    });
-  };
+  const toggle = () => setAgreed((prev) => !prev);
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:py-12">
@@ -446,7 +438,6 @@ function IntroScreen({
       >
         {agreed ? "사전접수 작성 시작" : "동의 후 시작할 수 있습니다"}
       </Button>
-      {agreedAt ? null : null}
     </div>
   );
 }
