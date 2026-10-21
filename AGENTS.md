@@ -23,3 +23,4 @@
 - Past-season import for lodgings/places reads the source season into a local draft and writes only to the current season on explicit save; source seasons stay read-only.
 - View-only mode blocks every client write except the exact seasons is_active-only update (isSeasonActivationWrite); activation is a season-level switch and must never deadlock behind past-season browsing.
 - Deleted registrations move to the isolated registration_trash table (standalone jsonb snapshots, no FKs, service-role only) via trash_season_registrations; restore always creates a new unconfirmed pre-registration with a fresh token, so operating queries never need to know about the trash.
+- Pre-registration admin deletes call the same trash_season_registrations RPC (scoped by IDs) as season reset; there is no separate hard-delete path from that screen.

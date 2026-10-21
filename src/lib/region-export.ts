@@ -13,7 +13,7 @@ function download(blob: Blob, filename: string) {
 function palette() {
   const css = getComputedStyle(document.documentElement);
   const get = (key: string) => css.getPropertyValue(key).trim();
-  return { paper: get("--region-export-paper"), ink: get("--region-export-ink"), muted: get("--region-export-muted"), rule: get("--region-export-rule"), band: get("--region-1"), total: get("--region-5"), white: get("--region-zero"), header: get("--muted") };
+  return { paper: get("--region-export-paper"), ink: get("--region-export-ink"), muted: get("--region-export-muted"), rule: get("--region-export-rule"), band: get("--region-1"), total: get("--region-5"), white: get("--region-zero"), header: get("--muted"), headerInk: get("--foreground") };
 }
 async function renderMap(stats: RegionStats, timestamp: string) {
   const font = '"Pretendard", "Noto Sans KR", sans-serif';
@@ -86,7 +86,7 @@ async function renderPage(stats: RegionStats, rows: RegionRow[], timestamp: stri
     ctx.textAlign = "right"; ctx.fillText(cells[2], 1020, y + 35); ctx.textAlign = "left";
     ctx.strokeStyle = colors.rule; ctx.beginPath(); ctx.moveTo(60, y + 54); ctx.lineTo(1040, y + 54); ctx.stroke();
   };
-  drawRow(["시/도", "시군구", "교회 수"], 205, colors.header, true);
+  drawRow(["시/도", "시군구", "교회 수"], 205, colors.header, true, colors.headerInk);
   rows.forEach((r, i) => drawRow([r.sido, r.sigungu, `${r.count}교회`], 259 + i * 54, r.kind === "total" ? colors.total : r.kind === "subtotal" ? colors.band : undefined, r.kind !== "district", r.kind === "total" ? colors.white : colors.ink));
   if (pageLabel) { ctx.font = `16px ${font}`; ctx.fillStyle = colors.muted; ctx.textAlign = "right"; ctx.fillText(pageLabel, 1040, height - 8); }
   return canvas;
