@@ -34,6 +34,8 @@ import { DismissedPairsPanel } from "@/components/dismissed-pairs-panel";
 import { useDuplicateDismissals } from "@/lib/use-duplicate-dismissals";
 import { useServerFn } from "@tanstack/react-start";
 import { getSessionPassword } from "@/lib/session-password";
+import { recordRegistryEdit } from "@/lib/registry-change-log.functions";
+import { batchColorIndex } from "@/lib/change-diff";
 import {
   findLinkedPreRegistrations,
   deleteChurchWithPreRegistrations,
@@ -105,7 +107,7 @@ function catKeyOf(p: { gender: string; age_group: string; lodging: boolean }): C
   return found?.key ?? null;
 }
 
-type Person = { id?: string; name: string; note: string; created_at?: string | null };
+type Person = { id?: string; name: string; note: string; created_at?: string | null; pre_registration_id?: string | null };
 
 function RegistryPage() {
   const { season } = useActiveSeason();
@@ -474,11 +476,28 @@ function ChurchDialog({
   };
   for (const p of people) {
     const k = catKeyOf(p);
-    if (k) initial[k].push({ id: p.id, name: p.name ?? "", note: p.note ?? "", created_at: p.created_at ?? null });
+    if (k) initial[k].push({ id: p.id, name: p.name ?? "", note: p.note ?? "", created_at: p.created_at ?? null, pre_registration_id: p.pre_registration_id ?? null });
   }
   const [cats, setCats] = useState<Record<CatKey, Person[]>>(initial);
 
+  // 병합 교회의 신청 건 — 신청 시각 순으로 고정 정렬해 색·필터가 새로고침에도 같게 유지된다.
+  const batches = useMemo(
+    () =>
+      [...(managerInfo?.managers ?? [])]
+        .filter((m) => m.status === "applied" || m.status === "needs_review")
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.preRegistrationId.localeCompare(b.preRegistrationId)),
+    [managerInfo],
+  );
+  const batchIds = useMemo(() => batches.map((b) => b.preRegistrationId), [batches]);
+  const merged = batchIds.length >= 2;
+  const [batchFilter, setBatchFilter] = useState<string>("all");
+  const colorOf = (id: string | null | undefined) => (merged ? batchColorIndex(batchIds, id) : null);
+  const matchesFilter = (p: Person) => batchFilter === "all" || (p.pre_registration_id ?? "none") === batchFilter;
+  const newPersonBatch = batchFilter !== "all" && batchFilter !== "none" ? batchFilter : batchIds.length === 1 ? batchIds[0]! : null;
+  const logEdit = useServerFn(recordRegistryEdit);
+
   const total = (Object.values(cats) as Person[][]).reduce((s, arr) => s + arr.filter((p) => p.name.trim()).length, 0);
+  const hasUnassigned = merged && people.some((p: any) => !p.pre_registration_id);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -496,6 +515,7 @@ function ChurchDialog({
       const keptIds = new Set<string>();
       const toInsert: any[] = [];
       const toUpdate: { id: string; fields: any }[] = [];
+      const afterLog: any[] = [];
       for (const c of CATS) {
         for (const p of cats[c.key]) {
           if (!p.name.trim()) continue;
@@ -507,11 +527,13 @@ function ChurchDialog({
             age_group: c.age,
             lodging: c.lodging,
           };
+          const pre = p.id ? p.pre_registration_id ?? null : p.pre_registration_id ?? newPersonBatch;
+          afterLog.push({ id: p.id ?? null, ...fields, pre_registration_id: pre });
           if (p.id) {
             keptIds.add(p.id);
             toUpdate.push({ id: p.id, fields });
           } else {
-            toInsert.push(fields);
+            toInsert.push(pre ? { ...fields, pre_registration_id: pre } : fields);
           }
         }
       }
@@ -530,6 +552,25 @@ function ChurchDialog({
         const { error: eI } = await sdb.from("people").insert(toInsert);
         if (eI) throw eI;
       }
+      // 확정 건 변경 이력 — 저장은 이미 끝났으므로 기록 실패는 경고만 한다.
+      const password = getSessionPassword();
+      if (password) {
+        try {
+          await logEdit({
+            data: {
+              password,
+              churchId: church.id,
+              before: people.map((p: any) => ({
+                id: p.id, name: p.name ?? "", note: p.note ?? null, gender: p.gender, age_group: p.age_group,
+                lodging: !!p.lodging, pre_registration_id: p.pre_registration_id ?? null,
+              })),
+              after: afterLog.map((p) => ({ ...p, note: p.note ?? null })),
+            },
+          });
+        } catch {
+          toast.warning("명단은 저장됐지만 변경 이력 기록에 실패했습니다.");
+        }
+      }
     },
     onSuccess: () => {
       toast.success("저장 완료");
@@ -537,6 +578,7 @@ function ChurchDialog({
       qc.invalidateQueries({ queryKey: ["pre-list"] });
       qc.invalidateQueries({ queryKey: ["intake"] });
       qc.invalidateQueries({ queryKey: ["pre-reg-admin"] });
+      qc.invalidateQueries({ queryKey: ["pre-reg-admin-changes"], refetchType: "all" });
       notifyDataChanged();
       onClose();
     },
@@ -610,10 +652,37 @@ function ChurchDialog({
           </div>
         </div>
 
+        {merged && (
+          <div className="mt-3 rounded border p-2">
+            <div className="text-xs font-semibold mb-1.5">신청 건별 보기 <span className="font-normal text-muted-foreground">(같은 색 = 같은 사전접수 건)</span></div>
+            <div className="flex flex-wrap gap-1.5">
+              <button type="button" onClick={() => setBatchFilter("all")}
+                className={`rounded-full border px-2.5 py-1 text-xs ${batchFilter === "all" ? "border-foreground font-semibold" : "text-muted-foreground"}`}>
+                전체 {num(total)}명
+              </button>
+              {batches.map((b, i) => {
+                const n = (Object.values(cats) as Person[][]).flat().filter((p) => p.name.trim() && p.pre_registration_id === b.preRegistrationId).length;
+                return (
+                  <button key={b.preRegistrationId} type="button" onClick={() => setBatchFilter(b.preRegistrationId)}
+                    className={`batch-tint-${i % 8} inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${batchFilter === b.preRegistrationId ? "ring-2 ring-foreground/60 font-semibold" : ""}`}>
+                    #{i + 1} {b.name} · {formatKst(b.createdAt)} · {n}명
+                  </button>
+                );
+              })}
+              {hasUnassigned && (
+                <button type="button" onClick={() => setBatchFilter("none")}
+                  className={`rounded-full border border-dashed px-2.5 py-1 text-xs ${batchFilter === "none" ? "border-foreground font-semibold" : "text-muted-foreground"}`}>
+                  건 미지정(수기 추가)
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
           {CATS.map((c) => {
             const oppositeKey = CATS.find((x) => x.gender === c.gender && x.age === c.age && x.lodging !== c.lodging)!.key;
-            const count = cats[c.key].filter((p) => p.name.trim()).length;
+            const count = cats[c.key].filter((p) => p.name.trim() && matchesFilter(p)).length;
             const canMove = canEdit && count > 0;
             const moveLabel = c.lodging ? "→ 비숙박" : "→ 숙박";
             return (
@@ -626,11 +695,11 @@ function ChurchDialog({
                         type="button"
                         disabled={!canMove}
                         onClick={() => {
-                          const moving = cats[c.key].filter((p) => p.name.trim());
+                          const moving = cats[c.key].filter((p) => p.name.trim() && matchesFilter(p));
                           if (moving.length === 0) return;
                           setCats({
                             ...cats,
-                            [c.key]: [],
+                            [c.key]: cats[c.key].filter((p) => !moving.includes(p)),
                             [oppositeKey]: [...cats[oppositeKey], ...moving],
                           });
                         }}
@@ -646,6 +715,9 @@ function ChurchDialog({
                 <NameEditor
                   names={cats[c.key]}
                   canEdit={canEdit}
+                  visible={matchesFilter}
+                  colorOf={colorOf}
+                  newBatch={newPersonBatch}
                   onChange={(ns) => setCats({ ...cats, [c.key]: ns })}
                 />
               </div>
@@ -678,11 +750,17 @@ function ChurchDialog({
   );
 }
 
-function NameEditor({ names, onChange, canEdit }: { names: Person[]; onChange: (ns: Person[]) => void; canEdit: boolean }) {
+function NameEditor({ names, onChange, canEdit, visible, colorOf, newBatch }: {
+  names: Person[]; onChange: (ns: Person[]) => void; canEdit: boolean;
+  visible: (p: Person) => boolean; colorOf: (id: string | null | undefined) => number | null; newBatch: string | null;
+}) {
   return (
     <div className="flex flex-wrap gap-1">
-      {names.map((p, i) => (
-        <div key={i} className="flex flex-col gap-0.5 rounded bg-muted px-1.5 py-1 text-xs">
+      {names.map((p, i) => {
+        if (!visible(p) && p.name.trim()) return null;
+        const ci = colorOf(p.pre_registration_id);
+        return (
+        <div key={i} className={`flex flex-col gap-0.5 rounded px-1.5 py-1 text-xs ${ci == null ? "bg-muted" : `batch-tint-${ci} batch-stripe`}`}>
           <div className="flex items-center gap-1">
             <Input
               value={p.name}
@@ -721,11 +799,12 @@ function NameEditor({ names, onChange, canEdit }: { names: Person[]; onChange: (
             {formatKst(p.created_at)}
           </div>
         </div>
-      ))}
+        );
+      })}
       {canEdit && (
         <button
           type="button"
-          onClick={() => onChange([...names, { name: "", note: "" }])}
+          onClick={() => onChange([...names, { name: "", note: "", pre_registration_id: newBatch }])}
           className="inline-flex items-center gap-1 rounded border border-dashed px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
         >
           <Plus className="h-3 w-3" /> 추가
