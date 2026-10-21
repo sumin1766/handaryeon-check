@@ -65,7 +65,8 @@ import {
   DEFAULT_PRE_REG_FEE, DEFAULT_SEGUE_MEMBER_FEE, DEFAULT_APPLY_NOTICES,
   type FeeConfig,
 } from "@/lib/pre-registration-config";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, ArchiveRestore } from "lucide-react";
+import { TrashDeleteSection, TrashRestoreSection, TrashRestoreSummary } from "@/components/registration-trash-panel";
 import { SeasonImportButton } from "@/components/season-import-dialog";
 import { SeasonResetSection, SeasonResetSummary } from "@/components/season-reset-panel";
 
@@ -184,6 +185,12 @@ function SettingsContent({ isAdmin }: { isAdmin: boolean }) {
           "data-reset": (
             <SettingsCard icon={<RotateCcw className="h-5 w-5" />} title="데이터 초기화" summary={<SeasonResetSummary />}>
               <SeasonResetSection />
+              <div className="mt-4"><TrashDeleteSection /></div>
+            </SettingsCard>
+          ),
+          "trash-restore": (
+            <SettingsCard icon={<ArchiveRestore className="h-5 w-5" />} title="삭제 명단 복구" summary={<TrashRestoreSummary />}>
+              <TrashRestoreSection />
             </SettingsCard>
           ),
         }
