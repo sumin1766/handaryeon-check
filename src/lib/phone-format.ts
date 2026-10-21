@@ -23,3 +23,16 @@ export function isPhoneComplete(v: string): boolean {
   const d = phoneDigits(v);
   return /^01\d/.test(d) && d.length === 11;
 }
+
+/** 010 고정 입력: 저장 값(숫자) → 뒤 8자리 표시 "0000-0000" */
+export function phone010Tail(v: string): string {
+  const d = phoneDigits(v);
+  const t = (d.startsWith("010") ? d.slice(3) : d).slice(0, 8);
+  return t.length > 4 ? `${t.slice(0, 4)}-${t.slice(4)}` : t;
+}
+
+/** 010 고정 입력: 뒤 자리 입력 → 저장 값. 뒤 자리가 비면 빈 값. */
+export function phone010FromTail(tail: string): string {
+  const t = tail.replace(/\D/g, "").slice(0, 8);
+  return t ? `010${t}` : "";
+}

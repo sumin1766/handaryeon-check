@@ -11,7 +11,9 @@ export function ChurchRegionFields({
   value,
   onChange,
   optional = false,
+  onRoadEnter,
 }: {
+  onRoadEnter?: () => void;
   value: ChurchRegion;
   onChange: (v: ChurchRegion) => void;
   optional?: boolean;
@@ -64,6 +66,12 @@ export function ChurchRegionFields({
         value={value.road}
         onChange={(e) => onChange({ ...value, road: e.target.value })}
         maxLength={200}
+        enterKeyHint="done"
+        onKeyDown={(e) => {
+          if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+          e.preventDefault(); // 엔터로 폼 제출 방지
+          onRoadEnter?.();
+        }}
       />
     </div>
   );
