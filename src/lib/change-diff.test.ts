@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { actorLabel, batchColorIndex, diffMembers, personToMember } from "./change-diff";
 
 describe("change history diff", () => {
