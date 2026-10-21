@@ -2,6 +2,7 @@
 // 토큰 또는 (교회명+담당자명+담당자 전화번호) 3값 일치를 서버에서 검증한 뒤에만
 // 해당 1건만 반환/수정한다. 목록 조회·삭제는 제공하지 않는다.
 import { createServerFn } from "@tanstack/react-start";
+import { diffMembers } from "./change-diff";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import {
@@ -489,6 +490,14 @@ export const updatePreRegistrationSelf = createServerFn({ method: "POST" })
       fee_delta: feeDelta,
       resolved: false,
       note: reg.status === "applied" ? "확정 후 교회 수정 — 재검토 필요" : null,
+      actor: "user",
+      details: [
+        ...(headerChanged ? ["교회·담당자 정보 변경"] : []),
+        ...diffMembers(
+          (beforeMembers ?? []).map((m) => ({ key: m.id, name: m.name, phone: m.phone ?? "", category: m.category, lodging: m.lodging_type })),
+          data.members.map((m) => ({ key: m.id ?? null, name: m.name, phone: m.phone.trim(), category: m.category, lodging: m.lodging_type })),
+        ),
+      ],
     });
     if (logErr) {
       await restoreMembers();

@@ -196,6 +196,7 @@ export const confirmPreRegistration = createServerFn({ method: "POST" })
         if (m.phone) notes.push(m.phone);
         return {
           church_id: churchId,
+          pre_registration_id: reg.id,
           name: m.name,
           gender: map.gender,
           age_group: map.age_group,
