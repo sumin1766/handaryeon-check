@@ -87,8 +87,9 @@ function RostersPage() {
   const peopleByChurch = new Map<string, any[]>();
   for (const p of people) peopleByChurch.set(p.church_id, [...(peopleByChurch.get(p.church_id) ?? []), p]);
 
-  const allRows = churches
-    .map((c: any) => {
+  type ListRow = { id: string; name: string; denomination: string; address: string; contact: string; lodging: number; nonLodging: number; total: number };
+  const allRows: ListRow[] = churches
+    .map((c: any): ListRow => {
       // 대표 담당자가 지정돼 있으면 표시만 대표 기준으로 통일한다(원본은 그대로).
       const info = managers.map.get(c.id);
       const primary = info?.primaryPreRegistrationId ? info.primary : null;
