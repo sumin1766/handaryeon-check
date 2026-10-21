@@ -2,10 +2,19 @@
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import QRCode from "qrcode";
 import { toast } from "sonner";
-import { Plus, Trash2, Search, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Search, ChevronDown, Save } from "lucide-react";
+import {
+  loadDraft,
+  saveDraft,
+  clearDraft,
+  purgeOtherSeasonDrafts,
+  hasDraftContent,
+  type ApplyDraft,
+  type ApplyDraftData,
+} from "@/lib/apply-draft";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatPhone, phoneDigits, isPhoneComplete } from "@/lib/phone-format";
 
@@ -76,6 +85,7 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
       notices: string[];
       maintenance: boolean;
       blockMessage: string;
+      seasonId: string;
     }> => {
       const cfg = await getPublicFeeConfig();
       return {
@@ -84,6 +94,7 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
         notices: cfg.notices ?? [],
         maintenance: !!cfg.maintenance,
         blockMessage: cfg.blockMessage ?? "",
+        seasonId: (cfg as { seasonId?: string }).seasonId ?? "",
       };
     },
   });
@@ -96,11 +107,99 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
   const blocked = maintenance || !!blockMessage;
   const expectedFee = sumCategoryFees(rows.map((r) => r.category), categoryFees, preRegFee);
 
+  // ── 임시저장 (브라우저 localStorage 전용, 활성 시즌별 키) ──
+  const seasonId = feeCfg?.seasonId ?? "";
+  const [draftOffer, setDraftOffer] = useState<ApplyDraft | null>(null);
+  const [draftReady, setDraftReady] = useState(false);
+  useEffect(() => {
+    if (!seasonId) return;
+    purgeOtherSeasonDrafts(seasonId);
+    const d = loadDraft(seasonId);
+    if (d && hasDraftContent(d.data)) setDraftOffer(d);
+    else setDraftReady(true);
+  }, [seasonId]);
+  const snapshot = (): ApplyDraftData => ({
+    consented: !!consentedAt,
+    churchName,
+    denomination,
+    managerName,
+    managerPhone,
+    region,
+    rows,
+  });
+  useEffect(() => {
+    if (!seasonId || !draftReady || result) return;
+    const data = snapshot();
+    if (!hasDraftContent(data)) return;
+    const t = setTimeout(() => saveDraft(seasonId, data), 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seasonId, draftReady, result, consentedAt, churchName, denomination, managerName, managerPhone, region, rows]);
+  const restoreDraft = () => {
+    if (!draftOffer) return;
+    const d = draftOffer.data;
+    setChurchName(d.churchName ?? "");
+    setDenomination(d.denomination ?? "");
+    setManagerName(d.managerName ?? "");
+    setManagerPhone(d.managerPhone ?? "");
+    setRegion({ sido: d.region?.sido ?? "", sigungu: d.region?.sigungu ?? "", road: d.region?.road ?? "" });
+    setRows(
+      d.rows?.length
+        ? d.rows.map((r) => ({
+            name: r.name ?? "",
+            phone: r.phone ?? "",
+            lodging_type: (["church", "external", "none"].includes(r.lodging_type) ? r.lodging_type : "church") as LodgingType,
+            category: ((MEMBER_CATEGORIES as readonly string[]).includes(r.category) ? r.category : "male_student") as MemberCategory,
+          }))
+        : [emptyRow()],
+    );
+    if (d.consented) setConsentedAt(new Date().toISOString());
+    setDraftOffer(null);
+    setDraftReady(true);
+    toast.success("이전에 작성하던 내용을 불러왔습니다.");
+  };
+  const discardDraft = () => {
+    clearDraft(seasonId);
+    setChurchName("");
+    setDenomination("");
+    setManagerName("");
+    setManagerPhone("");
+    setRegion({ sido: "", sigungu: "", road: "" });
+    setRows([emptyRow()]);
+    setConsentedAt(null);
+    setDraftOffer(null);
+    setDraftReady(true);
+    toast.success("임시저장 내용을 삭제했습니다.");
+  };
+  const manualSave = () => {
+    if (!seasonId) {
+      toast.error("잠시 후 다시 시도해 주세요.");
+      return;
+    }
+    saveDraft(seasonId, snapshot());
+    setDraftOffer(null);
+    setDraftReady(true);
+    toast.success("임시저장되었습니다. 이 기기·브라우저에만 3일간 보관됩니다.");
+  };
+  const draftBanner = draftOffer ? (
+    <div role="status" className="mt-5 rounded-md border border-primary/40 bg-primary/5 p-4">
+      <p className="text-base font-semibold">이전에 작성하던 내용이 있습니다. 불러올까요?</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        임시저장은 이 기기·브라우저에만 3일간 보관됩니다. 본인 기기에서만 사용하세요.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button type="button" size="sm" onClick={restoreDraft}>불러오기</Button>
+        <Button type="button" size="sm" variant="outline" onClick={discardDraft}>새로 작성</Button>
+      </div>
+    </div>
+  ) : null;
+
   const submitFn = useServerFn(submitPreRegistration);
   const submit = useMutation({
     mutationFn: (input: SubmitPreRegistrationInput) => submitFn({ data: input }),
     onSuccess: (res) => {
       setResult(res);
+      if (seasonId) clearDraft(seasonId);
       if (res.duplicateNotice) {
         toast.warning("이미 접수된 건이 있습니다. 중복 접수인지 담당자에게 확인해 주세요.");
       }
@@ -180,6 +279,7 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
         showLookupLink={showLookupLink}
         maintenance={maintenance}
         blockMessage={blockMessage}
+        banner={draftBanner}
         onAgree={() => setConsentedAt(new Date().toISOString())}
       />
     );
@@ -203,6 +303,8 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
           </Button>
         )}
       </div>
+
+      {draftBanner}
 
       {maintenance && (
         <div
@@ -337,7 +439,10 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
                 aria-label="분류"
                 className="h-10 rounded-md border border-input bg-background px-2 text-sm"
                 value={r.category}
-                onChange={(e) => setRow(i, { category: e.target.value as MemberCategory })}
+                onChange={(e) => {
+                  setRow(i, { category: e.target.value as MemberCategory });
+                  focusNext(`[data-row-phone="${i}"]`);
+                }}
               >
                 {MEMBER_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
@@ -348,13 +453,14 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
               <Input
                 placeholder={phoneOptional(r.category) ? "전화번호 (선택)" : "전화번호"}
                 inputMode="tel"
+                data-row-phone={i}
                 value={formatPhone(r.phone)}
                 maxLength={13}
                 onChange={(e) => {
                   const d = phoneDigits(e.target.value);
                   const wasComplete = isPhoneComplete(r.phone);
                   setRow(i, { phone: d });
-                  if (!wasComplete && isPhoneComplete(d)) focusNext(`[data-row-name="${i + 1}"]`);
+                  if (!wasComplete && isPhoneComplete(d)) focusNext(`[data-row-lodging="${i}"]`);
                 }}
               />
               <div className="flex flex-wrap gap-1">
@@ -364,7 +470,11 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
                     type="button"
                     size="sm"
                     variant={r.lodging_type === o.value ? "default" : "outline"}
-                    onClick={() => setRow(i, { lodging_type: o.value })}
+                    data-row-lodging={r.lodging_type === o.value ? i : undefined}
+                    onClick={() => {
+                      setRow(i, { lodging_type: o.value });
+                      if (i + 1 < rows.length) focusNext(`[data-row-name="${i + 1}"]`);
+                    }}
                   >
                     {o.label}
                   </Button>
@@ -387,7 +497,10 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
           type="button"
           variant="outline"
           className="mt-3"
-          onClick={() => setRows((p) => [...p, emptyRow()])}
+          onClick={() => {
+            setRows((p) => [...p, emptyRow()]);
+            focusNext(`[data-row-name="${rows.length}"]`);
+          }}
         >
           <Plus className="mr-1 h-4 w-4" /> 참석자 추가
         </Button>
@@ -400,9 +513,17 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
           </div>
           <div className="text-2xl font-bold">{krw(expectedFee)}</div>
         </div>
-        <Button size="lg" onClick={onSubmit} disabled={submit.isPending || blocked}>
-          {blocked ? "접수 일시 중단" : submit.isPending ? "제출 중..." : "사전접수 제출"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" size="lg" variant="outline" onClick={manualSave}>
+            <Save className="mr-1 h-4 w-4" /> 임시저장
+          </Button>
+          <Button size="lg" onClick={onSubmit} disabled={submit.isPending || blocked}>
+            {blocked ? "접수 일시 중단" : submit.isPending ? "제출 중..." : "사전접수 제출"}
+          </Button>
+        </div>
+        <p className="w-full text-xs text-muted-foreground">
+          작성 내용은 이 기기·브라우저에 자동 임시저장되며 3일 뒤 삭제됩니다. 본인 기기에서만 사용하세요.
+        </p>
       </Card>
     </div>
   );
@@ -414,12 +535,14 @@ function IntroScreen({
   showLookupLink,
   maintenance,
   blockMessage,
+  banner,
   onAgree,
 }: {
   notices: string[];
   showLookupLink: boolean;
   maintenance: boolean;
   blockMessage: string;
+  banner?: ReactNode;
   onAgree: () => void;
 }) {
   const [agreed, setAgreed] = useState(false);
@@ -439,6 +562,8 @@ function IntroScreen({
           </Button>
         )}
       </div>
+
+      {banner}
 
       {maintenance && (
         <div
