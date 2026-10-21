@@ -176,6 +176,7 @@ export const getPublicFeeConfig = createServerFn({ method: "POST" }).handler(
     notices: string[];
     maintenance?: boolean;
     blockMessage?: string;
+    seasonId?: string;
   }> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: season } = await supabaseAdmin

@@ -94,7 +94,7 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
         notices: cfg.notices ?? [],
         maintenance: !!cfg.maintenance,
         blockMessage: cfg.blockMessage ?? "",
-        seasonId: (cfg as { seasonId?: string }).seasonId ?? "",
+        seasonId: cfg.seasonId ?? "",
       };
     },
   });
