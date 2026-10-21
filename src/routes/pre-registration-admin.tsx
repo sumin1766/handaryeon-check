@@ -6,7 +6,7 @@ import {
   MEMBER_CATEGORIES,
   LEGACY_MEMBER_CATEGORIES,
 } from "@/lib/member-categories";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -657,6 +657,11 @@ function DetailDialog({
               <div className="font-medium text-sm mb-2">
                 참석자 명단 ({reg.members.length}명)
                 {reg.source === "operating" && <span className="ml-2 text-xs font-normal text-muted-foreground">접수 명단 기준</span>}
+                {reg.church_id && (
+                  <Link to="/rosters" search={{ church: reg.church_id }} className="ml-2 text-xs font-semibold text-primary underline-offset-2 hover:underline">
+                    명단 수정 →
+                  </Link>
+                )}
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
