@@ -44,6 +44,31 @@ text.region-on-dark { fill: var(--region-zero); }
 .region-stats-table thead { background: var(--muted); }
 .region-row-subtotal { background: var(--region-1); color: var(--region-export-ink); font-weight: 600; }
 .region-row-total { background: var(--region-5); color: var(--region-zero); font-weight: 700; }
+
+/* 병합 교회 신청 건별 파스텔 색 (인접 색 대비가 나도록 색상환을 건너뛰며 배치) */
+:root {
+  --batch-0: oklch(0.94 0.04 20);  --batch-0-edge: oklch(0.78 0.09 20);
+  --batch-1: oklch(0.95 0.04 150); --batch-1-edge: oklch(0.76 0.09 150);
+  --batch-2: oklch(0.94 0.04 260); --batch-2-edge: oklch(0.76 0.09 260);
+  --batch-3: oklch(0.96 0.05 85);  --batch-3-edge: oklch(0.8 0.1 85);
+  --batch-4: oklch(0.94 0.04 320); --batch-4-edge: oklch(0.77 0.09 320);
+  --batch-5: oklch(0.95 0.04 195); --batch-5-edge: oklch(0.76 0.08 195);
+  --batch-6: oklch(0.95 0.045 50); --batch-6-edge: oklch(0.79 0.1 50);
+  --batch-7: oklch(0.95 0.035 290); --batch-7-edge: oklch(0.77 0.08 290);
+}
+.dark {
+  --batch-0: oklch(0.32 0.05 20);  --batch-1: oklch(0.32 0.05 150); --batch-2: oklch(0.32 0.05 260); --batch-3: oklch(0.34 0.05 85);
+  --batch-4: oklch(0.32 0.05 320); --batch-5: oklch(0.32 0.05 195); --batch-6: oklch(0.33 0.05 50);  --batch-7: oklch(0.32 0.05 290);
+}
+.batch-tint-0 { background: var(--batch-0); border-color: var(--batch-0-edge); }
+.batch-tint-1 { background: var(--batch-1); border-color: var(--batch-1-edge); }
+.batch-tint-2 { background: var(--batch-2); border-color: var(--batch-2-edge); }
+.batch-tint-3 { background: var(--batch-3); border-color: var(--batch-3-edge); }
+.batch-tint-4 { background: var(--batch-4); border-color: var(--batch-4-edge); }
+.batch-tint-5 { background: var(--batch-5); border-color: var(--batch-5-edge); }
+.batch-tint-6 { background: var(--batch-6); border-color: var(--batch-6-edge); }
+.batch-tint-7 { background: var(--batch-7); border-color: var(--batch-7-edge); }
+.batch-stripe { border-left-width: 4px; border-left-style: solid; }
 .region-row-unknown { font-weight: 600; }
 @media (max-width: 639px) {
   .region-leader-label { display: none; }
