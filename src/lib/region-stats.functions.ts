@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { aggregateRegions, type RegionChurch, type RegionRegistration } from "@/lib/region-stats";
+import { aggregateRegions, confirmedRegionUnits, type RegionChurch, type RegionRegistration } from "@/lib/region-stats";
 import { buildRegionChurchList, type ExportChurch, type ExportRegistration } from "@/lib/region-church-list";
 
 /** Same shared-password authorization as church managers (way B); SELECT only. */
@@ -64,4 +64,29 @@ export const getRegionChurchList = createServerFn({ method: "POST" })
       }
     }
     return { ...buildRegionChurchList(season.id, season.name, churches, registrations, people), stats: aggregateRegions(season.id, season.name, churches, registrations) };
+  });
+/** Roster edit page: church ID → shared confirmed address (sido/sigungu only). SELECT only, same password boundary. */
+export const getChurchAddresses = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ password: z.string().min(1).max(200), seasonId: z.string().uuid() }).parse(d))
+  .handler(async ({ data }): Promise<{ churchId: string; sido: string; sigungu: string }[]> => {
+    const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+    const { data: role, error: authError } = await db.rpc("verify_password", { p: data.password });
+    if (authError || !["admin", "staff", "user"].includes(role ?? "")) throw new Error("접근 권한이 없습니다.");
+    const churches: RegionChurch[] = [];
+    const registrations: RegionRegistration[] = [];
+    for (let offset = 0; ; offset += 500) {
+      const { data: rows, error: e } = await db.from("churches").select("id, season_id, primary_pre_registration_id").eq("season_id", data.seasonId).order("id").range(offset, offset + 499);
+      if (e) throw new Error("교회를 불러오지 못했습니다.");
+      churches.push(...(rows ?? []));
+      if ((rows?.length ?? 0) < 500) break;
+    }
+    for (let offset = 0; ; offset += 500) {
+      const { data: rows, error: e } = await db.from("pre_registrations").select("id, season_id, church_id, region_sido, region_sigungu, created_at, status").eq("season_id", data.seasonId).eq("status", "applied").order("id").range(offset, offset + 499);
+      if (e) throw new Error("교회 주소를 불러오지 못했습니다.");
+      registrations.push(...(rows ?? []));
+      if ((rows?.length ?? 0) < 500) break;
+    }
+    return confirmedRegionUnits(data.seasonId, churches, registrations)
+      .filter((u) => u.churchId && u.address)
+      .map((u) => ({ churchId: u.churchId!, sido: u.address!.sido, sigungu: u.address!.sigungu }));
   });
