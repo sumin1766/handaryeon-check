@@ -9,7 +9,7 @@ import { useRealtimeInvalidate } from "@/lib/use-realtime";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, Copy, Check } from "lucide-react";
-import { downloadRowsAsXlsx } from "@/lib/export-xlsx";
+import { buildNametagRows, copyText, downloadNametagXlsx, nametagTsv } from "@/lib/nametag-rows";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -49,59 +49,17 @@ function NametagsPage() {
   const churches = data?.churches ?? [];
   const people = data?.people ?? [];
 
-  const peopleByChurch = new Map<string, any[]>();
-  for (const p of people) {
-    const arr = peopleByChurch.get(p.church_id) ?? [];
-    arr.push(p);
-    peopleByChurch.set(p.church_id, arr);
-  }
+  const flatRows = buildNametagRows(churches, people);
 
-  const flatRows: { no: number; church: string; name: string; churchId: string }[] = [];
-  let no = 0;
-  for (const c of churches) {
-    const label = c.denomination ? `${c.name}(${c.denomination})` : c.name;
-    const ppl = peopleByChurch.get(c.id) ?? [];
-    for (const p of ppl) {
-      no += 1;
-      flatRows.push({ no, church: label, name: p.name, churchId: c.id });
-    }
-  }
-
-  const download = () => {
-    const rows = flatRows.map((r) => ({ No: r.no, 교회: r.church, 명단: r.name }));
-    downloadRowsAsXlsx(rows, "전체 등록자 명단", `${season.name}_이름표.xlsx`);
-  };
+  const download = () => downloadNametagXlsx(flatRows, `${season.name}_이름표.xlsx`);
 
   // TSV (탭 구분) — 구글 스프레드시트에 붙여넣으면 셀별로 자동 분리됩니다.
   const copyCsv = async () => {
-    const escape = (v: string | number) =>
-      String(v ?? "").replace(/\t/g, " ").replace(/\r?\n/g, " ");
-    const header = ["No", "교회", "명단"].join("\t");
-    const body = flatRows
-      .map((r) => [r.no, escape(r.church), escape(r.name)].join("\t"))
-      .join("\n");
-    const text = `${header}\n${body}`;
-    try {
-      await navigator.clipboard.writeText(text);
+    if (await copyText(nametagTsv(flatRows))) {
       setCopied(true);
       toast.success("복사됨 — 구글 시트에 붙여넣으세요");
       setTimeout(() => setCopied(false), 1800);
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      try {
-        document.execCommand("copy");
-        setCopied(true);
-        toast.success("복사됨");
-        setTimeout(() => setCopied(false), 1800);
-      } catch {
-        toast.error("복사 실패");
-      } finally {
-        document.body.removeChild(ta);
-      }
-    }
+    } else toast.error("복사 실패");
   };
 
   return (

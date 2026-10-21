@@ -107,6 +107,9 @@ function catKeyOf(p: { gender: string; age_group: string; lodging: boolean }): C
   return found?.key ?? null;
 }
 
+/** 참석자 인라인 편집 비활성화 — 모든 명단 수정은 /rosters(명단 수정)에서. */
+const ROSTER_INLINE_EDIT = false;
+
 type Person = { id?: string; name: string; note: string; created_at?: string | null; pre_registration_id?: string | null };
 
 function RegistryPage() {
@@ -511,6 +514,8 @@ function ChurchDialog({
       }).eq("id", church.id);
       if (eU) throw eU;
 
+      // 참석자 편집은 "명단 수정" 페이지로 일원화 — 여기서는 교회 정보만 저장한다.
+      if (!ROSTER_INLINE_EDIT) return;
       // Diff-save people so existing rows keep their created_at.
       const keptIds = new Set<string>();
       const toInsert: any[] = [];
@@ -679,6 +684,12 @@ function ChurchDialog({
           </div>
         )}
 
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded border bg-muted/30 p-2 text-xs">
+          <span className="text-muted-foreground">참석자 명단은 여기서 조회만 됩니다. 이름·분류·숙박 수정과 추가는 "명단 수정"에서 해 주세요.</span>
+          <Link to="/rosters" search={{ church: church.id }} className="inline-flex h-7 items-center gap-1 rounded-md border px-2 font-semibold text-primary hover:bg-muted">
+            <Pencil className="h-3 w-3" />명단 수정으로 이동
+          </Link>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
           {CATS.map((c) => {
             const oppositeKey = CATS.find((x) => x.gender === c.gender && x.age === c.age && x.lodging !== c.lodging)!.key;
@@ -690,7 +701,7 @@ function ChurchDialog({
                 <div className="flex items-center justify-between mb-2 gap-2">
                   <div className="font-semibold text-sm">{c.label}</div>
                   <div className="flex items-center gap-2">
-                    {canEdit && (
+                    {ROSTER_INLINE_EDIT && (
                       <button
                         type="button"
                         disabled={!canMove}
@@ -714,7 +725,7 @@ function ChurchDialog({
                 </div>
                 <NameEditor
                   names={cats[c.key]}
-                  canEdit={canEdit}
+                  canEdit={ROSTER_INLINE_EDIT && canEdit}
                   visible={matchesFilter}
                   colorOf={colorOf}
                   newBatch={newPersonBatch}

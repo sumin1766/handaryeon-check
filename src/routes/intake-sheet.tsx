@@ -304,6 +304,9 @@ function IntakeSheetPage() {
                           <Link to="/registry" search={{ openChurch: c.id, from: "intake-sheet", row: c.id }} className="inline-flex h-8 w-8 items-center justify-center rounded border hover:bg-muted" title="접수명단에서 수정">
                             <Pencil className="h-3.5 w-3.5" />
                           </Link>
+                          <Link to="/rosters" search={{ church: c.id }} className="inline-flex h-8 items-center justify-center rounded border px-2 text-xs font-semibold hover:bg-muted" title="명단 수정">
+                            명단
+                          </Link>
                           <button
                             type="button"
                             onClick={() => {
