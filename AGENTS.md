@@ -24,3 +24,5 @@
 - View-only mode blocks every client write except the exact seasons is_active-only update (isSeasonActivationWrite); activation is a season-level switch and must never deadlock behind past-season browsing.
 - Deleted registrations move to the isolated registration_trash table (standalone jsonb snapshots, no FKs, service-role only) via trash_season_registrations; restore always creates a new unconfirmed pre-registration with a fresh token, so operating queries never need to know about the trash.
 - Pre-registration admin deletes call the same trash_season_registrations RPC (scoped by IDs) as season reset; there is no separate hard-delete path from that screen.
+- Confirmed (applied) pre-registrations display members, head count and fee from operating `people` rows tracked by `people.pre_registration_id` (set at confirm, inherited by roster additions); pre-registration originals stay untouched so re-confirm keeps working.
+- Change history rows carry `actor` (admin/staff/user, server-resolved) and `details` (lines from `src/lib/change-diff.ts`); roster edits log through `recordRegistryEdit` as resolved entries so they never trigger re-review.
