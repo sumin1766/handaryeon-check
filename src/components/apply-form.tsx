@@ -16,7 +16,7 @@ import {
   type ApplyDraftData,
 } from "@/lib/apply-draft";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { formatPhone, phoneDigits, isPhoneComplete } from "@/lib/phone-format";
+import { isPhoneComplete, phone010Tail, phone010FromTail } from "@/lib/phone-format";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -213,9 +213,15 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
     !!region.sido && !!region.sigungu && !!region.road.trim();
   const [churchOpen, setChurchOpen] = useState(true);
   const churchCardRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!churchInfoComplete) setChurchOpen(true);
-  }, [churchInfoComplete]);
+  // 모바일: 명시적 신호(도로명 Enter / "입력 완료")로만 접는다. 필수 칸이 비면 접지 않음.
+  const collapseChurch = () => {
+    if (!churchInfoComplete) {
+      toast.error("교회명·담당자명·전화번호·시/도·시군구·도로명 주소를 모두 입력해 주세요.");
+      return;
+    }
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    setChurchOpen(false);
+  };
   const churchCollapsed = isMobile && !churchOpen && churchInfoComplete;
   const focusNext = (selector: string) =>
     setTimeout(() => (document.querySelector(selector) as HTMLElement | null)?.focus(), 0);
@@ -327,13 +333,6 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
       <Card
         ref={churchCardRef}
         className="mt-5 space-y-3 p-4"
-        onBlur={(e) => {
-          // 모바일: 필수 칸이 모두 채워진 뒤 섹션 밖으로 포커스가 나가면 자동으로 접는다.
-          if (!isMobile || !churchInfoComplete) return;
-          const next = e.relatedTarget as Node | null;
-          if (next && churchCardRef.current?.contains(next)) return;
-          setChurchOpen(false);
-        }}
       >
         {isMobile && (
           <button
@@ -355,7 +354,12 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
             />
           </button>
         )}
-        <div className={`grid gap-3 sm:grid-cols-2 ${churchCollapsed ? "hidden" : ""}`}>
+        <div
+          className={`grid transition-[grid-template-rows,opacity] duration-500 ease-in-out ${churchCollapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100"}`}
+          aria-hidden={churchCollapsed}
+        >
+        <div className="min-h-0 overflow-hidden" inert={churchCollapsed || undefined}>
+        <div className="grid gap-3 p-px sm:grid-cols-2">
           <label className="space-y-1">
             <span className="text-sm font-medium">교회명</span>
             <Input value={churchName} onChange={(e) => setChurchName(e.target.value)} maxLength={100} />
@@ -375,20 +379,34 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
           </label>
           <label className="space-y-1">
             <span className="text-sm font-medium">담당자 전화번호</span>
-            <Input
-              value={formatPhone(managerPhone)}
-              onChange={(e) => {
-                const d = phoneDigits(e.target.value);
+            <Phone010Input
+              value={managerPhone}
+              onChange={(d) => {
                 const wasComplete = isPhoneComplete(managerPhone);
                 setManagerPhone(d);
                 if (!wasComplete && isPhoneComplete(d)) focusNext('[data-autofocus-target="sido"]');
               }}
-              inputMode="tel"
-              maxLength={13}
-              placeholder="010-0000-0000"
             />
           </label>
-          <ChurchRegionFields value={region} onChange={setRegion} />
+          <ChurchRegionFields
+            value={region}
+            onChange={setRegion}
+            onRoadEnter={() => {
+              if (isMobile) collapseChurch();
+            }}
+          />
+        </div>
+        {isMobile && (
+          <Button
+            type="button"
+            className="mt-3 w-full"
+            disabled={!churchInfoComplete}
+            onClick={collapseChurch}
+          >
+            {churchInfoComplete ? "입력 완료" : "필수 칸을 모두 입력해 주세요"}
+          </Button>
+        )}
+        </div>
         </div>
       </Card>
 
@@ -450,14 +468,11 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
                   </option>
                 ))}
               </select>
-              <Input
-                placeholder={phoneOptional(r.category) ? "전화번호 (선택)" : "전화번호"}
-                inputMode="tel"
+              <Phone010Input
+                placeholder={phoneOptional(r.category) ? "0000-0000 (선택)" : "0000-0000"}
                 data-row-phone={i}
-                value={formatPhone(r.phone)}
-                maxLength={13}
-                onChange={(e) => {
-                  const d = phoneDigits(e.target.value);
+                value={r.phone}
+                onChange={(d) => {
                   const wasComplete = isPhoneComplete(r.phone);
                   setRow(i, { phone: d });
                   if (!wasComplete && isPhoneComplete(d)) focusNext(`[data-row-lodging="${i}"]`);
@@ -654,6 +669,34 @@ function DoneScreen({ result }: { result: SubmitPreRegistrationResult }) {
           본인확인으로 다시 조회하기
         </Link>
       </Card>
+    </div>
+  );
+}
+
+/** 앞자리 "010-" 고정 전화번호 입력. 저장 값은 하이픈 없는 숫자, 뒤 자리가 비면 빈 값. */
+function Phone010Input({
+  value,
+  onChange,
+  placeholder = "0000-0000",
+  ...rest
+}: {
+  value: string;
+  onChange: (digits: string) => void;
+  placeholder?: string;
+  [k: `data-${string}`]: unknown;
+}) {
+  return (
+    <div className="flex h-10 items-stretch overflow-hidden rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring">
+      <span className="flex select-none items-center bg-muted px-2.5 text-sm text-muted-foreground">010-</span>
+      <input
+        {...rest}
+        className="min-w-0 flex-1 bg-transparent px-2 text-sm outline-none"
+        inputMode="numeric"
+        maxLength={9}
+        placeholder={placeholder}
+        value={phone010Tail(value)}
+        onChange={(e) => onChange(phone010FromTail(e.target.value))}
+      />
     </div>
   );
 }
