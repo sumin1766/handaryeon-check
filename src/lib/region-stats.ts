@@ -75,3 +75,7 @@ export function regionBins(provinces: Record<string, number>): ColorBin[] {
 export function regionLevel(count: number, bins: ColorBin[]) {
   return count === 0 ? 0 : bins.find((b) => count >= b.min && count <= b.max)?.level ?? 1;
 }
+/** 지도 단계(regionLevel 결과)에 맞춘 카드 글자 대비 — 진한 단계(3 이상)는 밝은 글자. */
+export function regionLevelIsDark(level: number) {
+  return level >= 3;
+}
