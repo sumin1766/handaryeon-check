@@ -14,6 +14,7 @@ import { getSessionPassword } from "@/lib/session-password";
 import { fetchAll } from "@/lib/fetch-all";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -391,9 +392,10 @@ function ApplyFormSection() {
       ) : (
         <div className="space-y-2">
           {items.map((v, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <Input
+            <div key={i} className="flex items-start gap-2">
+              <Textarea
                 value={v}
+                rows={Math.min(6, Math.max(2, v.split("\n").length))}
                 maxLength={500}
                 placeholder="예: 입금 후 신청서를 작성해 주세요."
                 onChange={(e) =>

@@ -2,10 +2,12 @@
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { toast } from "sonner";
-import { Plus, Trash2, Search } from "lucide-react";
+import { Plus, Trash2, Search, ChevronDown } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { formatPhone, phoneDigits, isPhoneComplete } from "@/lib/phone-format";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -105,6 +107,19 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
     },
     onError: (e: Error) => toast.error(e.message || "제출에 실패했습니다."),
   });
+
+  const isMobile = useIsMobile();
+  const churchInfoComplete =
+    !!churchName.trim() && !!managerName.trim() && !!managerPhone.trim() &&
+    !!region.sido && !!region.sigungu && !!region.road.trim();
+  const [churchOpen, setChurchOpen] = useState(true);
+  const churchCardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!churchInfoComplete) setChurchOpen(true);
+  }, [churchInfoComplete]);
+  const churchCollapsed = isMobile && !churchOpen && churchInfoComplete;
+  const focusNext = (selector: string) =>
+    setTimeout(() => (document.querySelector(selector) as HTMLElement | null)?.focus(), 0);
 
   const noneCount = rows.filter((r) => r.lodging_type === "none").length;
   const lodgingCount = rows.length - noneCount;
@@ -207,8 +222,38 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
         </div>
       )}
 
-      <Card className="mt-5 space-y-3 p-4">
-        <div className="grid gap-3 sm:grid-cols-2">
+      <Card
+        ref={churchCardRef}
+        className="mt-5 space-y-3 p-4"
+        onBlur={(e) => {
+          // 모바일: 필수 칸이 모두 채워진 뒤 섹션 밖으로 포커스가 나가면 자동으로 접는다.
+          if (!isMobile || !churchInfoComplete) return;
+          const next = e.relatedTarget as Node | null;
+          if (next && churchCardRef.current?.contains(next)) return;
+          setChurchOpen(false);
+        }}
+      >
+        {isMobile && (
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-2 text-left"
+            aria-expanded={!churchCollapsed}
+            onClick={() => setChurchOpen((o) => (churchCollapsed ? true : !o))}
+          >
+            <span className="min-w-0">
+              <span className="block text-base font-semibold">교회 정보</span>
+              {churchCollapsed && (
+                <span className="block truncate text-sm text-muted-foreground">
+                  {churchName.trim()} · {managerName.trim()}
+                </span>
+              )}
+            </span>
+            <ChevronDown
+              className={`h-5 w-5 shrink-0 transition-transform ${churchCollapsed ? "" : "rotate-180"}`}
+            />
+          </button>
+        )}
+        <div className={`grid gap-3 sm:grid-cols-2 ${churchCollapsed ? "hidden" : ""}`}>
           <label className="space-y-1">
             <span className="text-sm font-medium">교회명</span>
             <Input value={churchName} onChange={(e) => setChurchName(e.target.value)} maxLength={100} />
@@ -229,10 +274,16 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
           <label className="space-y-1">
             <span className="text-sm font-medium">담당자 전화번호</span>
             <Input
-              value={managerPhone}
-              onChange={(e) => setManagerPhone(e.target.value)}
+              value={formatPhone(managerPhone)}
+              onChange={(e) => {
+                const d = phoneDigits(e.target.value);
+                const wasComplete = isPhoneComplete(managerPhone);
+                setManagerPhone(d);
+                if (!wasComplete && isPhoneComplete(d)) focusNext('[data-autofocus-target="sido"]');
+              }}
               inputMode="tel"
-              maxLength={30}
+              maxLength={13}
+              placeholder="010-0000-0000"
             />
           </label>
           <ChurchRegionFields value={region} onChange={setRegion} />
@@ -278,6 +329,7 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
             <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_1fr_auto_auto]">
               <Input
                 placeholder="이름"
+                data-row-name={i}
                 value={r.name}
                 onChange={(e) => setRow(i, { name: e.target.value })}
               />
@@ -296,8 +348,14 @@ export function ApplyForm({ showLookupLink = true }: { showLookupLink?: boolean 
               <Input
                 placeholder={phoneOptional(r.category) ? "전화번호 (선택)" : "전화번호"}
                 inputMode="tel"
-                value={r.phone}
-                onChange={(e) => setRow(i, { phone: e.target.value })}
+                value={formatPhone(r.phone)}
+                maxLength={13}
+                onChange={(e) => {
+                  const d = phoneDigits(e.target.value);
+                  const wasComplete = isPhoneComplete(r.phone);
+                  setRow(i, { phone: d });
+                  if (!wasComplete && isPhoneComplete(d)) focusNext(`[data-row-name="${i + 1}"]`);
+                }}
               />
               <div className="flex flex-wrap gap-1">
                 {LODGING_OPTIONS.map((o) => (
@@ -406,7 +464,7 @@ function IntroScreen({
           {notices.map((n, i) => (
             <li key={i} className="flex gap-2">
               <span aria-hidden className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/60" />
-              <span>{n}</span>
+              <span className="whitespace-pre-line break-words">{n}</span>
             </li>
           ))}
         </ul>
@@ -423,8 +481,8 @@ function IntroScreen({
           <span className="text-base leading-relaxed">
             개인정보 수집·이용 및 접수 안내 발송에 동의합니다.
             <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
-              (수집 항목: 교회명, 담당자명·연락처, 참석자 명단 / 이용 목적: 캠프 접수 처리 및 접수 안내·QR 발송 /
-              입력하신 연락처로 접수 안내 및 QR이 발송될 수 있습니다.)
+              (수집 항목: 교회명, 주소, 담당자명·연락처, 참석자 명단·연락처 / 이용 목적: 캠프 접수 처리 및 접수 안내·QR 발송 /
+              입력하신 담당자 연락처로 접수 안내 및 QR이 발송될 수 있습니다.)
             </span>
           </span>
         </label>
