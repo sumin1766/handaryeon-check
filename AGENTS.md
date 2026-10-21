@@ -26,3 +26,5 @@
 - Pre-registration admin deletes call the same trash_season_registrations RPC (scoped by IDs) as season reset; there is no separate hard-delete path from that screen.
 - Confirmed (applied) pre-registrations display members, head count and fee from operating `people` rows tracked by `people.pre_registration_id` (set at confirm, inherited by roster additions); pre-registration originals stay untouched so re-confirm keeps working.
 - Change history rows carry `actor` (admin/staff/user, server-resolved) and `details` (lines from `src/lib/change-diff.ts`); roster edits log through `recordRegistryEdit` as resolved entries so they never trigger re-review.
+- Attendee edits (rename/category/lodging/add/remove) happen only on /rosters (명단 수정) via per-row people update/insert/delete plus recordRegistryEdit; registry and pre-registration admin attendee views are read-only so person ↔ pre-registration links stay intact.
+- Name-tag row building/export lives in src/lib/nametag-rows.ts and is shared by /nametags and the per-church roster detail; never fork the logic.

@@ -20,3 +20,7 @@
 - [ ] Verify signed-in dashboard/settings read and download end-to-end — blocked: this app uses a shared-password session, unavailable in the sandbox.- [x] Apply form: "명단 전체 삭제" neutral until any name/phone entered.
 - [x] Lodgings/places: import from another season into draft, save replaces current season only.
 - [x] Admin-only current-season reset card (per item + full, typed-name/password confirm).
+
+# Roster edit page
+- [x] Rename to 명단 수정, search, new columns, church detail view/edit/add, fees, per-church name tags, read-only elsewhere.
+- [ ] Verify signed-in edit/save end-to-end — blocked: shared-password session unavailable in the sandbox.
