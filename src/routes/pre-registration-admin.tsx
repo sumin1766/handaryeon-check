@@ -9,7 +9,7 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
@@ -37,6 +37,9 @@ import {
 } from "@/lib/pre-registration-confirm.functions";
 import { trashPreRegistration } from "@/lib/registration-trash.functions";
 import { notifyDataChanged, useRealtimeInvalidate } from "@/lib/use-realtime";
+import { actorLabel } from "@/lib/change-diff";
+
+const CHANGE_TYPE_LABEL: Record<string, string> = { increase: "인원 증가", decrease: "인원 감소", edit: "내용 변경" };
 import { useRegionStats } from "@/lib/use-region-stats";
 import { DuplicateChurchStat } from "@/components/duplicate-church-stat";
 
@@ -170,7 +173,8 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
   });
 
   // 다른 탭/다른 화면의 변경(확정·삭제·인원 수정)을 이 화면에도 즉시 반영한다.
-  useRealtimeInvalidate(["churches", "people"], [["pre-reg-admin"]]);
+  useRealtimeInvalidate(["churches", "people", "pre_registrations", "pre_registration_members"], [["pre-reg-admin"]]);
+  useRealtimeInvalidate(["pre_registration_changes", "people", "pre_registrations"], [["pre-reg-admin-changes"]]);
 
   useEffect(() => {
     if (isError && String((error as any)?.message ?? "").includes("권한")) onAuthLost();
@@ -474,7 +478,16 @@ function DetailDialog({
     enabled: !!reg?.id,
     retry: false,
     queryFn: () => changesFn({ data: { password, id: reg!.id } }),
+    // 지연 없이 최신 이력 — 이전 건 데이터를 비춰 주지 않고, 열 때마다 새로 읽는다.
+    staleTime: 0,
+    refetchOnMount: "always",
+    placeholderData: undefined,
+    refetchInterval: 15_000,
   });
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (reg?.id) qc.invalidateQueries({ queryKey: ["pre-reg-admin-changes", reg.id] });
+  }, [reg?.id, reg?.updated_at, reg?.head_count, qc]);
 
   const regId = reg?.id ?? null;
   const alreadyLinked = !!reg?.church_id;
@@ -513,6 +526,7 @@ function DetailDialog({
       });
       toast.success(`확정 완료 — ${res.peopleCount}명 등록 · 회비 ${krw(res.amount)}`);
       onRefresh();
+      qc.invalidateQueries({ queryKey: ["pre-reg-admin-changes"], refetchType: "all" });
       notifyDataChanged();
       onClose();
     } catch (e: any) {
@@ -550,7 +564,9 @@ function DetailDialog({
                 {reg.head_count}명 × {krw(unitFee)} = <strong>{krw(reg.expected_fee)}</strong>
               </div>
               <div className="text-muted-foreground text-xs mt-1">
-                사전등록 확정은 전원 기본 단가({krw(preRegFee)})로 등록됩니다.
+                {reg.source === "operating"
+                  ? "확정 건 — 접수 명단(운영 명단)의 현재 인원·분류 기준으로 계산합니다. 납부 표시는 직접 바꿀 때만 변경됩니다."
+                  : `사전등록 확정은 전원 기본 단가(${krw(preRegFee)})로 등록됩니다.`}
               </div>
 
               <div className="mt-2 flex items-center gap-2">
@@ -638,7 +654,10 @@ function DetailDialog({
 
 
             <Card className="p-3">
-              <div className="font-medium text-sm mb-2">참석자 명단 ({reg.members.length}명)</div>
+              <div className="font-medium text-sm mb-2">
+                참석자 명단 ({reg.members.length}명)
+                {reg.source === "operating" && <span className="ml-2 text-xs font-normal text-muted-foreground">접수 명단 기준</span>}
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50 text-left">
@@ -692,13 +711,19 @@ function DetailDialog({
                 {(changes ?? []).map((c) => (
                   <li key={c.id} className="border-t pt-2 first:border-t-0 first:pt-0">
                     <div className="flex flex-wrap gap-2 items-center">
-                      <span className="font-medium">{c.change_type}</span>
+                      <span className="font-medium">{actorLabel(c.actor)}</span>
+                      <span className="text-xs text-muted-foreground">{CHANGE_TYPE_LABEL[c.change_type] ?? c.change_type}</span>
                       <span className="text-muted-foreground text-xs">{formatKst(c.created_at)}</span>
                     </div>
                     <div className="text-muted-foreground">
                       인원 {c.before_count} → {c.after_count} · 회비 증감 {krw(c.fee_delta)}
                       {c.note ? ` · ${c.note}` : ""}
                     </div>
+                    {c.details.length > 0 && (
+                      <ul className="mt-1 list-disc pl-5 text-xs space-y-0.5">
+                        {c.details.map((d, i) => <li key={i}>{d}</li>)}
+                      </ul>
+                    )}
                   </li>
                 ))}
               </ul>
