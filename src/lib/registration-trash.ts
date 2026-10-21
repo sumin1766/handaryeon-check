@@ -58,11 +58,10 @@ const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? 
 /** 운영 people 행 → 사전접수 분류 (CATEGORY_PEOPLE_MAP의 역방향). */
 export function personToCategory(p: SnapPerson): string {
   const note = (p.note ?? "").trim();
-  for (const [cat, m] of Object.entries(CATEGORY_PEOPLE_MAP)) {
-    if (m.gender === p.gender && m.age_group === p.age_group && (m.note ?? "") === (m.note ? note : "")) {
-      if (m.note || !["유아유치", "초등", "유아초등"].includes(note)) return cat;
-    }
-  }
+  const hit = Object.entries(CATEGORY_PEOPLE_MAP).find(
+    ([, m]) => m.gender === p.gender && m.age_group === p.age_group && (m.note ?? "") === note,
+  );
+  if (hit) return hit[0];
   return p.gender === "F" ? (p.age_group === "adult" ? "female_adult" : "female_student")
     : p.age_group === "adult" ? "male_adult" : "male_student";
 }
