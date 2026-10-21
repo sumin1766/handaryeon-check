@@ -27,14 +27,19 @@
 .region-boundary { stroke: var(--region-export-muted); stroke-width: .7; stroke-linejoin: round; }
 .region-leader { fill: none; stroke: var(--muted-foreground); stroke-width: 1; opacity: .6; }
 .region-anchor { fill: var(--foreground); }
-.region-label-box { fill: var(--card); stroke: var(--border); }
-.region-label-name { fill: var(--foreground); font-size: 15px; font-weight: 600; }
-.region-label-count { fill: var(--muted-foreground); font-size: 14px; }
+.region-label-box { stroke: var(--region-export-rule); }
+.region-label-name, .region-label-count, .region-mobile-label { color: var(--region-export-ink); }
+.region-label-name { fill: var(--region-export-ink); }
+.region-label-count { fill: var(--region-export-muted); }
+text.region-on-dark { fill: var(--region-zero); }
+.region-mobile-label.region-on-dark { color: var(--region-zero); }
+.region-label-name { font-size: 15px; font-weight: 600; }
+.region-label-count { font-size: 14px; }
 .region-swatch { display: inline-block; width: 20px; height: 20px; border: 1px solid var(--region-export-rule); border-radius: 3px; flex-shrink: 0; }
 .region-total-badge { color: var(--region-5); background: var(--region-1); padding: 10px 14px; border-radius: 6px; font-size: 16px; }
 .region-mobile-labels { display: none; }
 .region-mobile-map { display: none; }
-.region-mobile-label { display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--border); padding: 10px 0; font-size: 13px; }
+.region-mobile-label { display: flex; gap: 8px; align-items: center; border: 1px solid var(--region-export-rule); border-radius: 6px; padding: 10px; font-size: 13px; }
 .region-stats-table :is(th, td) { padding: 12px 16px; border-bottom: 1px solid var(--border); }
 .region-stats-table thead { background: var(--muted); }
 .region-row-subtotal { background: var(--region-1); color: var(--region-export-ink); font-weight: 600; }

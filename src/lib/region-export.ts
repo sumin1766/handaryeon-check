@@ -1,5 +1,5 @@
 import type { RegionStats, RegionRow } from "@/lib/region-stats";
-import { regionBins, regionLevel } from "@/lib/region-stats";
+import { regionBins, regionLevel, regionLevelIsDark } from "@/lib/region-stats";
 import { KOREA_MAP_PATHS } from "@/lib/korea-map-paths";
 import { REGION_MAP_LABELS } from "@/lib/region-map-layout";
 import { churchListClipboard, churchListRecords, churchListSummaryText, type RegionChurchList } from "@/lib/region-church-list";
@@ -13,7 +13,7 @@ function download(blob: Blob, filename: string) {
 function palette() {
   const css = getComputedStyle(document.documentElement);
   const get = (key: string) => css.getPropertyValue(key).trim();
-  return { paper: get("--region-export-paper"), ink: get("--region-export-ink"), muted: get("--region-export-muted"), rule: get("--region-export-rule"), band: get("--region-1"), total: get("--region-5"), white: get("--region-zero") };
+  return { paper: get("--region-export-paper"), ink: get("--region-export-ink"), muted: get("--region-export-muted"), rule: get("--region-export-rule"), band: get("--region-1"), total: get("--region-5"), white: get("--region-zero"), header: get("--muted"), headerInk: get("--foreground") };
 }
 async function renderMap(stats: RegionStats, timestamp: string) {
   const font = '"Pretendard", "Noto Sans KR", sans-serif';
@@ -42,9 +42,10 @@ async function renderMap(stats: RegionStats, timestamp: string) {
     ctx.strokeStyle = colors.muted; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(center[0], center[1]); ctx.lineTo(elbow, center[1]); ctx.lineTo(edge, y + 23); ctx.stroke();
     ctx.fillStyle = colors.ink; ctx.beginPath(); ctx.arc(center[0], center[1], 2.5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = colors.paper; ctx.beginPath(); ctx.roundRect(x, y, 200, 46, 6); ctx.fill(); ctx.strokeStyle = colors.rule; ctx.stroke();
-    ctx.fillStyle = colors.ink; ctx.font = `bold 15px ${font}`; ctx.fillText(name, x + 11, y + 19);
-    ctx.fillStyle = colors.muted; ctx.font = `14px ${font}`; ctx.fillText(`${stats.provinces[name]}교회`, x + 11, y + 37);
+    const level = regionLevel(stats.provinces[name], bins), dark = regionLevelIsDark(level);
+    ctx.fillStyle = fills[level]; ctx.beginPath(); ctx.roundRect(x, y, 200, 46, 6); ctx.fill(); ctx.strokeStyle = colors.rule; ctx.stroke();
+    ctx.fillStyle = dark ? colors.white : colors.ink; ctx.font = `bold 15px ${font}`; ctx.fillText(name, x + 11, y + 19);
+    ctx.fillStyle = dark ? colors.white : colors.muted; ctx.font = `14px ${font}`; ctx.fillText(`${stats.provinces[name]}교회`, x + 11, y + 37);
   }
   ctx.restore();
   ctx.fillStyle = colors.ink; ctx.font = `bold 20px ${font}`; ctx.fillText("교회 수", 60, 790);
@@ -85,7 +86,7 @@ async function renderPage(stats: RegionStats, rows: RegionRow[], timestamp: stri
     ctx.textAlign = "right"; ctx.fillText(cells[2], 1020, y + 35); ctx.textAlign = "left";
     ctx.strokeStyle = colors.rule; ctx.beginPath(); ctx.moveTo(60, y + 54); ctx.lineTo(1040, y + 54); ctx.stroke();
   };
-  drawRow(["시/도", "시군구", "교회 수"], 205, colors.band, true);
+  drawRow(["시/도", "시군구", "교회 수"], 205, colors.header, true, colors.headerInk);
   rows.forEach((r, i) => drawRow([r.sido, r.sigungu, `${r.count}교회`], 259 + i * 54, r.kind === "total" ? colors.total : r.kind === "subtotal" ? colors.band : undefined, r.kind !== "district", r.kind === "total" ? colors.white : colors.ink));
   if (pageLabel) { ctx.font = `16px ${font}`; ctx.fillStyle = colors.muted; ctx.textAlign = "right"; ctx.fillText(pageLabel, 1040, height - 8); }
   return canvas;
@@ -102,12 +103,18 @@ export async function exportRegionStats(stats: RegionStats, format: "pdf" | "png
   const { PDFDocument } = await import("pdf-lib");
   const pdf = await PDFDocument.create();
   pdf.setTitle(`${stats.seasonName} 지역별 교회 집계`); pdf.setCreationDate(generatedAt);
-  // Whole rows, repeated headers, and space for footer: no clipped rows across pages.
-  const chunkSize = 22;
-  const tablePages = Math.max(1, Math.ceil(stats.rows.length / chunkSize)), pages = tablePages + 1;
-  for (let i = 0; i < pages; i++) {
-    const canvas = i === tablePages ? await renderMap(stats, timestamp) : await renderPage(stats, stats.rows.slice(i * chunkSize, (i + 1) * chunkSize), timestamp, `${i + 1} / ${pages}`);
-    if (i === tablePages) { const ctx = canvas.getContext("2d"); if (ctx) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = palette().muted; ctx.font = '32px "Pretendard", sans-serif'; ctx.textAlign = "right"; ctx.fillText(`${i + 1} / ${pages}`, canvas.width - 120, canvas.height - 14); ctx.restore(); } }
+  // Whole rows, repeated headers: no clipped rows. The map joins the last table page when it fits, otherwise gets its own page.
+  const chunkSize = 22, pageCapacityPx = 801.89 * 2 * 1100 / 555.28;
+  const chunks: RegionRow[][] = [];
+  for (let i = 0; i < Math.max(1, stats.rows.length); i += chunkSize) chunks.push(stats.rows.slice(i, i + chunkSize));
+  const canvases = await Promise.all(chunks.map((c) => renderPage(stats, c, timestamp)));
+  const map = await renderMap(stats, timestamp);
+  const last = canvases[canvases.length - 1];
+  if (last.height + map.height <= pageCapacityPx) canvases[canvases.length - 1] = appendCanvas(last, map); else canvases.push(map);
+  for (let i = 0; i < canvases.length; i++) {
+    const canvas = canvases[i];
+    const ctx = canvas.getContext("2d");
+    if (ctx) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = palette().muted; ctx.font = '32px "Pretendard", sans-serif'; ctx.textAlign = "right"; ctx.fillText(`${i + 1} / ${canvases.length}`, canvas.width - 120, canvas.height - 14); ctx.restore(); }
     const image = await pdf.embedPng(canvas.toDataURL("image/png"));
     const page = pdf.addPage([595.28, 841.89]);
     const width = 555.28, height = width * canvas.height / canvas.width;

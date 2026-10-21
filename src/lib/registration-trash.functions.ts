@@ -111,3 +111,24 @@ export const restoreFromTrash = createServerFn({ method: "POST" })
     await db.from("registration_trash").delete().eq("id", item.id).eq("season_id", season.id);
     return { preRegistrationId: reg.id };
   });
+
+/** 사전접수 관리의 개별 삭제 — 설정 초기화와 같은 휴지통 이동 함수를 해당 건만 대상으로 호출한다. */
+export const trashPreRegistration = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ password: z.string().min(1), id: z.string().uuid() }).parse(d))
+  .handler(async ({ data }): Promise<{ kind: TrashKind; moved: number }> => {
+    const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+    const { data: role } = await db.rpc("verify_password", { p: data.password });
+    if (role !== "admin" && role !== "staff") throw new Error("접근 권한이 없습니다.");
+    const { data: reg } = await db.from("pre_registrations").select("id, season_id, church_id").eq("id", data.id).maybeSingle();
+    if (!reg) throw new Error("사전접수 건을 찾을 수 없습니다.");
+    const { data: season } = await db.from("seasons").select("is_active").eq("id", reg.season_id).maybeSingle();
+    if (!season?.is_active) throw new Error("활성 시즌 데이터만 삭제할 수 있습니다.");
+    const kind: TrashKind = reg.church_id ? "confirmed" : "pending";
+    const { data: moved, error } = await db.rpc("trash_season_registrations", {
+      p_season: reg.season_id,
+      p_kind: kind,
+      p_ids: [reg.church_id ?? reg.id],
+    });
+    if (error) throw new Error("휴지통 이동에 실패했습니다.");
+    return { kind, moved: (moved as number) ?? 0 };
+  });

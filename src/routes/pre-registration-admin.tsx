@@ -35,7 +35,7 @@ import {
   setPreRegistrationPaid,
   type ChurchCandidate,
 } from "@/lib/pre-registration-confirm.functions";
-import { deletePreRegistration } from "@/lib/pre-registration-delete.functions";
+import { trashPreRegistration } from "@/lib/registration-trash.functions";
 import { notifyDataChanged, useRealtimeInvalidate } from "@/lib/use-realtime";
 import { useRegionStats } from "@/lib/use-region-stats";
 import { DuplicateChurchStat } from "@/components/duplicate-church-stat";
@@ -154,7 +154,7 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
   const regionStats = useRegionStats();
   const list = useServerFn(listPreRegistrations);
   const setPaid = useServerFn(setPreRegistrationPaid);
-  const delReg = useServerFn(deletePreRegistration);
+  const delReg = useServerFn(trashPreRegistration);
   const [paying, setPaying] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [q, setQ] = useState("");
@@ -195,8 +195,8 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
   const removeReg = async (r: AdminPreRegistration) => {
     const warn =
       r.status === "applied"
-        ? `'${r.church_name}' 사전접수 건은 확정되어 운영 명단(접수 명단)과 연결되어 있습니다.\n삭제하면 이 건에서 등록된 인원도 함께 삭제됩니다. (담당자가 직접 추가한 인원은 유지)\n\n삭제할까요?`
-        : `'${r.church_name}' 사전접수 건과 참석자 명단을 삭제할까요?\n(운영 명단에 등록된 데이터는 없습니다)`;
+        ? `'${r.church_name}' 사전접수 건은 확정되어 운영 명단(접수 명단)과 연결되어 있습니다.\n삭제하면 연결된 교회의 접수 명단(참석자·체크인 포함)이 함께 휴지통으로 이동합니다.\n설정 → 삭제 명단 복구에서 되살릴 수 있습니다.\n\n삭제할까요?`
+        : `'${r.church_name}' 사전접수 건과 참석자 명단을 삭제할까요?\n(휴지통으로 이동하며, 설정 → 삭제 명단 복구에서 되살릴 수 있습니다)`;
     if (!window.confirm(warn)) return;
     setDeleting(true);
     try {
@@ -204,11 +204,7 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
       setOpenId(null);
       await refetch();
       notifyDataChanged();
-      toast.success(
-        res.deletedPeople
-          ? `삭제 완료 — 운영 인원 ${res.deletedPeople}명 함께 삭제${res.deletedChurch ? " · 빈 교회 정리" : ""}`
-          : "삭제 완료",
-      );
+      toast.success(res.kind === "confirmed" ? "휴지통으로 이동 — 연결된 접수 명단 포함" : "휴지통으로 이동했습니다");
     } catch (e: any) {
       toast.error(e?.message ?? "삭제 실패");
     } finally {

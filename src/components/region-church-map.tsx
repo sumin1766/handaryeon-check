@@ -1,5 +1,5 @@
 import { KOREA_MAP_PATHS } from "@/lib/korea-map-paths";
-import { regionBins, regionLevel, type RegionStats } from "@/lib/region-stats";
+import { regionBins, regionLevel, regionLevelIsDark, type RegionStats } from "@/lib/region-stats";
 import { useRegionStats } from "@/lib/use-region-stats";
 import { RegionLoadState } from "@/components/region-load-state";
 import { REGION_MAP_LABELS } from "@/lib/region-map-layout";
@@ -26,12 +26,13 @@ export function RegionChurchMapView({ stats }: { stats: RegionStats }) {
             {KOREA_MAP_PATHS.map((p) => <path key={p.name} d={p.d} className={`region-fill-${regionLevel(stats.provinces[p.name], bins)} region-boundary`}><title>{p.name}: {stats.provinces[p.name]}교회</title></path>)}
           </g>
           {REGION_MAP_LABELS.map(({ name, center, y, x, edge, elbow }) => {
+            const level = regionLevel(stats.provinces[name], bins);
             return <g className="region-leader-label" key={name}>
               <polyline points={`${center[0]},${center[1]} ${elbow},${center[1]} ${edge},${y + 23}`} className="region-leader" />
               <circle cx={center[0]} cy={center[1]} r="2.5" className="region-anchor" />
-              <rect x={x} y={y} width="200" height="46" rx="6" className="region-label-box" />
-              <text x={x + 11} y={y + 19} className="region-label-name">{name}</text>
-              <text x={x + 11} y={y + 37} className="region-label-count">{stats.provinces[name]}교회</text>
+              <rect x={x} y={y} width="200" height="46" rx="6" className={`region-label-box region-fill-${level}${regionLevelIsDark(level) ? " region-on-dark" : ""}`} />
+              <text x={x + 11} y={y + 19} className={`region-label-name${regionLevelIsDark(level) ? " region-on-dark" : ""}`}>{name}</text>
+              <text x={x + 11} y={y + 37} className={`region-label-count${regionLevelIsDark(level) ? " region-on-dark" : ""}`}>{stats.provinces[name]}교회</text>
             </g>;
           })}
         </svg>
@@ -47,7 +48,7 @@ export function RegionChurchMapView({ stats }: { stats: RegionStats }) {
         </aside>
       </div>
       <div className="region-mobile-labels grid grid-cols-2 gap-2" aria-label="시도별 교회 수">
-        {KOREA_MAP_PATHS.map((p) => <div className="region-mobile-label" key={p.name}><span className={`region-swatch region-fill-${regionLevel(stats.provinces[p.name], bins)}`} /><span>{p.name}<strong className="block">{stats.provinces[p.name]}교회</strong></span></div>)}
+        {KOREA_MAP_PATHS.map((p) => { const level = regionLevel(stats.provinces[p.name], bins); return <div className={`region-mobile-label region-fill-${level}${regionLevelIsDark(level) ? " region-on-dark" : ""}`} key={p.name}><span className={`region-swatch region-fill-${level}`} /><span>{p.name}<strong className="block">{stats.provinces[p.name]}교회</strong></span></div>; })}
       </div>
       <p className="text-sm text-muted-foreground">미입력/미분류 <strong className="text-foreground">{stats.unknown}교회</strong></p>
       <p className="text-xs text-muted-foreground">경계 출처: 통계청 SGIS(공공누리 제1유형) · 가공: vuski/admdongkor(CC BY 4.0), 2025.01 · 표시용 단순화</p>

@@ -752,10 +752,12 @@ export type Database = {
         Args: { p_items: string[]; p_season: string }
         Returns: Json
       }
-      trash_season_registrations: {
-        Args: { p_kind: string; p_season: string }
-        Returns: number
-      }
+      trash_season_registrations:
+        | { Args: { p_kind: string; p_season: string }; Returns: number }
+        | {
+            Args: { p_ids: string[]; p_kind: string; p_season: string }
+            Returns: number
+          }
       verify_password: { Args: { p: string }; Returns: string }
     }
     Enums: {
