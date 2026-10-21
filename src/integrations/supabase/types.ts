@@ -633,6 +633,39 @@ export type Database = {
         }
         Relationships: []
       }
+      registration_trash: {
+        Row: {
+          church_name: string
+          deleted_at: string
+          head_count: number
+          id: string
+          manager_name: string | null
+          original_status: string
+          season_id: string
+          snapshot: Json
+        }
+        Insert: {
+          church_name?: string
+          deleted_at?: string
+          head_count?: number
+          id?: string
+          manager_name?: string | null
+          original_status: string
+          season_id: string
+          snapshot: Json
+        }
+        Update: {
+          church_name?: string
+          deleted_at?: string
+          head_count?: number
+          id?: string
+          manager_name?: string | null
+          original_status?: string
+          season_id?: string
+          snapshot?: Json
+        }
+        Relationships: []
+      }
       seasons: {
         Row: {
           created_at: string
@@ -718,6 +751,10 @@ export type Database = {
       reset_season_items: {
         Args: { p_items: string[]; p_season: string }
         Returns: Json
+      }
+      trash_season_registrations: {
+        Args: { p_kind: string; p_season: string }
+        Returns: number
       }
       verify_password: { Args: { p: string }; Returns: string }
     }
