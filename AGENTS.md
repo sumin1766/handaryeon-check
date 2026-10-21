@@ -22,3 +22,4 @@
 - Season reset runs through one admin-only server function that re-verifies the active season and typed name, then calls a service-role-only transactional SQL function scoped by season ID; this guarantees no other season is touched and seasons are never deleted.
 - Past-season import for lodgings/places reads the source season into a local draft and writes only to the current season on explicit save; source seasons stay read-only.
 - View-only mode blocks every client write except the exact seasons is_active-only update (isSeasonActivationWrite); activation is a season-level switch and must never deadlock behind past-season browsing.
+- Deleted registrations move to the isolated registration_trash table (standalone jsonb snapshots, no FKs, service-role only) via trash_season_registrations; restore always creates a new unconfirmed pre-registration with a fresh token, so operating queries never need to know about the trash.
