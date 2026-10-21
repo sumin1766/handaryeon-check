@@ -1,6 +1,5 @@
 import type { RegionStats, RegionRow } from "@/lib/region-stats";
-import { regionBins, regionLevel } from "@/lib/region-stats";
-import { regionLevelIsDark } from "@/lib/region-stats";
+import { regionBins, regionLevel, regionLevelIsDark } from "@/lib/region-stats";
 import { KOREA_MAP_PATHS } from "@/lib/korea-map-paths";
 import { REGION_MAP_LABELS } from "@/lib/region-map-layout";
 import { churchListClipboard, churchListRecords, churchListSummaryText, type RegionChurchList } from "@/lib/region-church-list";
