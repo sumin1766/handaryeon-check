@@ -217,6 +217,8 @@ export const getPublicFeeConfig = createServerFn({ method: "POST" }).handler(
       preRegFee: s?.pre_reg_fee ?? DEFAULT_PRE_REG_FEE,
       categoryFees: parseCategoryFees(s?.category_fees) as Record<string, number>,
       notices,
+      // 브라우저 임시저장 키 구분용 (읽기 전용 식별자)
+      seasonId: season.id as string,
       ...(blockMessage ? { blockMessage } : {}),
     };
   },
