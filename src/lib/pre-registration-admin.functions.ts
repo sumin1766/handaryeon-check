@@ -3,6 +3,8 @@
 // 활성 시즌의 사전접수 데이터만 반환한다. 쓰기/삭제 기능은 없다.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { personToMember } from "./change-diff";
+import { parseCategoryFees, sumCategoryFees } from "./member-categories";
 
 export type PreRegStatus = "submitted" | "applied" | "needs_review";
 
@@ -32,6 +34,8 @@ export type AdminPreRegistration = {
   paid: boolean;
   paid_at: string | null;
   members: AdminMember[];
+  /** operating = 확정 건, 접수 명단(people)에서 읽은 값 */
+  source: "operating" | "pre";
 };
 
 export type AdminChange = {
@@ -43,6 +47,8 @@ export type AdminChange = {
   resolved: boolean;
   note: string | null;
   created_at: string;
+  actor: string | null;
+  details: string[];
 };
 
 const authSchema = z.object({ password: z.string().min(1) });
@@ -71,7 +77,7 @@ export const listPreRegistrations = createServerFn({ method: "POST" })
 
     const { data: settings } = await db
       .from("app_settings")
-      .select("pre_reg_fee")
+      .select("pre_reg_fee, category_fees")
       .eq("season_id", season.id)
       .maybeSingle();
 
@@ -106,18 +112,46 @@ export const listPreRegistrations = createServerFn({ method: "POST" })
       byReg.set(m.pre_registration_id, list);
     }
 
+    // 확정 건은 운영 명단(people)이 원본 — 건 추적(pre_registration_id)으로 해당 건 인원만 읽는다.
+    const preRegFee = (settings as { pre_reg_fee?: number } | null)?.pre_reg_fee ?? 0;
+    const categoryFees = parseCategoryFees((settings as { category_fees?: unknown } | null)?.category_fees);
+    const appliedIds = (regs ?? []).filter((r: any) => r.status === "applied" && r.church_id).map((r) => r.id);
+    const opByReg = new Map<string, AdminMember[]>();
+    for (let i = 0; i < appliedIds.length; i += 100) {
+      const chunk = appliedIds.slice(i, i + 100);
+      for (let offset = 0; ; offset += 1000) {
+        const { data: ps, error: pe } = await db
+          .from("people")
+          .select("id, pre_registration_id, name, gender, age_group, lodging, note, created_at")
+          .in("pre_registration_id", chunk)
+          .order("created_at", { ascending: true })
+          .range(offset, offset + 999);
+        if (pe) throw new Error("운영 명단을 불러오지 못했습니다.");
+        for (const p of ps ?? []) {
+          const mm = personToMember(p as any);
+          const list = opByReg.get(p.pre_registration_id as string) ?? [];
+          list.push({ id: p.id, name: p.name, phone: mm.phone, category: mm.category, lodging_type: mm.lodging_type });
+          opByReg.set(p.pre_registration_id as string, list);
+        }
+        if ((ps?.length ?? 0) < 1000) break;
+      }
+    }
+    const fromOperating = (r: any) => r.status === "applied" && !!r.church_id;
+
     return {
       seasonId: season.id,
-      preRegFee: (settings as { pre_reg_fee?: number } | null)?.pre_reg_fee ?? 0,
-      rows: (regs ?? []).map((r: any) => ({
+      preRegFee,
+      rows: (regs ?? []).map((r: any) => {
+        const op = fromOperating(r) ? opByReg.get(r.id) ?? [] : null;
+        return {
         id: r.id,
         church_name: r.church_name,
         denomination: r.denomination ?? null,
         manager_name: r.manager_name,
         manager_phone: r.manager_phone,
         region: [[r.region_sido, r.region_sigungu].filter(Boolean).join(" "), r.road_address].filter(Boolean).join(" · "),
-        head_count: r.head_count,
-        expected_fee: r.expected_fee,
+        head_count: op ? op.length : r.head_count,
+        expected_fee: op ? sumCategoryFees(op.map((m) => m.category), categoryFees, preRegFee) : r.expected_fee,
         status: r.status,
         access_token: r.access_token,
         created_at: r.created_at,
@@ -126,8 +160,10 @@ export const listPreRegistrations = createServerFn({ method: "POST" })
         church_id: r.church_id ?? null,
         paid: !!r.paid,
         paid_at: r.paid_at ?? null,
-        members: byReg.get(r.id) ?? [],
-      })),
+        members: op ?? byReg.get(r.id) ?? [],
+        source: (op ? "operating" : "pre") as "operating" | "pre",
+      };
+      }),
     };
   });
 
@@ -140,5 +176,9 @@ export const getPreRegistrationChanges = createServerFn({ method: "POST" })
       .select("*")
       .eq("pre_registration_id", data.id)
       .order("created_at", { ascending: true });
-    return (rows ?? []) as AdminChange[];
+    return (rows ?? []).map((r: any) => ({
+      ...r,
+      actor: r.actor ?? null,
+      details: Array.isArray(r.details) ? r.details.filter((x: unknown) => typeof x === "string") : [],
+    })) as AdminChange[];
   });

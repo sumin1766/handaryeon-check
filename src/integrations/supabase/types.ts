@@ -375,6 +375,7 @@ export type Database = {
           lodging_id: string | null
           name: string
           note: string | null
+          pre_registration_id: string | null
         }
         Insert: {
           age_group: string
@@ -386,6 +387,7 @@ export type Database = {
           lodging_id?: string | null
           name: string
           note?: string | null
+          pre_registration_id?: string | null
         }
         Update: {
           age_group?: string
@@ -397,6 +399,7 @@ export type Database = {
           lodging_id?: string | null
           name?: string
           note?: string | null
+          pre_registration_id?: string | null
         }
         Relationships: [
           {
@@ -411,6 +414,13 @@ export type Database = {
             columns: ["lodging_id"]
             isOneToOne: false
             referencedRelation: "lodgings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_pre_registration_id_fkey"
+            columns: ["pre_registration_id"]
+            isOneToOne: false
+            referencedRelation: "pre_registrations"
             referencedColumns: ["id"]
           },
         ]
@@ -444,10 +454,12 @@ export type Database = {
       }
       pre_registration_changes: {
         Row: {
+          actor: string | null
           after_count: number
           before_count: number
           change_type: string
           created_at: string
+          details: Json
           fee_delta: number
           id: string
           note: string | null
@@ -455,10 +467,12 @@ export type Database = {
           resolved: boolean
         }
         Insert: {
+          actor?: string | null
           after_count?: number
           before_count?: number
           change_type: string
           created_at?: string
+          details?: Json
           fee_delta?: number
           id?: string
           note?: string | null
@@ -466,10 +480,12 @@ export type Database = {
           resolved?: boolean
         }
         Update: {
+          actor?: string | null
           after_count?: number
           before_count?: number
           change_type?: string
           created_at?: string
+          details?: Json
           fee_delta?: number
           id?: string
           note?: string | null

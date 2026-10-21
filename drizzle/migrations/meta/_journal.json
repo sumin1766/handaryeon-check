@@ -36,6 +36,13 @@
       "when": 1792558299151,
       "tag": "0004_trash_registrations_by_id",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792561863336,
+      "tag": "0005_people_pre_registration_tracking",
+      "breakpoints": true
     }
   ]
 }

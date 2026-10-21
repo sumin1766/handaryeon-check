@@ -50,6 +50,16 @@ export const listChurchManagers = createServerFn({ method: "POST" })
       .not("church_id", "is", null)
       .order("created_at", { ascending: true });
 
+    // 확정 건 인원은 운영 명단(people)의 건 추적 기준으로 센다.
+    const opCount = new Map<string, number>();
+    const appliedIds = (regs ?? []).filter((r) => r.status === "applied").map((r) => r.id);
+    for (let i = 0; i < appliedIds.length; i += 100) {
+      for (let offset = 0; ; offset += 1000) {
+        const { data: ps } = await db.from("people").select("pre_registration_id").in("pre_registration_id", appliedIds.slice(i, i + 100)).order("id").range(offset, offset + 999);
+        for (const p of ps ?? []) opCount.set(p.pre_registration_id as string, (opCount.get(p.pre_registration_id as string) ?? 0) + 1);
+        if ((ps?.length ?? 0) < 1000) break;
+      }
+    }
     const byChurch = new Map<string, ChurchManager[]>();
     for (const r of regs ?? []) {
       const key = r.church_id as string;
@@ -59,7 +69,7 @@ export const listChurchManagers = createServerFn({ method: "POST" })
         name: r.manager_name,
         phone: r.manager_phone,
         status: r.status,
-        headCount: r.head_count ?? 0,
+        headCount: r.status === "applied" ? opCount.get(r.id) ?? 0 : r.head_count ?? 0,
         createdAt: r.created_at,
       });
       byChurch.set(key, list);
