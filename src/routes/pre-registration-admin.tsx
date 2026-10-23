@@ -21,6 +21,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Copy, RefreshCw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { krw, formatKst } from "@/lib/format";
+import { feeBreakdown, type CategoryFeeMap } from "@/lib/member-categories";
+import { FeeBreakdown } from "@/components/fee-breakdown";
 import { useAuthRole } from "@/lib/use-auth-role";
 import { getSessionPassword, setSessionPassword } from "@/lib/session-password";
 import { verifyPassword } from "@/lib/auth-config";
@@ -404,6 +406,7 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
         password={password}
         reg={selected}
         preRegFee={data?.preRegFee ?? 0}
+        categoryFees={data?.categoryFees ?? {}}
         onClose={() => setOpenId(null)}
         onRefresh={() => refetch()}
         onTogglePaid={togglePaid}
@@ -439,6 +442,7 @@ function DetailDialog({
   password,
   reg,
   preRegFee,
+  categoryFees,
   onClose,
   onRefresh,
   onTogglePaid,
@@ -449,6 +453,7 @@ function DetailDialog({
   password: string;
   reg: AdminPreRegistration | null;
   preRegFee: number;
+  categoryFees: CategoryFeeMap;
   onClose: () => void;
   onRefresh: () => void;
   onTogglePaid: (id: string, paid: boolean) => void;
@@ -536,7 +541,7 @@ function DetailDialog({
     }
   };
 
-  const unitFee = reg && reg.head_count > 0 ? Math.round(reg.expected_fee / reg.head_count) : preRegFee;
+  const breakdown = reg ? feeBreakdown(reg.members.map((m) => m.category), categoryFees, preRegFee) : null;
 
   return (
     <Dialog open={!!reg} onOpenChange={(o) => !o && onClose()}>
@@ -560,9 +565,7 @@ function DetailDialog({
 
             <Card className="p-3 text-sm">
               <div className="font-medium mb-1">회비 내역</div>
-              <div>
-                {reg.head_count}명 × {krw(unitFee)} = <strong>{krw(reg.expected_fee)}</strong>
-              </div>
+              {breakdown && <FeeBreakdown lines={breakdown.lines} total={reg.expected_fee} />}
               <div className="text-muted-foreground text-xs mt-1">
                 {reg.source === "operating"
                   ? "확정 건 — 접수 명단(운영 명단)의 현재 인원·분류 기준으로 계산합니다. 납부 표시는 직접 바꿀 때만 변경됩니다."
