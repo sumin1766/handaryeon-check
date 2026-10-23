@@ -21,6 +21,8 @@ import { personToRow, rowToPersonFields, rowsFee, summarizeRosterChange, lodging
 import { buildNametagRows, copyText, downloadNametagXlsx, nametagTsv } from "@/lib/nametag-rows";
 import type { ChurchManagerInfo } from "@/lib/use-church-managers";
 import { krw, formatKst, num } from "@/lib/format";
+import { feeBreakdown } from "@/lib/member-categories";
+import { FeeBreakdown } from "@/components/fee-breakdown";
 
 type Mode = "view" | "edit" | "add";
 const LODGING_OPTIONS = [
@@ -266,6 +268,12 @@ export function RosterChurchDetail({
       {batchChips && <Card className="p-3 space-y-1.5"><div className="text-xs font-semibold">신청 건별 보기 <span className="font-normal text-muted-foreground">(같은 색 = 같은 사전접수 건)</span></div>{batchChips}</Card>}
 
       {mode === "view" && <Card className="p-0 overflow-hidden">{viewTable(before)}</Card>}
+      {mode === "view" && before.length > 0 && (
+        <Card className="p-3 text-sm">
+          <div className="font-medium mb-1">회비 내역</div>
+          <FeeBreakdown lines={feeBreakdown(before.map((r) => r.category), fees, preRegFee).lines} total={feeTotal} />
+        </Card>
+      )}
 
       {mode === "edit" && (
         <Card className="p-3 space-y-1">

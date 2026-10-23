@@ -4,7 +4,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { personToMember } from "./change-diff";
-import { parseCategoryFees, sumCategoryFees } from "./member-categories";
+import { parseCategoryFees, sumCategoryFees, type CategoryFeeMap } from "./member-categories";
 
 export type PreRegStatus = "submitted" | "applied" | "needs_review";
 
