@@ -114,3 +114,17 @@ export function sumCategoryFees(
 ): number {
   return categories.reduce((sum, c) => sum + feeForCategory(c, fees, preRegFee), 0);
 }
+
+/** 회비 내역: 실제 존재하는 분류별 "N명 × 요율 = 소계" (평균 단가 역산 금지) */
+export function feeBreakdown(categories: string[], fees: CategoryFeeMap, preRegFee: number) {
+  const counts = new Map<string, number>();
+  for (const c of categories) counts.set(c, (counts.get(c) ?? 0) + 1);
+  const order = [...ALL_MEMBER_CATEGORIES] as string[];
+  const keys = [...counts.keys()].sort((a, b) => (order.indexOf(a) + 1 || 999) - (order.indexOf(b) + 1 || 999));
+  const lines = keys.map((c) => {
+    const count = counts.get(c)!;
+    const unit = feeForCategory(c, fees, preRegFee);
+    return { category: c, label: categoryLabel(c), count, unit, subtotal: count * unit };
+  });
+  return { lines, total: lines.reduce((s, l) => s + l.subtotal, 0) };
+}

@@ -63,7 +63,7 @@ async function requireStaff(password: string) {
 
 export const listPreRegistrations = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => authSchema.parse(d))
-  .handler(async ({ data }): Promise<{ seasonId: string | null; rows: AdminPreRegistration[]; preRegFee: number }> => {
+  .handler(async ({ data }): Promise<{ seasonId: string | null; rows: AdminPreRegistration[]; preRegFee: number; categoryFees: CategoryFeeMap }> => {
     const db = await requireStaff(data.password);
 
     const { data: season } = await db
@@ -73,7 +73,7 @@ export const listPreRegistrations = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (!season) return { seasonId: null, rows: [], preRegFee: 0 };
+    if (!season) return { seasonId: null, rows: [], preRegFee: 0, categoryFees: {} };
 
     const { data: settings } = await db
       .from("app_settings")
@@ -141,6 +141,7 @@ export const listPreRegistrations = createServerFn({ method: "POST" })
     return {
       seasonId: season.id,
       preRegFee,
+      categoryFees,
       rows: (regs ?? []).map((r: any) => {
         const op = fromOperating(r) ? opByReg.get(r.id) ?? [] : null;
         return {
