@@ -1457,6 +1457,22 @@ function PasswordSummary() {
   );
 }
 
+function PasswordField({ id, label, value, set, placeholder, auto, show }: any) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={(e) => set(e.target.value)}
+        placeholder={placeholder}
+        autoComplete={auto}
+      />
+    </div>
+  );
+}
+
 function PasswordSection() {
   const change = useChangePasswords();
   const [current, setCurrent] = useState("");
@@ -1483,26 +1499,12 @@ function PasswordSection() {
     );
   };
 
-  const Field = ({ id, label, value, set, placeholder, auto }: any) => (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        type={show ? "text" : "password"}
-        value={value}
-        onChange={(e) => set(e.target.value)}
-        placeholder={placeholder}
-        autoComplete={auto}
-      />
-    </div>
-  );
-
   return (
     <div className="space-y-4 w-full max-w-md">
-      <Field id="current-pw" label="현재 관리자 비밀번호" value={current} set={setCurrent} placeholder="현재 관리자 비밀번호 확인" auto="current-password" />
-      <Field id="admin-pw" label="새 전체관리자 비밀번호 (admin)" value={admin} set={setAdmin} placeholder="예: 031213" auto="new-password" />
-      <Field id="staff-pw" label="새 접수담당자 비밀번호 (staff)" value={staff} set={setStaff} placeholder="예: 007123" auto="new-password" />
-      <Field id="user-pw" label="새 일반 사용자 비밀번호 (user)" value={user} set={setUser} placeholder="예: 007124" auto="new-password" />
+      <PasswordField id="current-pw" label="현재 관리자 비밀번호" value={current} set={setCurrent} placeholder="현재 관리자 비밀번호 확인" auto="current-password" show={show} />
+      <PasswordField id="admin-pw" label="새 전체관리자 비밀번호 (admin)" value={admin} set={setAdmin} placeholder="예: 031213" auto="new-password" show={show} />
+      <PasswordField id="staff-pw" label="새 접수담당자 비밀번호 (staff)" value={staff} set={setStaff} placeholder="예: 007123" auto="new-password" show={show} />
+      <PasswordField id="user-pw" label="새 일반 사용자 비밀번호 (user)" value={user} set={setUser} placeholder="예: 007124" auto="new-password" show={show} />
       <div className="flex items-center gap-2">
         <Button type="button" variant="outline" size="sm" onClick={() => setShow((v) => !v)}>
           {show ? "비밀번호 숨김" : "비밀번호 표시"}
