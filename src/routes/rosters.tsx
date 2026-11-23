@@ -17,6 +17,7 @@ import { getChurchAddresses } from "@/lib/region-stats.functions";
 import { parseCategoryFees } from "@/lib/member-categories";
 import { lodgingCounts, shortAddress } from "@/lib/roster-edit";
 import { copyText } from "@/lib/nametag-rows";
+import { sanitizeCell } from "@/lib/spreadsheet-safe";
 import { RosterChurchDetail } from "@/components/roster-church-detail";
 import { downloadRowsAsXlsx } from "@/lib/export-xlsx";
 import { useState } from "react";
@@ -134,10 +135,10 @@ function RostersPage() {
   const HEAD = ["교회명", "교단명", "주소", "담당자 연락처", "숙박 인원", "비숙박 인원", "전체 인원"];
   const download = () => {
     const xlsx = rows.map((r) => ({
-      교회명: r.name,
-      교단명: r.denomination,
-      주소: r.address,
-      "담당자 연락처": r.contact,
+      교회명: sanitizeCell(r.name),
+      교단명: sanitizeCell(r.denomination),
+      주소: sanitizeCell(r.address),
+      "담당자 연락처": sanitizeCell(r.contact),
       "숙박 인원": r.lodging,
       "비숙박 인원": r.nonLodging,
       "전체 인원": r.total,
@@ -149,7 +150,7 @@ function RostersPage() {
   const copyCsv = async () => {
     const escape = (v: string) => String(v ?? "").replace(/\t/g, " ").replace(/\r?\n/g, " ");
     const body = rows
-      .map((r) => [escape(r.name), escape(r.denomination), escape(r.address), escape(r.contact), r.lodging, r.nonLodging, r.total].join("\t"))
+      .map((r) => [escape(sanitizeCell(r.name)), escape(sanitizeCell(r.denomination)), escape(sanitizeCell(r.address)), escape(sanitizeCell(r.contact)), r.lodging, r.nonLodging, r.total].join("\t"))
       .join("\n");
     if (await copyText(`${HEAD.join("\t")}\n${body}`)) {
       setCopied(true);

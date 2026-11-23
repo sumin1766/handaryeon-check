@@ -1,5 +1,6 @@
 // 이름표 출력 행 생성·내보내기 (이름표 출력 페이지와 명단 수정 페이지가 공유).
 import { downloadRowsAsXlsx } from "@/lib/export-xlsx";
+import { sanitizeCell } from "@/lib/spreadsheet-safe";
 
 export type NametagRow = { no: number; church: string; name: string; churchId: string };
 
@@ -19,12 +20,16 @@ export function buildNametagRows(
 }
 
 export function downloadNametagXlsx(rows: NametagRow[], fileName: string) {
-  downloadRowsAsXlsx(rows.map((r) => ({ No: r.no, 교회: r.church, 명단: r.name })), "전체 등록자 명단", fileName);
+  downloadRowsAsXlsx(
+    rows.map((r) => ({ No: r.no, 교회: sanitizeCell(r.church), 명단: sanitizeCell(r.name) })),
+    "전체 등록자 명단",
+    fileName,
+  );
 }
 
 export function nametagTsv(rows: NametagRow[]) {
   const esc = (v: string | number) => String(v ?? "").replace(/\t/g, " ").replace(/\r?\n/g, " ");
-  return [["No", "교회", "명단"].join("\t"), ...rows.map((r) => [r.no, esc(r.church), esc(r.name)].join("\t"))].join("\n");
+  return [["No", "교회", "명단"].join("\t"), ...rows.map((r) => [r.no, esc(sanitizeCell(r.church)), esc(sanitizeCell(r.name))].join("\t"))].join("\n");
 }
 
 /** 클립보드 복사 (보안 컨텍스트가 아니면 textarea 대체) */
