@@ -21,6 +21,7 @@ import {
 } from "@/lib/parsers/pre-registration-parser";
 import { parseWithLlmOrFallback, type ParseStage } from "@/lib/parsers/llm-parser";
 import { supabase } from "@/integrations/supabase/client";
+import { getSessionPassword } from "@/lib/session-password";
 import { sdb } from "@/lib/secure-db";
 import { fetchAll } from "@/lib/fetch-all";
 import { toast } from "sonner";
@@ -840,7 +841,7 @@ function OcrUploader({ onText }: { onText: (text: string) => void }) {
     for (const it of pending) {
       setItems((prev) => prev.map((p) => p.id === it.id ? { ...p, status: "running", msg: undefined } : p));
       try {
-        const { data, error } = await supabase.functions.invoke("ocr-image", { body: { imageBase64: it.preview } });
+        const { data, error } = await supabase.functions.invoke("ocr-image", { body: { imageBase64: it.preview }, headers: { "x-session-password": getSessionPassword() ?? "" } });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
         const txt: string = (data?.text ?? "").trim();

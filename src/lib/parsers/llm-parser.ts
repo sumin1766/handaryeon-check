@@ -1,5 +1,6 @@
 // LLM parser client — calls parse-preregistration edge function, maps to ParsedRegistration
 import { supabase } from "@/integrations/supabase/client";
+import { getSessionPassword } from "@/lib/session-password";
 import {
   parsePreRegistration,
   countParsedNames,
@@ -230,6 +231,7 @@ export async function parseWithLlmOrFallback(text: string): Promise<ParseOutcome
   try {
     const { data, error } = await supabase.functions.invoke("parse-preregistration", {
       body: { text: trimmed },
+      headers: { "x-session-password": getSessionPassword() ?? "" },
     });
     // The edge function now returns 200 with { ok:false, stage:"rule_fallback", error } when
     // both primary and backup fail, so we should only hit `error` for network/transport issues.

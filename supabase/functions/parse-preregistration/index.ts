@@ -3,17 +3,72 @@
 // Rule-based parser (stage 1) lives on the client and is not touched here.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const ALLOWED_ORIGINS = [
+  "https://www.handaryeoncamp.space",
+  "https://handaryeoncamp.space",
+  "https://handaryeon-check.lovable.app",
+  "https://id-preview--608546ab-7576-4bed-bc60-0d798bc1990a.lovable.app",
+  "https://project--608546ab-7576-4bed-bc60-0d798bc1990a-dev.lovable.app",
+] as const;
 
-const json = (b: unknown, status = 200) =>
-  new Response(JSON.stringify(b), {
-    status,
-    headers: { "Content-Type": "application/json", ...corsHeaders },
-  });
+function responseHeaders(req: Request) {
+  const origin = req.headers.get("Origin");
+  return {
+    ...(origin && ALLOWED_ORIGINS.some((allowed) => allowed === origin)
+      ? { "Access-Control-Allow-Origin": origin } : {}),
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-session-password",
+    "Vary": "Origin",
+  };
+}
+
+async function verifyStaff(req: Request): Promise<boolean> {
+  const password = req.headers.get("x-session-password");
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!password || !url || !key) return false;
+  try {
+    // Only the server-resolved RPC result grants access; never log the password.
+    const client = createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: (input, init) => {
+        const headers = new Headers(init?.headers);
+        if (key.startsWith("sb_") && headers.get("Authorization") === `Bearer ${key}`) headers.delete("Authorization");
+        headers.set("apikey", key);
+        return fetch(input, { ...init, headers });
+      } },
+    });
+    const { data, error } = await client.rpc("verify_password", { p: password });
+    return !error && (data === "staff" || data === "admin");
+  } catch { return false; }
+}
+
+// Bound streamed bytes too: Content-Length may be absent or dishonest.
+async function readBoundedBody(req: Request, maxBytes: number): Promise<unknown> {
+  if (Number(req.headers.get("Content-Length")) > maxBytes) throw new Response(null, { status: 413 });
+  const reader = req.body?.getReader();
+  if (!reader) return {};
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBytes) {
+        await reader.cancel();
+        throw new Response(null, { status: 413 });
+      }
+      chunks.push(value);
+    }
+  } finally { reader.releaseLock(); }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  try { return JSON.parse(new TextDecoder().decode(bytes)); }
+  catch { throw new Response(null, { status: 400 }); }
+}
+
 
 // ==== Model constants (easy to swap) =========================================
 const PRIMARY_MODEL = "nvidia/llama-3.3-nemotron-super-49b-v1";
@@ -231,11 +286,29 @@ async function safeRunStage(model: string, key: string, text: string, maxTokens:
   }
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+export async function handleRequest(req: Request): Promise<Response> {
+  const corsHeaders = responseHeaders(req);
+const json = (b: unknown, status = 200) =>
+  new Response(JSON.stringify(b), {
+    status,
+    headers: { "Content-Type": "application/json", ...corsHeaders },
+  });
+
+
+  const origin = req.headers.get("Origin");
+  if (origin && !ALLOWED_ORIGINS.some((allowed) => allowed === origin)) {
+    return new Response(null, { status: 403, headers: corsHeaders });
+  }
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+  if (req.method !== "POST") return new Response(null, { status: 405, headers: corsHeaders });
+  if (!await verifyStaff(req)) return new Response(JSON.stringify({ error: "인증이 필요합니다." }), {
+    status: 401, headers: { "Content-Type": "application/json", ...corsHeaders },
+  });
   try {
-    const body = await req.json().catch(() => ({}));
-    const text: string = String(body?.text ?? "").trim();
+    const body = await readBoundedBody(req, 20_000 * 6 + 1024) as { text?: unknown } | null;
+    if (typeof body?.text !== "string") return json({ error: "텍스트를 입력해주세요." }, 400);
+    if (body.text.length > 20_000) return json({ error: "본문은 20,000자까지 허용됩니다." }, 413);
+    const text = body.text.trim();
     if (!text) return json({ ok: false, stage: "rule_fallback", error: "텍스트를 입력해주세요." }, 200);
 
     // ---- Stage 2: primary model ----
@@ -321,6 +394,9 @@ Deno.serve(async (req) => {
       primary_auth_fail: primaryAuthFail,
     }, 200);
   } catch (e) {
+    if (e instanceof Response) return json({ error: e.status === 413 ? "본문은 20,000자까지 허용됩니다." : "잘못된 요청입니다." }, e.status);
     return json({ ok: false, stage: "rule_fallback", error: String(e) }, 200);
   }
-});
+}
+
+Deno.serve(handleRequest);

@@ -1588,7 +1588,7 @@ function OcrSection() {
     setTesting(true);
     setResult(null);
     try {
-      const { data, error } = await supabase.functions.invoke("ocr-image", { body: { test: true } });
+      const { data, error } = await supabase.functions.invoke("ocr-image", { body: { test: true }, headers: { "x-session-password": getSessionPassword() ?? "" } });
       if (error) throw error;
       if (data?.ok) setResult({ ok: true, msg: "정상적으로 OCR 서비스에 연결되었습니다." });
       else setResult({ ok: false, msg: data?.detail ? `연결 실패 (${data.status ?? "?"}) — ${String(data.detail).slice(0, 200)}` : "연결 실패" });

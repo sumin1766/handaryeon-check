@@ -1,18 +1,72 @@
 // OCR image edge function — calls NVIDIA Nemotron-OCR-v2
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const ALLOWED_ORIGINS = [
+  "https://www.handaryeoncamp.space",
+  "https://handaryeoncamp.space",
+  "https://handaryeon-check.lovable.app",
+  "https://id-preview--608546ab-7576-4bed-bc60-0d798bc1990a.lovable.app",
+  "https://project--608546ab-7576-4bed-bc60-0d798bc1990a-dev.lovable.app",
+] as const;
 
-function jsonResponse(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json", ...corsHeaders },
-  });
+function responseHeaders(req: Request) {
+  const origin = req.headers.get("Origin");
+  return {
+    ...(origin && ALLOWED_ORIGINS.some((allowed) => allowed === origin)
+      ? { "Access-Control-Allow-Origin": origin } : {}),
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-session-password",
+    "Vary": "Origin",
+  };
 }
+
+async function verifyStaff(req: Request): Promise<boolean> {
+  const password = req.headers.get("x-session-password");
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!password || !url || !key) return false;
+  try {
+    // Only the server-resolved RPC result grants access; never log the password.
+    const client = createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: (input, init) => {
+        const headers = new Headers(init?.headers);
+        if (key.startsWith("sb_") && headers.get("Authorization") === `Bearer ${key}`) headers.delete("Authorization");
+        headers.set("apikey", key);
+        return fetch(input, { ...init, headers });
+      } },
+    });
+    const { data, error } = await client.rpc("verify_password", { p: password });
+    return !error && (data === "staff" || data === "admin");
+  } catch { return false; }
+}
+
+// Bound streamed bytes too: Content-Length may be absent or dishonest.
+async function readBoundedBody(req: Request, maxBytes: number): Promise<unknown> {
+  if (Number(req.headers.get("Content-Length")) > maxBytes) throw new Response(null, { status: 413 });
+  const reader = req.body?.getReader();
+  if (!reader) return {};
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBytes) {
+        await reader.cancel();
+        throw new Response(null, { status: 413 });
+      }
+      chunks.push(value);
+    }
+  } finally { reader.releaseLock(); }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  try { return JSON.parse(new TextDecoder().decode(bytes)); }
+  catch { throw new Response(null, { status: 400 }); }
+}
+
 
 function normalizeUrl(raw: string): string {
   const u = (raw || "").replace(/\/+$/, "");
@@ -124,12 +178,45 @@ async function ocrOne(dataUrl: string, apiKey: string, url: string): Promise<str
   return joinItems(items);
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+export async function handleRequest(req: Request): Promise<Response> {
+  const corsHeaders = responseHeaders(req);
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...corsHeaders },
+  });
+}
+
+
+  const origin = req.headers.get("Origin");
+  if (origin && !ALLOWED_ORIGINS.some((allowed) => allowed === origin)) {
+    return new Response(null, { status: 403, headers: corsHeaders });
+  }
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+  if (req.method !== "POST") return new Response(null, { status: 405, headers: corsHeaders });
+  if (!await verifyStaff(req)) return new Response(JSON.stringify({ error: "인증이 필요합니다." }), {
+    status: 401, headers: { "Content-Type": "application/json", ...corsHeaders },
+  });
   try {
+    const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+    const body = await readBoundedBody(req, Math.ceil(MAX_IMAGE_BYTES / 3) * 4 + 4096) as {
+      test?: unknown; images?: unknown; imageBase64?: unknown;
+    } | null;
+    const images: unknown[] = Array.isArray(body?.images)
+      ? body.images : body?.imageBase64 ? [body.imageBase64] : [];
+    let totalBytes = 0;
+    for (const image of images) {
+      if (typeof image !== "string") return jsonResponse({ error: "PNG/JPEG 이미지만 지원됩니다." }, 400);
+      const match = image.match(/^data:image\/(png|jpe?g);base64,([A-Za-z0-9+/]*={0,2})$/i);
+      const encoded = match?.[2];
+      if (!encoded || encoded.length % 4 !== 0) return jsonResponse({ error: "이미지 형식이 올바르지 않습니다." }, 400);
+      const padding = encoded.endsWith("==") ? 2 : encoded.endsWith("=") ? 1 : 0;
+      totalBytes += encoded.length / 4 * 3 - padding;
+      if (totalBytes > MAX_IMAGE_BYTES) return jsonResponse({ error: "이미지는 요청당 5MB까지 허용됩니다." }, 413);
+    }
+    if (body?.test !== true && images.length === 0) return jsonResponse({ error: "이미지를 전달해주세요." }, 400);
     const { apiKey, url } = await loadConfig();
     if (!apiKey) return jsonResponse({ error: "OCR API 키가 설정되지 않았습니다." }, 500);
-    const body = await req.json().catch(() => ({}));
 
     if (body?.test === true) {
       const px = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
@@ -145,13 +232,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    const images: string[] = Array.isArray(body?.images)
-      ? body.images
-      : body?.imageBase64 ? [body.imageBase64] : [];
-    if (images.length === 0) return jsonResponse({ error: "이미지를 전달해주세요." }, 400);
-
     const parts: string[] = [];
     for (const img of images) {
+      if (typeof img !== "string") return jsonResponse({ error: "이미지 형식이 올바르지 않습니다." }, 400);
       try {
         const t = await ocrOne(img, apiKey, url);
         if (t) parts.push(t);
@@ -166,6 +249,9 @@ Deno.serve(async (req) => {
     }
     return jsonResponse({ text: parts.join("\n\n") });
   } catch (e) {
+    if (e instanceof Response) return jsonResponse({ error: e.status === 413 ? "이미지는 요청당 5MB까지 허용됩니다." : "잘못된 요청입니다." }, e.status);
     return jsonResponse({ error: String(e) }, 500);
   }
-});
+}
+
+Deno.serve(handleRequest);
