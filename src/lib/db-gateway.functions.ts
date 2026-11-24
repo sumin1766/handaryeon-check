@@ -19,6 +19,15 @@ const ALLOWED_TABLES = [
   "duplicate_dismissals",
 ] as const;
 
+const ADMIN_ONLY_WRITE_TABLES: readonly string[] = ["app_settings", "seasons"];
+const SAFE_SELECT = /^[A-Za-z0-9_,\s*().:!]+$/;
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+function gatewayError(message: string) {
+  return { data: null, error: message, count: null };
+}
+
 const filterSchema = z.object({
   op: z.enum(["eq", "neq", "in", "is", "not", "gt", "gte", "lt", "lte", "like", "ilike", "contains"]),
   col: z.string().min(1).max(64),
@@ -34,7 +43,9 @@ const requestSchema = z.object({
   selectCols: z.string().max(2000).optional(),
   filters: z.array(filterSchema).max(30).default([]),
   order: z
-    .array(z.object({ col: z.string().max(64), ascending: z.boolean().default(true), nullsFirst: z.boolean().optional() }))
+    .array(
+      z.object({ col: z.string().max(64), ascending: z.boolean().default(true), nullsFirst: z.boolean().optional() }),
+    )
     .max(5)
     .default([]),
   limit: z.number().int().min(1).max(100000).optional(),
@@ -47,7 +58,7 @@ const requestSchema = z.object({
 
 export type DbGatewayRequest = z.infer<typeof requestSchema>;
 
-async function requireRole(password: string, writing: boolean) {
+async function requireRole(password: string, table: string, writing: boolean) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: role, error } = await supabaseAdmin.rpc("verify_password", { p: password });
   if (error) throw new Error("권한 확인에 실패했습니다.");
@@ -57,6 +68,9 @@ async function requireRole(password: string, writing: boolean) {
   if (writing && role !== "admin" && role !== "staff") {
     throw new Error("변경 권한이 없습니다.");
   }
+  if (writing && ADMIN_ONLY_WRITE_TABLES.includes(table) && role !== "admin") {
+    throw new Error("변경 권한이 없습니다.");
+  }
   return supabaseAdmin;
 }
 
@@ -64,7 +78,22 @@ export const dbGateway = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => requestSchema.parse(d))
   .handler(async ({ data }): Promise<any> => {
     const writing = data.action !== "select";
-    const db = await requireRole(data.password, writing);
+    const db = await requireRole(data.password, data.table, writing);
+    if ((data.action === "delete" || data.action === "update") && data.filters.length === 0) {
+      return gatewayError("조건 없는 수정·삭제는 허용되지 않습니다.");
+    }
+    if (data.action === "update" && !isPlainObject(data.values)) {
+      return gatewayError("잘못된 요청 형식입니다.");
+    }
+    if (
+      (data.action === "insert" || data.action === "upsert") &&
+      !(isPlainObject(data.values) || (Array.isArray(data.values) && data.values.every(isPlainObject)))
+    ) {
+      return gatewayError("잘못된 요청 형식입니다.");
+    }
+    if (data.selectCols && !SAFE_SELECT.test(data.selectCols)) {
+      return gatewayError("잘못된 조회 형식입니다.");
+    }
 
     const table = db.from(data.table as never) as any;
     let q: any;
@@ -96,7 +125,10 @@ export const dbGateway = createServerFn({ method: "POST" })
     }
 
     for (const o of data.order) {
-      q = q.order(o.col, { ascending: o.ascending, ...(o.nullsFirst === undefined ? {} : { nullsFirst: o.nullsFirst }) });
+      q = q.order(o.col, {
+        ascending: o.ascending,
+        ...(o.nullsFirst === undefined ? {} : { nullsFirst: o.nullsFirst }),
+      });
     }
     if (data.range) q = q.range(data.range[0], data.range[1]);
     else if (data.limit !== undefined) q = q.limit(data.limit);
