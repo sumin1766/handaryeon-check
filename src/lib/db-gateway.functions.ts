@@ -19,7 +19,7 @@ const ALLOWED_TABLES = [
   "duplicate_dismissals",
 ] as const;
 
-const ADMIN_ONLY_WRITE_TABLES: readonly string[] = ["app_settings", "seasons"];
+const ADMIN_ONLY_WRITE_TABLES: readonly string[] = ["seasons"];
 const SAFE_SELECT = /^[A-Za-z0-9_,\s*().:!]+$/;
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === "object" && !Array.isArray(v);
