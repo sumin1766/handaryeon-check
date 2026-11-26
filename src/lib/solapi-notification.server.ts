@@ -51,15 +51,21 @@ export async function requestAlimtalk(reg: Parameters<typeof buildAlimtalkMessag
     if (response.ok && accepted && !rejected) {
       return { status: "sent" as const, sent_at: new Date().toISOString(), message_id: accepted.messageId ?? null, failure_reason: null, fallback };
     }
-    // A 403 (no accepted message), or documented 3040 unregistered sender, is explicit non-acceptance.
+    // A 403 (no accepted message), or documented 1062/2062 unregistered sender, is explicit non-acceptance.
     // Never retry a timeout/5xx/ambiguous response: the original may already have been accepted.
-    if (fallback && attempt === 0 && !accepted && (response.status === 403 || rejected?.statusCode === "3040")) {
+    if (fallback && attempt === 0 && !accepted && (response.status === 403 || rejected?.statusCode === "1062" || rejected?.statusCode === "2062")) {
       fallback = false;
       continue;
     }
     const reasons: Record<string, string> = {
-      "3040": "솔라피에 등록된 발신번호가 아닙니다.",
-      "3000": "솔라피 발송 요청 검증에 실패했습니다.",
+      "1062": "솔라피에 등록된 발신번호가 아닙니다.",
+      "2062": "대체문자 발신번호가 등록되지 않았습니다.",
+      "1030": "솔라피 잔액이 부족합니다.",
+      "2230": "솔라피 잔액이 부족합니다.",
+      "1042": "솔라피 템플릿 ID가 유효하지 않습니다.",
+      "1043": "승인된 템플릿과 내용이 다릅니다.",
+      "3103": "승인된 템플릿과 내용이 다릅니다.",
+      "3040": "전송시간이 초과되었습니다. 접수 여부 확인 후 재발송해 주세요.",
     };
     return {
       status: "failed" as const, sent_at: null, message_id: rejected?.messageId ?? null,

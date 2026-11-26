@@ -50,6 +50,13 @@
       "when": 1795667715962,
       "tag": "0006_add_pre_registration_alimtalk_delivery",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795668216904,
+      "tag": "0007_restrict_new_alimtalk_tables",
+      "breakpoints": true
     }
   ]
 }

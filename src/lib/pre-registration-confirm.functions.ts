@@ -4,7 +4,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { notificationAfterConfirmation, type NotificationResult } from "./solapi-notification";
-import { authorizeNotification, readSolapiConfig, sendRegistrationNotification } from "./solapi-notification.server";
+import { readSolapiConfig, sendRegistrationNotification } from "./solapi-notification.server";
 
 const authSchema = z.object({ password: z.string().min(1) });
 
@@ -102,6 +102,7 @@ export const confirmPreRegistration = createServerFn({ method: "POST" })
       .eq("id", reg.season_id)
       .maybeSingle();
     if (!season?.is_active) throw new Error("활성 시즌 건만 확정할 수 있습니다.");
+    const firstConfirmation = reg.status !== "applied" && !reg.applied_at && !reg.church_id;
 
     const { data: members } = await db
       .from("pre_registration_members")
@@ -281,10 +282,10 @@ export const confirmPreRegistration = createServerFn({ method: "POST" })
 
       // Only the first ever confirmation sends automatically. Atomic delivery records guard concurrent calls.
       // This wrapper cannot throw into the existing confirmation rollback.
-      const notification = !reg.applied_at && !reg.church_id
+      const notification = firstConfirmation
         ? await notificationAfterConfirmation(async () => {
-          const authorizedDb = await authorizeNotification(data.password);
-          return sendRegistrationNotification(authorizedDb, reg.id, true, readSolapiConfig());
+          // requireStaff already verified this request before any confirmation or provider call.
+          return sendRegistrationNotification(db, reg.id, true, readSolapiConfig());
         })
         : null;
       return { churchId, peopleCount: list.length, amount, notification };

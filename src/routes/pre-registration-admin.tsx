@@ -531,7 +531,7 @@ function DetailDialog({
   const runConfirm = async () => {
     if (!reg || confirmBusy.current || sendBusy.current) return;
     const suffix = reg.manager_phone.replace(/[^0-9]/g, "").slice(-4);
-    const notice = !reg.applied_at && !reg.church_id
+    const notice = reg.status !== "applied" && !reg.applied_at && !reg.church_id
       ? `확정하면 담당자(수신번호 뒤 4자리: ${suffix})에게 알림톡이 자동 발송됩니다.\n\n확정할까요?`
       : "재확정 시 알림톡은 자동 발송되지 않습니다. 재확정할까요?";
     if (!window.confirm(notice)) return;

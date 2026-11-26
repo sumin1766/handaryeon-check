@@ -26,6 +26,7 @@
 - [ ] Verify signed-in edit/save end-to-end — blocked: shared-password session unavailable in the sandbox.
 
 # Confirmation Alimtalk (no publishing or live sends)
-- [ ] Add secret-backed authorized single-message sending and additive delivery records with atomic duplicate protection.
-- [ ] Call after individual confirmation only; show result and confirmed resend control without changing confirmation data.
-- [ ] Audit current dbGateway callers read-only; mock-test delivery/confirmation failures and report verification limits.
+- [x] Add secret-backed authorized single-message sending and additive delivery records with atomic duplicate protection.
+- [x] Call after individual confirmation only; show result and confirmed resend control without changing confirmation data.
+- [x] Audit current dbGateway callers read-only; notification mocks + 83 existing tests and desktop/mobile mocked flows passed; typecheck/build OK.
+- [ ] Verify real staff/admin delivery and actual Kakao/SMS receipt — blocked: live Solapi calls and publishing are explicitly prohibited; no shared-password session supplied.
