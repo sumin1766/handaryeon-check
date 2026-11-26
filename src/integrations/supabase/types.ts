@@ -550,6 +550,78 @@ export type Database = {
           },
         ]
       }
+      pre_registration_notification_attempts: {
+        Row: {
+          attempted_at: string
+          automatic: boolean
+          failure_reason: string | null
+          fallback_enabled: boolean
+          id: string
+          message_id: string | null
+          pre_registration_id: string
+          status: string
+        }
+        Insert: {
+          attempted_at?: string
+          automatic: boolean
+          failure_reason?: string | null
+          fallback_enabled?: boolean
+          id?: string
+          message_id?: string | null
+          pre_registration_id: string
+          status: string
+        }
+        Update: {
+          attempted_at?: string
+          automatic?: boolean
+          failure_reason?: string | null
+          fallback_enabled?: boolean
+          id?: string
+          message_id?: string | null
+          pre_registration_id?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      pre_registration_notifications: {
+        Row: {
+          attempted_at: string | null
+          automatic_attempted: boolean
+          failure_reason: string | null
+          lock_id: string | null
+          message_id: string | null
+          pre_registration_id: string
+          sent_at: string | null
+          status: string
+          success_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempted_at?: string | null
+          automatic_attempted?: boolean
+          failure_reason?: string | null
+          lock_id?: string | null
+          message_id?: string | null
+          pre_registration_id: string
+          sent_at?: string | null
+          status?: string
+          success_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempted_at?: string | null
+          automatic_attempted?: boolean
+          failure_reason?: string | null
+          lock_id?: string | null
+          message_id?: string | null
+          pre_registration_id?: string
+          sent_at?: string | null
+          status?: string
+          success_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pre_registrations: {
         Row: {
           access_token: string
@@ -749,6 +821,22 @@ export type Database = {
           new_user: string
         }
         Returns: undefined
+      }
+      claim_pre_registration_notification: {
+        Args: { p_automatic: boolean; p_id: string; p_lock: string }
+        Returns: boolean
+      }
+      finish_pre_registration_notification: {
+        Args: {
+          p_automatic: boolean
+          p_fallback: boolean
+          p_id: string
+          p_lock: string
+          p_message_id: string
+          p_reason: string
+          p_status: string
+        }
+        Returns: boolean
       }
       gen_pre_reg_token: { Args: never; Returns: string }
       ocr_backup_key_update: {

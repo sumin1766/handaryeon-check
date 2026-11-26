@@ -7,7 +7,7 @@ import {
   LEGACY_MEMBER_CATEGORIES,
 } from "@/lib/member-categories";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -44,6 +44,8 @@ import { actorLabel } from "@/lib/change-diff";
 const CHANGE_TYPE_LABEL: Record<string, string> = { increase: "인원 증가", decrease: "인원 감소", edit: "내용 변경" };
 import { useRegionStats } from "@/lib/use-region-stats";
 import { DuplicateChurchStat } from "@/components/duplicate-church-stat";
+import { resendPreRegistrationAlimtalk } from "@/lib/solapi-notification.functions";
+import { notificationLabel, resendWithConfirmation } from "@/lib/solapi-notification";
 
 export const Route = createFileRoute("/pre-registration-admin")({
   head: () => ({
@@ -370,7 +372,12 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
                   <td className="px-3 py-2 whitespace-nowrap">{r.head_count}명</td>
                   <td className="px-3 py-2 whitespace-nowrap">{krw(r.expected_fee)}</td>
                   <td className="px-3 py-2 whitespace-nowrap">{lodgingCellText(l)}</td>
-                  <td className="px-3 py-2"><StatusBadge status={r.status} /></td>
+                  <td className="px-3 py-2">
+                    <StatusBadge status={r.status} />
+                    {(r.status === "applied" || r.notification) && <div className="text-xs text-muted-foreground mt-1 max-w-64">
+                      {notificationLabel(r.notification)}{r.notification?.sent_at ? ` · ${formatKst(r.notification.sent_at)}` : ""}
+                    </div>}
+                  </td>
                   <td className="px-3 py-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                     <Button
                       size="sm"
@@ -465,6 +472,10 @@ function DetailDialog({
   const changesFn = useServerFn(getPreRegistrationChanges);
   const candidatesFn = useServerFn(findChurchCandidates);
   const confirmFn = useServerFn(confirmPreRegistration);
+  const resendFn = useServerFn(resendPreRegistrationAlimtalk);
+  const [sending, setSending] = useState(false);
+  const sendBusy = useRef(false);
+  const confirmBusy = useRef(false);
   const [candidates, setCandidates] = useState<ChurchCandidate[] | null>(null);
   const [mode, setMode] = useState<"link" | "new">("new");
   const [pickedChurch, setPickedChurch] = useState<string | null>(null);
@@ -518,7 +529,13 @@ function DetailDialog({
   }, [regId, password, candidatesFn]);
 
   const runConfirm = async () => {
-    if (!reg) return;
+    if (!reg || confirmBusy.current || sendBusy.current) return;
+    const suffix = reg.manager_phone.replace(/[^0-9]/g, "").slice(-4);
+    const notice = !reg.applied_at && !reg.church_id
+      ? `확정하면 담당자(수신번호 뒤 4자리: ${suffix})에게 알림톡이 자동 발송됩니다.\n\n확정할까요?`
+      : "재확정 시 알림톡은 자동 발송되지 않습니다. 재확정할까요?";
+    if (!window.confirm(notice)) return;
+    confirmBusy.current = true;
     setConfirming(true);
     try {
       const res = await confirmFn({
@@ -530,6 +547,8 @@ function DetailDialog({
         },
       });
       toast.success(`확정 완료 — ${res.peopleCount}명 등록 · 회비 ${krw(res.amount)}`);
+      if (res.notification?.status === "failed") toast.error(`알림톡 발송 실패 · ${res.notification.failure_reason}`);
+      if (res.notification?.status === "unsent") toast.warning(notificationLabel(res.notification));
       onRefresh();
       qc.invalidateQueries({ queryKey: ["pre-reg-admin-changes"], refetchType: "all" });
       notifyDataChanged();
@@ -537,7 +556,28 @@ function DetailDialog({
     } catch (e: any) {
       toast.error(e?.message ?? "확정 처리에 실패했습니다.");
     } finally {
+      confirmBusy.current = false;
       setConfirming(false);
+    }
+  };
+
+  const runResend = async () => {
+    if (!reg || sendBusy.current || confirmBusy.current) return;
+    sendBusy.current = true;
+    try {
+      await resendWithConfirmation(() => window.confirm("알림톡을 다시 보낼까요?"), async () => {
+        setSending(true);
+        const result = await resendFn({ data: { pre_registration_id: reg.id } });
+        if (result.status === "failed") toast.error(`알림톡 발송 실패 · ${result.failure_reason}`);
+        else if (result.status === "sent") toast.success("알림톡 발송됨 (솔라피 접수)");
+        else toast.warning(notificationLabel(result));
+        await onRefresh();
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "알림톡 재발송에 실패했습니다.");
+    } finally {
+      sendBusy.current = false;
+      setSending(false);
     }
   };
 
@@ -634,10 +674,21 @@ function DetailDialog({
               )}
               <Button
                 onClick={runConfirm}
-                disabled={confirming || (!alreadyLinked && mode === "link" && !pickedChurch)}
+                disabled={confirming || sending || (!alreadyLinked && mode === "link" && !pickedChurch)}
               >
                 {confirming ? "처리 중…" : reg.status === "submitted" ? "확정" : "재확정"}
               </Button>
+              {(reg.status === "applied" || reg.notification) && <div className="space-y-2 border-t pt-2">
+                <div className="text-muted-foreground break-words">
+                  알림톡: {notificationLabel(reg.notification)}
+                  {reg.notification?.sent_at ? ` · ${formatKst(reg.notification.sent_at)}` : ""}
+                </div>
+                {reg.status === "applied" && <Button size="sm" variant="outline" onClick={runResend}
+                  disabled={sending || confirming || reg.notification?.status === "sending"}>
+                  <RefreshCw className={`h-4 w-4 mr-1 ${sending ? "animate-spin" : ""}`} />
+                  {sending ? "발송 중…" : "알림톡 재발송"}
+                </Button>}
+              </div>}
             </Card>
 
             <Card className="p-3 space-y-2 text-sm border-destructive/40">

@@ -3,6 +3,8 @@
 // 활성 시즌 건만 대상으로 하며, 과거 시즌 데이터는 조회·수정하지 않는다.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { notificationAfterConfirmation, type NotificationResult } from "./solapi-notification";
+import { authorizeNotification, readSolapiConfig, sendRegistrationNotification } from "./solapi-notification.server";
 
 const authSchema = z.object({ password: z.string().min(1) });
 
@@ -84,7 +86,7 @@ const confirmSchema = authSchema.extend({
 /** 확정/재확정 — 상태 applied 전환 + 운영 테이블(churches/people) 등록·갱신을 한 처리로 묶는다. */
 export const confirmPreRegistration = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => confirmSchema.parse(d))
-  .handler(async ({ data }): Promise<{ churchId: string; peopleCount: number; amount: number }> => {
+  .handler(async ({ data }): Promise<{ churchId: string; peopleCount: number; amount: number; notification: NotificationResult | null }> => {
     const db = await requireStaff(data.password);
 
     const { data: reg } = await db
@@ -277,7 +279,15 @@ export const confirmPreRegistration = createServerFn({ method: "POST" })
         .eq("pre_registration_id", reg.id)
         .eq("resolved", false);
 
-      return { churchId, peopleCount: list.length, amount };
+      // Only the first ever confirmation sends automatically. Atomic delivery records guard concurrent calls.
+      // This wrapper cannot throw into the existing confirmation rollback.
+      const notification = !reg.applied_at && !reg.church_id
+        ? await notificationAfterConfirmation(async () => {
+          const authorizedDb = await authorizeNotification(data.password);
+          return sendRegistrationNotification(authorizedDb, reg.id, true, readSolapiConfig());
+        })
+        : null;
+      return { churchId, peopleCount: list.length, amount, notification };
     } catch (e) {
       // 부분 반영 방지 — 이번 처리로 새로 만든 것만 되돌리고, 기존 매핑은 유지한다.
       if (newPersonIds.length) {

@@ -43,6 +43,13 @@
       "when": 1792561863336,
       "tag": "0005_people_pre_registration_tracking",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795667715962,
+      "tag": "0006_add_pre_registration_alimtalk_delivery",
+      "breakpoints": true
     }
   ]
 }

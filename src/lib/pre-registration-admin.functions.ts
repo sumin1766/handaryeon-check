@@ -5,6 +5,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { personToMember } from "./change-diff";
 import { parseCategoryFees, sumCategoryFees, type CategoryFeeMap } from "./member-categories";
+import type { NotificationResult } from "./solapi-notification";
 
 export type PreRegStatus = "submitted" | "applied" | "needs_review";
 
@@ -36,6 +37,7 @@ export type AdminPreRegistration = {
   members: AdminMember[];
   /** operating = 확정 건, 접수 명단(people)에서 읽은 값 */
   source: "operating" | "pre";
+  notification: NotificationResult | null;
 };
 
 export type AdminChange = {
@@ -89,6 +91,13 @@ export const listPreRegistrations = createServerFn({ method: "POST" })
     if (regErr) throw new Error("사전접수 목록을 불러오지 못했습니다.");
 
     const ids = (regs ?? []).map((r) => r.id);
+    const notificationByReg = new Map<string, NotificationResult>();
+    if (ids.length) {
+      const { data: notifications, error: notificationError } = await db.from("pre_registration_notifications")
+        .select("pre_registration_id, status, sent_at, message_id, failure_reason").in("pre_registration_id", ids);
+      if (notificationError) throw new Error("알림톡 발송 상태를 불러오지 못했습니다.");
+      for (const notification of notifications ?? []) notificationByReg.set(notification.pre_registration_id, notification as NotificationResult);
+    }
     let members: (AdminMember & { pre_registration_id: string })[] = [];
     if (ids.length) {
       const { data: m } = await db
@@ -163,6 +172,7 @@ export const listPreRegistrations = createServerFn({ method: "POST" })
         paid_at: r.paid_at ?? null,
         members: op ?? byReg.get(r.id) ?? [],
         source: (op ? "operating" : "pre") as "operating" | "pre",
+        notification: notificationByReg.get(r.id) ?? null,
       };
       }),
     };

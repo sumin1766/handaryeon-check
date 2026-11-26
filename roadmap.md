@@ -24,3 +24,8 @@
 # Roster edit page
 - [x] Rename to 명단 수정, search, new columns, church detail view/edit/add, fees, per-church name tags, read-only elsewhere.
 - [ ] Verify signed-in edit/save end-to-end — blocked: shared-password session unavailable in the sandbox.
+
+# Confirmation Alimtalk (no publishing or live sends)
+- [ ] Add secret-backed authorized single-message sending and additive delivery records with atomic duplicate protection.
+- [ ] Call after individual confirmation only; show result and confirmed resend control without changing confirmation data.
+- [ ] Audit current dbGateway callers read-only; mock-test delivery/confirmation failures and report verification limits.
