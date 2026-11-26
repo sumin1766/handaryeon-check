@@ -16,7 +16,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { Badge, badgeVariants } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Copy, RefreshCw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -45,7 +45,7 @@ const CHANGE_TYPE_LABEL: Record<string, string> = { increase: "인원 증가", d
 import { useRegionStats } from "@/lib/use-region-stats";
 import { DuplicateChurchStat } from "@/components/duplicate-church-stat";
 import { resendPreRegistrationAlimtalk } from "@/lib/solapi-notification.functions";
-import { notificationLabel, resendWithConfirmation } from "@/lib/solapi-notification";
+import { notificationLabel, resendWithConfirmation, type NotificationResult } from "@/lib/solapi-notification";
 
 export const Route = createFileRoute("/pre-registration-admin")({
   head: () => ({
@@ -78,7 +78,37 @@ const STATUS_META: Record<string, { label: string; className: string }> = {
 
 function StatusBadge({ status }: { status: string }) {
   const meta = STATUS_META[status] ?? { label: status, className: "" };
-  return <Badge variant="secondary" className={meta.className}>{meta.label}</Badge>;
+  return <Badge variant="secondary" className={`h-8 shrink-0 whitespace-nowrap text-xs ${meta.className}`}>{meta.label}</Badge>;
+}
+
+function NotificationDisplay({ notification, sending = false, onFailure, expanded = false }: {
+  notification: NotificationResult | null | undefined;
+  sending?: boolean;
+  onFailure: () => void;
+  expanded?: boolean;
+}) {
+  const status = sending ? "sending" : notification?.status ?? "unsent";
+  const meta = {
+    sent: { label: "발송됨", className: STATUS_META["applied"]?.className ?? "" },
+    unsent: { label: "미발송", className: "bg-muted text-muted-foreground" },
+    sending: { label: "발송 중", className: "bg-chart-1/15 text-chart-1" },
+    failed: { label: "발송 실패", className: "bg-destructive/10 text-destructive" },
+  }[status];
+  const className = `h-8 shrink-0 whitespace-nowrap text-xs ${meta.className}`;
+  const sentTime = notification?.sent_at ? formatKst(notification.sent_at) : "-";
+  return (
+    <div className="flex flex-col items-start gap-1">
+      {status === "failed" ? (
+        <Button variant="secondary" size="sm"
+          className={`${badgeVariants({ variant: "secondary" })} ${className} hover:bg-destructive/20`}
+          aria-expanded={expanded}
+          onClick={(event) => { event.stopPropagation(); onFailure(); }}>
+          {meta.label}
+        </Button>
+      ) : <Badge variant="secondary" className={className}>{meta.label}</Badge>}
+      {sentTime !== "-" && <div className="whitespace-nowrap text-xs text-muted-foreground">{sentTime.slice(5, 16)}</div>}
+    </div>
+  );
 }
 
 function lodgingCounts(r: AdminPreRegistration) {
@@ -167,6 +197,7 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<"recent" | "status" | "name">("recent");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [failureId, setFailureId] = useState<string | null>(null);
 
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
@@ -340,12 +371,12 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
       </Card>
 
       <Card className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm [&_td]:align-top">
           <thead className="bg-muted/50 text-left">
             <tr>
               {["교회명", "교단명", "담당자", "연락처", "인원", "확정 회비", "숙박(교회/외부/비숙박)", "상태", "납부", "제출", "수정", "삭제"].map(
                 (h) => (
-                  <th key={h} className="px-3 py-2 whitespace-nowrap font-medium">{h}</th>
+                  <th key={h} className={`px-3 py-2 whitespace-nowrap font-medium ${h === "상태" ? "min-w-40" : ""}`}>{h}</th>
                 ),
               )}
             </tr>
@@ -372,11 +403,12 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
                   <td className="px-3 py-2 whitespace-nowrap">{r.head_count}명</td>
                   <td className="px-3 py-2 whitespace-nowrap">{krw(r.expected_fee)}</td>
                   <td className="px-3 py-2 whitespace-nowrap">{lodgingCellText(l)}</td>
-                  <td className="px-3 py-2">
-                    <StatusBadge status={r.status} />
-                    {(r.status === "applied" || r.notification) && <div className="text-xs text-muted-foreground mt-1 max-w-64">
-                      {notificationLabel(r.notification)}{r.notification?.sent_at ? ` · ${formatKst(r.notification.sent_at)}` : ""}
-                    </div>}
+                  <td className="min-w-40 px-3 py-2 whitespace-nowrap">
+                    <div className="flex flex-col items-start gap-1">
+                      <StatusBadge status={r.status} />
+                      <NotificationDisplay notification={r.notification}
+                        onFailure={() => { setOpenId(r.id); setFailureId(r.id); }} />
+                    </div>
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                     <Button
@@ -414,7 +446,9 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
         reg={selected}
         preRegFee={data?.preRegFee ?? 0}
         categoryFees={data?.categoryFees ?? {}}
-        onClose={() => setOpenId(null)}
+        onClose={() => { setOpenId(null); setFailureId(null); }}
+        showFailure={failureId === selected?.id}
+        onFailureToggle={() => setFailureId(failureId === selected?.id ? null : selected?.id ?? null)}
         onRefresh={() => refetch()}
         onTogglePaid={togglePaid}
         paying={paying}
@@ -456,6 +490,8 @@ function DetailDialog({
   paying,
   onDelete,
   deleting,
+  showFailure,
+  onFailureToggle,
 }: {
   password: string;
   reg: AdminPreRegistration | null;
@@ -467,6 +503,8 @@ function DetailDialog({
   paying: boolean;
   onDelete: (r: AdminPreRegistration) => void;
   deleting: boolean;
+  showFailure: boolean;
+  onFailureToggle: () => void;
 }) {
 
   const changesFn = useServerFn(getPreRegistrationChanges);
@@ -589,11 +627,28 @@ function DetailDialog({
         {reg && (
           <>
             <DialogHeader>
-              <DialogTitle className="flex flex-wrap items-center gap-2">
-                {reg.church_name}
+              <DialogTitle className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 pr-6">
+                <span className="min-w-0 break-words">{reg.church_name}</span>
                 <StatusBadge status={reg.status} />
               </DialogTitle>
             </DialogHeader>
+
+            <div className="flex flex-col items-start gap-2">
+              <NotificationDisplay notification={reg.notification} sending={sending}
+                onFailure={onFailureToggle} expanded={showFailure} />
+              {showFailure && reg.notification?.status === "failed" && (
+                <div className="max-w-full break-words text-sm text-destructive">
+                  {reg.notification.failure_reason ?? "발송 오류"}
+                </div>
+              )}
+              {reg.status === "applied" && (reg.notification?.status !== "failed" || showFailure) && (
+                <Button size="sm" variant="outline" onClick={runResend}
+                  disabled={sending || confirming || reg.notification?.status === "sending"}>
+                  <RefreshCw className={`h-4 w-4 mr-1 ${sending ? "animate-spin" : ""}`} />
+                  {sending ? "발송 중…" : "알림톡 재발송"}
+                </Button>
+              )}
+            </div>
 
             <div className="grid gap-2 text-sm sm:grid-cols-2">
               <div>교단명: {reg.denomination ?? "-"}</div>
@@ -678,17 +733,6 @@ function DetailDialog({
               >
                 {confirming ? "처리 중…" : reg.status === "submitted" ? "확정" : "재확정"}
               </Button>
-              {(reg.status === "applied" || reg.notification) && <div className="space-y-2 border-t pt-2">
-                <div className="text-muted-foreground break-words">
-                  알림톡: {notificationLabel(reg.notification)}
-                  {reg.notification?.sent_at ? ` · ${formatKst(reg.notification.sent_at)}` : ""}
-                </div>
-                {reg.status === "applied" && <Button size="sm" variant="outline" onClick={runResend}
-                  disabled={sending || confirming || reg.notification?.status === "sending"}>
-                  <RefreshCw className={`h-4 w-4 mr-1 ${sending ? "animate-spin" : ""}`} />
-                  {sending ? "발송 중…" : "알림톡 재발송"}
-                </Button>}
-              </div>}
             </Card>
 
             <Card className="p-3 space-y-2 text-sm border-destructive/40">

@@ -26,6 +26,7 @@
 - [ ] Verify signed-in edit/save end-to-end — blocked: shared-password session unavailable in the sandbox.
 
 # Confirmation Alimtalk (no publishing or live sends)
+- [x] Adjust notification badges, failure disclosure and table alignment; 103 existing tests, automatic typecheck/build and 1440/572/390px mocked presentation/resend confirmation checks passed without live sends.
 - [x] Add secret-backed authorized single-message sending and additive delivery records with atomic duplicate protection.
 - [x] Call after individual confirmation only; show result and confirmed resend control without changing confirmation data.
 - [x] Audit current dbGateway callers read-only; notification mocks + 83 existing tests and desktop/mobile mocked flows passed; typecheck/build OK.
