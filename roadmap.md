@@ -1,3 +1,9 @@
+# Approved OCR/parser authentication only (no publishing)
+- [x] Patch only verifyStaff/status adapters; 41 security tests and Deno check passed; both functions deployed, live missing/invalid probes returned 401, automatic build OK.
+- [x] Present unapproved full single-registration trash/restore SQL, live FK audit and confirmation lock/note tradeoffs; no DB/application-stage changes applied.
+- [ ] Verify real valid-password OCR/parser success — blocked: no shared-password session available; paid API not invoked.
+- [ ] Apply stages 2/3 — blocked: explicitly unapproved; note-storage alternative and isolated SQL verification need approval/review.
+
 # Session and menu loading (no publishing)
 - [x] Revalidate stored sessions before rendering private screens and clear both query caches on lock.
 - [x] Load menus with two retries, season-local fallback and server-success-only editing.

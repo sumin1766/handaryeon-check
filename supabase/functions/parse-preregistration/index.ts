@@ -22,11 +22,12 @@ function responseHeaders(req: Request) {
   };
 }
 
-async function verifyStaff(req: Request): Promise<boolean> {
+async function verifyStaff(req: Request): Promise<401 | 500 | null> {
   const password = req.headers.get("x-session-password");
   const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_ANON_KEY");
-  if (!password || !url || !key) return false;
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) return 500;
+  if (!password) return 401;
   try {
     // Only the server-resolved RPC result grants access; never log the password.
     const client = createClient(url, key, {
@@ -39,8 +40,9 @@ async function verifyStaff(req: Request): Promise<boolean> {
       } },
     });
     const { data, error } = await client.rpc("verify_password", { p: password });
-    return !error && (data === "staff" || data === "admin");
-  } catch { return false; }
+    if (error) return 500;
+    return data === "staff" || data === "admin" ? null : 401;
+  } catch { return 500; }
 }
 
 // Bound streamed bytes too: Content-Length may be absent or dishonest.
@@ -301,8 +303,11 @@ const json = (b: unknown, status = 200) =>
   }
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
   if (req.method !== "POST") return new Response(null, { status: 405, headers: corsHeaders });
-  if (!await verifyStaff(req)) return new Response(JSON.stringify({ error: "인증이 필요합니다." }), {
-    status: 401, headers: { "Content-Type": "application/json", ...corsHeaders },
+  const authFailure = await verifyStaff(req);
+  if (authFailure !== null) return new Response(JSON.stringify({
+    error: authFailure === 401 ? "인증이 필요합니다." : "인증 서버 설정 또는 통신 오류입니다.",
+  }), {
+    status: authFailure, headers: { "Content-Type": "application/json", ...corsHeaders },
   });
   try {
     const body = await readBoundedBody(req, 20_000 * 6 + 1024) as { text?: unknown } | null;

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, mock, test } from "bun:test";
 
 let role: string | null = null;
 let rpcError = false;
+let rpcThrows = false;
 let rpcCalls = 0;
 let configReads = 0;
 let externalCalls = 0;
@@ -16,18 +17,22 @@ const fakeEnv: Record<string, string> = {
 };
 Object.assign(globalThis, { Deno: { env: { get: (key: string) => fakeEnv[key] }, serve: () => {} } });
 mock.module("https://esm.sh/@supabase/supabase-js@2", () => ({
-  createClient: () => ({
+  createClient: (_url: string, key: string) => {
+    expect(key).toBe("test-server-key");
+    return ({
     rpc: async (name: string, args: Record<string, string>) => {
       expect(name).toBe("verify_password");
       expect(args['p']).toBe("test-session-password");
       rpcCalls++;
+      if (rpcThrows) throw new Error("network unavailable");
       return { data: role, error: rpcError ? new Error("unavailable") : null };
     },
     from: () => {
       configReads++;
       return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }) };
     },
-  }),
+  });
+  },
 }));
 const parser = (await import("./index.ts")).handleRequest;
 const ocr = (await import("../ocr-image/index.ts")).handleRequest;
@@ -36,6 +41,9 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
   role = null;
   rpcError = false;
+  rpcThrows = false;
+  fakeEnv["SUPABASE_URL"] = "https://example.invalid";
+  fakeEnv["SUPABASE_SERVICE_ROLE_KEY"] = "test-server-key";
   rpcCalls = configReads = externalCalls = 0;
 });
 
@@ -76,9 +84,23 @@ for (const [name, handler, body] of [
       role = "admin";
       rpcError = true;
       fakeExternal();
-      expect((await handler(request(body))).status).toBe(401);
+      expect((await handler(request(body))).status).toBe(500);
       expect(configReads + externalCalls).toBe(0);
     });
+    test("RPC network exceptions return 500 before paid API", async () => {
+      rpcThrows = true;
+      fakeExternal();
+      expect((await handler(request(body))).status).toBe(500);
+      expect(configReads + externalCalls).toBe(0);
+    });
+    for (const missing of ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]) {
+      test(`missing ${missing} returns 500 without RPC or paid API`, async () => {
+        delete fakeEnv[missing];
+        fakeExternal();
+        expect((await handler(request(body))).status).toBe(500);
+        expect(rpcCalls + configReads + externalCalls).toBe(0);
+      });
+    }
     for (const allowedRole of ["staff", "admin"]) {
       test(`${allowedRole} can call paid API after RPC verification`, async () => {
         role = allowedRole;
