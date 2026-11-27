@@ -63,6 +63,18 @@ const db = {
       tables['pre_registration_notification_attempts']?.push({ ...data });
       return { data: true, error: null };
     }
+    if (name === "claim_registration_operation") {
+      const locks = tables['registration_operation_locks'] ??= [];
+      const key = `registration:${data['p_registration']}`;
+      await Promise.resolve();
+      if (locks.some((l) => l['resource_key'] === key)) return { data: false, error: null };
+      locks.push({ resource_key: key, owner: data['p_owner'] });
+      return { data: true, error: null };
+    }
+    if (name === "release_registration_operation") {
+      tables['registration_operation_locks'] = (tables['registration_operation_locks'] ?? []).filter((l) => l['owner'] !== data['p_owner']);
+      return { data: null, error: null };
+    }
     throw new Error("Unexpected mock RPC");
   },
 };
@@ -166,6 +178,33 @@ describe("confirmation Alimtalk — mocked only", () => {
     assert.equal(result.notification?.status, "failed"); assert.equal(reg()?.['status'], "applied");
     assert.equal(tables['people']?.length, 1); assert.equal(result.amount, 20000);
     await confirm(); assert.equal(calls, 1);
+  });
+  test("concurrent confirmations run once; the other stops with busy message and no writes", async () => {
+    const row = reg(); if (!row) throw new Error("Missing mock row"); row['status'] = "submitted";
+    const results = await Promise.allSettled([confirm(), confirm()]);
+    assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+    const rejected = results.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+    assert.match(String(rejected?.reason?.message), /처리 중/);
+    assert.equal(tables['people']?.length, 1); assert.equal(tables['churches']?.length, 1); assert.equal(calls, 1);
+    assert.equal(tables['registration_operation_locks']?.length, 0);
+  });
+  test("lock is released even when confirmation fails", async () => {
+    tables['pre_registration_members'] = [];
+    await assert.rejects(confirm, /명단이 비어/);
+    assert.equal(tables['registration_operation_locks']?.length, 0);
+  });
+  test("reconfirm rewrites system note tokens but keeps staff note", async () => {
+    const row = reg(); if (!row) throw new Error("Missing mock row"); row['status'] = "submitted";
+    await confirm();
+    const person = tables['people']?.[0]; if (!person) throw new Error("Missing person");
+    person['note'] = "외부숙박 · 알레르기 있음"; person['lodging_id'] = "room-1";
+    const m = tables['pre_registration_members']?.[0]; if (!m) throw new Error("Missing member");
+    Object.assign(m, { name: "바뀐 이름", phone: "010-1234-5678", lodging_type: "church" });
+    await confirm();
+    assert.equal(tables['people']?.length, 1);
+    assert.equal(person['name'], "바뀐 이름");
+    assert.equal(person['note'], "010-1234-5678 · 알레르기 있음");
+    assert.equal(person['lodging_id'], "room-1");
   });
   test("already-applied records without delivery history do not automatically send", async () => {
     const result = await confirm();

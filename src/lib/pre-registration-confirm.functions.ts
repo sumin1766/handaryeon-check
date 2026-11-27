@@ -5,6 +5,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { notificationAfterConfirmation, type NotificationResult } from "./solapi-notification";
 import { readSolapiConfig, sendRegistrationNotification } from "./solapi-notification.server";
+import { rewriteNote, systemNoteTokens } from "./people-note";
 
 const authSchema = z.object({ password: z.string().min(1) });
 
@@ -86,9 +87,40 @@ const confirmSchema = authSchema.extend({
 /** 확정/재확정 — 상태 applied 전환 + 운영 테이블(churches/people) 등록·갱신을 한 처리로 묶는다. */
 export const confirmPreRegistration = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => confirmSchema.parse(d))
-  .handler(async ({ data }): Promise<{ churchId: string; peopleCount: number; amount: number; notification: NotificationResult | null }> => {
+  .handler(async ({ data }): Promise<ConfirmResult> => {
     const db = await requireStaff(data.password);
+    // 같은 접수(및 관련 교회)의 확정이 동시에 두 번 실행되지 않게 서버 잠금을 먼저 잡는다.
+    // 잠금 실패·예외 시 어떤 쓰기·발송도 하지 않고 중단한다.
+    const owner = crypto.randomUUID();
+    const targetChurch = data.mode === "link" && data.churchId ? data.churchId : null;
+    const { data: claimed, error: claimErr } = await db.rpc("claim_registration_operation", {
+      p_registration: data.id,
+      p_owner: owner,
+      ...(targetChurch ? { p_target_church: targetChurch } : {}),
+    });
+    if (claimErr) throw new Error(claimErrorMessage(claimErr.message));
+    if (claimed !== true) throw new Error(BUSY_MESSAGE);
+    try {
+      return await runConfirmation(db, data);
+    } finally {
+      const { error: relErr } = await db.rpc("release_registration_operation", { p_owner: owner });
+      if (relErr) console.error("[confirm] lock release failed", relErr.code ?? "");
+    }
+  });
 
+type ConfirmResult = { churchId: string; peopleCount: number; amount: number; notification: NotificationResult | null };
+const BUSY_MESSAGE = "처리 중입니다. 잠시 후 다시 시도해 주세요.";
+function claimErrorMessage(msg: string): string {
+  if (msg.includes("REGISTRATION_NOT_FOUND")) return "사전접수 건을 찾을 수 없습니다.";
+  if (msg.includes("ACTIVE_SEASON_REQUIRED")) return "활성 시즌 건만 확정할 수 있습니다.";
+  if (msg.includes("TARGET_CHURCH_INVALID")) return "연결할 교회를 찾을 수 없습니다.";
+  return BUSY_MESSAGE;
+}
+
+async function runConfirmation(
+  db: Awaited<ReturnType<typeof requireStaff>>,
+  data: z.infer<typeof confirmSchema>,
+): Promise<ConfirmResult> {
     const { data: reg } = await db
       .from("pre_registrations")
       .select("*")
@@ -185,18 +217,19 @@ export const confirmPreRegistration = createServerFn({ method: "POST" })
       // 2) 기존 매핑 확인 — 실제로 남아 있는 파생 인원만 갱신 대상으로 삼는다.
       const priorPersonIds = list.map((m) => m.person_id).filter((v): v is string => !!v);
       const alive = new Set<string>();
+      const existingNotes = new Map<string, string | null>();
       if (priorPersonIds.length) {
-        const { data: existing } = await db.from("people").select("id").in("id", priorPersonIds);
-        for (const p of existing ?? []) alive.add(p.id);
+        const { data: existing } = await db.from("people").select("id, note").in("id", priorPersonIds);
+        for (const p of existing ?? []) {
+          alive.add(p.id);
+          existingNotes.set(p.id, p.note ?? null);
+        }
       }
 
       // 3) 운영 인원 반영 — 기존 인원은 갱신, 신규만 추가, 빠진 인원은 매핑 기준으로 제거.
       const toRow = (m: (typeof list)[number]) => {
         const map = CATEGORY_MAP[m.category as keyof typeof CATEGORY_MAP] ?? CATEGORY_MAP["male_student"];
-        const notes: string[] = [];
-        if (map.note) notes.push(map.note);
-        if (m.lodging_type === "external") notes.push("외부숙박");
-        if (m.phone) notes.push(m.phone);
+        const notes = systemNoteTokens({ categoryNote: map.note, external: m.lodging_type === "external", phone: m.phone });
         return {
           church_id: churchId,
           pre_registration_id: reg.id,
@@ -211,7 +244,13 @@ export const confirmPreRegistration = createServerFn({ method: "POST" })
       for (const m of list) {
         const row = toRow(m);
         if (m.person_id && alive.has(m.person_id)) {
-          const { error: uErr } = await db.from("people").update(row).eq("id", m.person_id);
+          // 기존 인원: 시스템 토큰만 신청자 값으로 재작성, 직원 자유 비고는 보존.
+          const note = rewriteNote(existingNotes.get(m.person_id), systemNoteTokens({
+            categoryNote: (CATEGORY_MAP[m.category as keyof typeof CATEGORY_MAP] ?? CATEGORY_MAP["male_student"]).note,
+            external: m.lodging_type === "external",
+            phone: m.phone,
+          }));
+          const { error: uErr } = await db.from("people").update({ ...row, note }).eq("id", m.person_id);
           if (uErr) throw new Error("참석자 갱신에 실패했습니다.");
           alive.delete(m.person_id);
           continue;
@@ -303,8 +342,7 @@ export const confirmPreRegistration = createServerFn({ method: "POST" })
       }
       throw e instanceof Error ? e : new Error("확정 처리에 실패했습니다.");
     }
-
-  });
+}
 
 /** 회비 납부 완료 여부 토글 (표시 전용 값). */
 export const setPreRegistrationPaid = createServerFn({ method: "POST" })
@@ -317,4 +355,37 @@ export const setPreRegistrationPaid = createServerFn({ method: "POST" })
       .eq("id", data.id);
     if (error) throw new Error("납부 상태 저장에 실패했습니다.");
     return { paid: data.paid };
+  });
+
+async function requireAdmin(password: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: role, error } = await supabaseAdmin.rpc("verify_password", { p: password });
+  if (error) throw new Error("권한 확인에 실패했습니다.");
+  if (role !== "admin") throw new Error("전체관리자만 사용할 수 있습니다.");
+  return supabaseAdmin;
+}
+
+export type StaleOperationLock = { owner: string; resourceKeys: string[]; startedAt: string };
+
+/** 5분 이상 지난 확정 처리 잠금 목록 (전체관리자 전용, 조회만). */
+export const listStaleOperationLocks = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => authSchema.parse(d))
+  .handler(async ({ data }): Promise<StaleOperationLock[]> => {
+    const db = await requireAdmin(data.password);
+    const { data: rows, error } = await db.rpc("stale_registration_operation_locks");
+    if (error) throw new Error("잠금 목록을 불러오지 못했습니다.");
+    return (rows ?? []).map((r) => ({ owner: r.owner, resourceKeys: r.resource_keys ?? [], startedAt: r.started_at }));
+  });
+
+/** 남은 잠금 수동 해제 (전체관리자 전용, 5분 이상 지난 잠금만 DB가 허용). */
+export const forceReleaseOperationLock = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => authSchema.extend({ owner: z.string().uuid() }).parse(d))
+  .handler(async ({ data }): Promise<{ released: number }> => {
+    const db = await requireAdmin(data.password);
+    const { data: n, error } = await db.rpc("force_release_registration_operation", { p_owner: data.owner });
+    if (error) {
+      if (error.message.includes("LOCK_TOO_RECENT")) throw new Error("시작한 지 5분이 지나지 않은 잠금은 해제할 수 없습니다.");
+      throw new Error("잠금 해제에 실패했습니다.");
+    }
+    return { released: n ?? 0 };
   });

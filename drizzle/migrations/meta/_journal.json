@@ -57,6 +57,13 @@
       "when": 1795668216904,
       "tag": "0007_restrict_new_alimtalk_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795764037660,
+      "tag": "0008_registration_operation_locks",
+      "breakpoints": true
     }
   ]
 }

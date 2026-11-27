@@ -721,6 +721,24 @@ export type Database = {
         }
         Relationships: []
       }
+      registration_operation_locks: {
+        Row: {
+          owner: string
+          resource_key: string
+          started_at: string
+        }
+        Insert: {
+          owner: string
+          resource_key: string
+          started_at?: string
+        }
+        Update: {
+          owner?: string
+          resource_key?: string
+          started_at?: string
+        }
+        Relationships: []
+      }
       registration_trash: {
         Row: {
           church_name: string
@@ -826,6 +844,14 @@ export type Database = {
         Args: { p_automatic: boolean; p_id: string; p_lock: string }
         Returns: boolean
       }
+      claim_registration_operation: {
+        Args: {
+          p_owner: string
+          p_registration: string
+          p_target_church?: string
+        }
+        Returns: boolean
+      }
       finish_pre_registration_notification: {
         Args: {
           p_automatic: boolean
@@ -837,6 +863,10 @@ export type Database = {
           p_status: string
         }
         Returns: boolean
+      }
+      force_release_registration_operation: {
+        Args: { p_owner: string }
+        Returns: number
       }
       gen_pre_reg_token: { Args: never; Returns: string }
       ocr_backup_key_update: {
@@ -852,9 +882,21 @@ export type Database = {
         Returns: Json
       }
       ocr_status: { Args: never; Returns: Json }
+      release_registration_operation: {
+        Args: { p_owner: string }
+        Returns: undefined
+      }
       reset_season_items: {
         Args: { p_items: string[]; p_season: string }
         Returns: Json
+      }
+      stale_registration_operation_locks: {
+        Args: never
+        Returns: {
+          owner: string
+          resource_keys: string[]
+          started_at: string
+        }[]
       }
       trash_season_registrations:
         | { Args: { p_kind: string; p_season: string }; Returns: number }

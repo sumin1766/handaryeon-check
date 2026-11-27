@@ -35,6 +35,8 @@ import {
   findChurchCandidates,
   confirmPreRegistration,
   setPreRegistrationPaid,
+  listStaleOperationLocks,
+  forceReleaseOperationLock,
   type ChurchCandidate,
 } from "@/lib/pre-registration-confirm.functions";
 import { trashPreRegistration } from "@/lib/registration-trash.functions";
@@ -309,6 +311,8 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
           새로고침
         </Button>
       </header>
+
+      <StaleLocksPanel password={password} />
 
       {isError && (
         <Card className="p-4 text-sm text-destructive">
@@ -835,5 +839,50 @@ function DetailDialog({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** 전체관리자 전용 — 5분 이상 남아 있는 확정 처리 잠금만 표시하고, 재확인 후 수동 해제한다. */
+function StaleLocksPanel({ password }: { password: string }) {
+  const role = useAuthRole();
+  const listFn = useServerFn(listStaleOperationLocks);
+  const releaseFn = useServerFn(forceReleaseOperationLock);
+  const [busy, setBusy] = useState<string | null>(null);
+  const isAdmin = role === "admin";
+  const { data, refetch } = useQuery({
+    queryKey: ["pre-reg-stale-locks"],
+    enabled: isAdmin,
+    queryFn: () => listFn({ data: { password } }),
+    refetchInterval: 60_000,
+    retry: false,
+  });
+  if (!isAdmin || !data?.length) return null;
+  const release = async (owner: string, startedAt: string) => {
+    if (!window.confirm(`${formatKst(startedAt)}에 시작된 확정 처리 잠금을 해제할까요?\n처리가 실제로 진행 중이 아닌지 먼저 확인해 주세요.`)) return;
+    setBusy(owner);
+    try {
+      await releaseFn({ data: { password, owner } });
+      toast.success("잠금을 해제했습니다.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "잠금 해제에 실패했습니다.");
+    } finally {
+      setBusy(null);
+      void refetch();
+    }
+  };
+  return (
+    <Card className="p-4 space-y-2 border-destructive/40">
+      <p className="text-sm font-medium">남아 있는 확정 처리 잠금 {data.length}건 (5분 이상 경과)</p>
+      <ul className="space-y-2">
+        {data.map((l) => (
+          <li key={l.owner} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span className="text-muted-foreground">시작 {formatKst(l.startedAt)} · 대상 {l.resourceKeys.length}건</span>
+            <Button size="sm" variant="outline" disabled={busy === l.owner} onClick={() => release(l.owner, l.startedAt)}>
+              잠금 해제
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }
