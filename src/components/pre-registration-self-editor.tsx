@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { krw } from "@/lib/format";
+import { type AdditionalPayment } from "@/lib/additional-payment";
 import { AttendeeExcelBar } from "@/components/attendee-excel-bar";
 import { PRE_REG_FORM_NOTICES } from "@/lib/pre-registration-config";
 import {
@@ -71,12 +72,30 @@ export function PreRegistrationSelfEditor({ initial }: { initial: PreRegistratio
   );
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [qr, setQr] = useState("");
+  // 저장 직후 띄우는 전체 화면 추가 납부 안내. 링크로 다시 들어올 때는 자동 표시하지 않는다.
+  const [paymentNotice, setPaymentNotice] = useState<AdditionalPayment | null>(null);
 
   useEffect(() => {
     QRCode.toDataURL(detail.accessUrl, { width: 320, margin: 1 })
       .then(setQr)
       .catch(() => setQr(""));
   }, [detail.accessUrl]);
+
+  // 전체 화면 안내는 6번 버튼으로만 닫는다: 바깥 영역 처리·ESC 처리가 없고,
+  // 뒤로가기도 안내를 닫지 않도록 같은 주소로 되돌린다.
+  useEffect(() => {
+    if (!paymentNotice) return;
+    const marker = { preRegPaymentNotice: true };
+    window.history.pushState(marker, "");
+    const keepOpen = () => {
+      window.history.pushState(marker, "");
+    };
+    window.addEventListener("popstate", keepOpen);
+    return () => {
+      window.removeEventListener("popstate", keepOpen);
+      window.history.back();
+    };
+  }, [paymentNotice]);
 
   const saveFn = useServerFn(updatePreRegistrationSelf);
   const save = useMutation({
@@ -101,6 +120,10 @@ export function PreRegistrationSelfEditor({ initial }: { initial: PreRegistratio
       toast.success(
         res.changeType === "none" ? "변경된 내용이 없습니다." : "수정 내용이 저장되었습니다.",
       );
+      // "확인하고 저장"으로 실제 변경이 있었고 추가 납부가 필요할 때만 전체 화면 안내.
+      if (res.changeType !== "none" && res.detail.additionalPayment) {
+        setPaymentNotice(res.detail.additionalPayment);
+      }
     },
     onError: (e: Error) => toast.error(e.message || "저장에 실패했습니다."),
   });
@@ -391,6 +414,52 @@ export function PreRegistrationSelfEditor({ initial }: { initial: PreRegistratio
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {paymentNotice && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="payment-notice-title"
+          className="fixed inset-0 z-50 overflow-y-auto bg-background"
+        >
+          <div className="flex min-h-full w-full flex-col justify-center px-5 py-10">
+            <div className="mx-auto w-full max-w-md space-y-5 text-center">
+              <h2 id="payment-notice-title" className="text-2xl font-bold">
+                수정이 저장되었습니다
+              </h2>
+              <div className="space-y-1">
+                <p className="text-3xl font-bold text-destructive">
+                  추가 납부 금액 {krw(paymentNotice.delta)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  변경 후 총 회비 {krw(paymentNotice.total)}
+                </p>
+              </div>
+              <p className="text-sm leading-relaxed">
+                아래 버튼을 눌러 홈페이지에서 추가 인원수만큼 수량을 선택해 결제해 주세요.
+                납부가 확인되면 확정해 드립니다.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                ※ 12월 22일 이후 신청 건은 환불이 불가합니다.
+              </p>
+              <Button asChild size="lg" className="h-12 w-full text-base">
+                <a href={paymentNotice.shopUrl} target="_blank" rel="noopener noreferrer">
+                  홈페이지에서 결제하기
+                </a>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                onClick={() => setPaymentNotice(null)}
+              >
+                나중에 하기 (명단으로 돌아가기)
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
