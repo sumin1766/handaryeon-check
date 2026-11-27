@@ -3,6 +3,7 @@
 // 해당 1건만 반환/수정한다. 목록 조회·삭제는 제공하지 않는다.
 import { createServerFn } from "@tanstack/react-start";
 import { diffMembers } from "./change-diff";
+import { computeAdditionalPayment, type AdditionalPayment } from "./additional-payment";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import {
@@ -44,6 +45,8 @@ export type PreRegistrationSelfDetail = {
   unitFee: number;
   categoryFees: CategoryFeeMap;
   members: SelfMember[];
+  /** 확정 후 회비 증가 시 추가 납부 안내 (표시 전용) */
+  additionalPayment: AdditionalPayment | null;
 };
 
 const memberSchema = z
@@ -113,6 +116,22 @@ async function loadDetail(id: string): Promise<PreRegistrationSelfDetail> {
     .eq("pre_registration_id", id)
     .order("created_at", { ascending: true });
 
+  let unresolvedFeeDeltas: number[] = [];
+  if (reg.status === "needs_review") {
+    const { data: changes } = await supabaseAdmin
+      .from("pre_registration_changes")
+      .select("fee_delta")
+      .eq("pre_registration_id", id)
+      .eq("resolved", false);
+    unresolvedFeeDeltas = (changes ?? []).map((c) => c.fee_delta);
+  }
+  const additionalPayment = computeAdditionalPayment({
+    status: reg.status,
+    expectedFee: reg.expected_fee,
+    unresolvedFeeDeltas,
+    members: (members ?? []).map((m) => ({ lodging_type: m.lodging_type, person_id: m.person_id })),
+  });
+
   const origin = new URL(getRequest().url).origin;
   return {
     id: reg.id,
@@ -137,6 +156,7 @@ async function loadDetail(id: string): Promise<PreRegistrationSelfDetail> {
       lodging_type: (m.lodging_type as SelfMember["lodging_type"]) ?? "church",
       category: (m.category as MemberCategory) ?? "male_student",
     })),
+    additionalPayment,
   };
 }
 

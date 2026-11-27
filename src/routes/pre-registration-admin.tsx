@@ -412,6 +412,11 @@ function PreRegAdminContent({ password, onAuthLost }: { password: string; onAuth
                       <StatusBadge status={r.status} />
                       <NotificationDisplay notification={r.notification}
                         onFailure={() => { setOpenId(r.id); setFailureId(r.id); }} />
+                      {r.needs_additional_payment && (
+                        <span className="inline-flex whitespace-nowrap rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">
+                          추가 납부 필요
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>

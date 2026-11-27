@@ -155,6 +155,22 @@ export function PreRegistrationSelfEditor({ initial }: { initial: PreRegistratio
         현재 상태: <span className="font-medium text-foreground">{STATUS_LABELS[detail.status]}</span>
       </p>
 
+      {detail.additionalPayment && (
+        <Card className="mt-5 space-y-2 border-destructive/50 bg-destructive/5 p-4 text-sm leading-relaxed">
+          <p className="text-base font-semibold text-destructive">
+            인원 변경으로 회비가 {krw(detail.additionalPayment.delta)} 늘었습니다. (변경 후 총 회비 {krw(detail.additionalPayment.total)})
+          </p>
+          <p>아래 버튼을 눌러 홈페이지에서 추가 인원수만큼 수량을 선택해 결제해 주세요.</p>
+          <p>납부가 확인되면 확정해 드립니다.</p>
+          <p className="text-muted-foreground">※ 12월 22일 이후 신청 건은 환불이 불가합니다.</p>
+          <Button asChild className="mt-1">
+            <a href={detail.additionalPayment.shopUrl} target="_blank" rel="noopener noreferrer">
+              홈페이지에서 결제하기
+            </a>
+          </Button>
+        </Card>
+      )}
+
       <Card className="mt-5 flex flex-col items-center gap-3 p-6 text-center">
         {qr ? (
           <img src={qr} alt="사전접수 확인용 QR 코드" className="h-56 w-56" />

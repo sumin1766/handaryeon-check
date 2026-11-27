@@ -32,3 +32,4 @@
 - Private shell entry revalidates the session password before rendering; lock clears both query caches, while public apply routes remain outside the gate to preserve intake.
 - Menu reads retry twice and use season-local successful copies only for display fallback; editing requires a completed successful server read to avoid overwriting settings during outages.
 - Pre-registration confirmation runs inside a persistent server lock (claim/release_registration_operation, no auto-expiry; admins release locks older than 5 minutes); reconfirm rewrites only system note tokens via src/lib/people-note.ts so staff notes survive.
+- Additional-payment notice/badge derive from needs_review status plus the sum of unresolved pre_registration_changes.fee_delta (confirm resolves them) and unlinked (person_id null) members; display-only in src/lib/additional-payment.ts, no stored state.

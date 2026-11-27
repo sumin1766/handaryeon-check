@@ -2,6 +2,7 @@
 // 익명에게 테이블을 열지 않고, 공유 비밀번호를 서버에서 재검증한 뒤
 // 활성 시즌의 사전접수 데이터만 반환한다. 쓰기/삭제 기능은 없다.
 import { createServerFn } from "@tanstack/react-start";
+import { computeAdditionalPayment } from "./additional-payment";
 import { z } from "zod";
 import { personToMember } from "./change-diff";
 import { parseCategoryFees, sumCategoryFees, type CategoryFeeMap } from "./member-categories";
@@ -38,6 +39,8 @@ export type AdminPreRegistration = {
   /** operating = 확정 건, 접수 명단(people)에서 읽은 값 */
   source: "operating" | "pre";
   notification: NotificationResult | null;
+  /** 확정 후 자가 수정으로 회비가 늘어 추가 납부가 필요한지 (표시 전용) */
+  needs_additional_payment: boolean;
 };
 
 export type AdminChange = {
@@ -91,6 +94,17 @@ export const listPreRegistrations = createServerFn({ method: "POST" })
     if (regErr) throw new Error("사전접수 목록을 불러오지 못했습니다.");
 
     const ids = (regs ?? []).map((r) => r.id);
+    const reviewIds = (regs ?? []).filter((r) => r.status === "needs_review").map((r) => r.id);
+    const feeDeltasByReg = new Map<string, number[]>();
+    if (reviewIds.length) {
+      const { data: changes } = await db.from("pre_registration_changes")
+        .select("pre_registration_id, fee_delta").in("pre_registration_id", reviewIds).eq("resolved", false);
+      for (const c of changes ?? []) {
+        const list = feeDeltasByReg.get(c.pre_registration_id) ?? [];
+        list.push(c.fee_delta);
+        feeDeltasByReg.set(c.pre_registration_id, list);
+      }
+    }
     const notificationByReg = new Map<string, NotificationResult>();
     if (ids.length) {
       const { data: notifications, error: notificationError } = await db.from("pre_registration_notifications")
@@ -173,6 +187,12 @@ export const listPreRegistrations = createServerFn({ method: "POST" })
         members: op ?? byReg.get(r.id) ?? [],
         source: (op ? "operating" : "pre") as "operating" | "pre",
         notification: notificationByReg.get(r.id) ?? null,
+        needs_additional_payment: !!computeAdditionalPayment({
+          status: r.status,
+          expectedFee: r.expected_fee,
+          unresolvedFeeDeltas: feeDeltasByReg.get(r.id) ?? [],
+          members: [],
+        }),
       };
       }),
     };
