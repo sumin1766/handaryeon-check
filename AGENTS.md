@@ -29,3 +29,5 @@
 - Attendee edits (rename/category/lodging/add/remove) happen only on /rosters (명단 수정) via per-row people update/insert/delete plus recordRegistryEdit; registry and pre-registration admin attendee views are read-only so person ↔ pre-registration links stay intact.
 - Name-tag row building/export lives in src/lib/nametag-rows.ts and is shared by /nametags and the per-church roster detail; never fork the logic.
 - Confirmation Alimtalk uses server-only secret reads and verified shared-password authorization; additive service-role delivery records atomically lock each registration, and notification errors never enter the existing confirmation rollback.
+- Private shell entry revalidates the session password before rendering; lock clears both query caches, while public apply routes remain outside the gate to preserve intake.
+- Menu reads retry twice and use season-local successful copies only for display fallback; editing requires a completed successful server read to avoid overwriting settings during outages.

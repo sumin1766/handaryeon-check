@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { supabase } from "@/integrations/supabase/client";
 import { sdb } from "@/lib/secure-db";
 import { getSessionPassword } from "@/lib/session-password";
 import { saveNavMenuConfigServer } from "@/lib/nav-menu.functions";
@@ -71,22 +70,50 @@ export interface NavMenuConfig {
   hidden: string[];
 }
 
+const NAV_COPY_PREFIX = "handaryeon:nav-menu:";
+
+export function readNavMenuCopy(seasonId: string): NavMenuConfig | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = window.localStorage.getItem(`${NAV_COPY_PREFIX}${seasonId}`);
+    if (!raw) return undefined;
+    const cfg = JSON.parse(raw);
+    if (!Array.isArray(cfg?.order) || !Array.isArray(cfg?.hidden)) return undefined;
+    return { order: sanitizeNavOrder(cfg.order, DEFAULT_NAV_ORDER), hidden: sanitizeNavHidden(cfg.hidden, DEFAULT_NAV_ORDER) };
+  } catch { return undefined; }
+}
+
+export function writeNavMenuCopy(seasonId: string, cfg: NavMenuConfig) {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.setItem(`${NAV_COPY_PREFIX}${seasonId}`, JSON.stringify(cfg)); } catch { /* Storage may be blocked. */ }
+}
+
 export function useNavMenuConfig(seasonId?: string) {
-  return useQuery({
+  const query = useQuery({
     queryKey: ["nav_menu_config", seasonId],
     enabled: !!seasonId,
     staleTime: 60_000,
+    retry: 2,
+    placeholderData: undefined,
+    refetchOnMount: "always",
     queryFn: async (): Promise<NavMenuConfig> => {
-      const { data } = await sdb
+      if (!seasonId) throw new Error("시즌이 없습니다");
+      const { data, error } = await sdb
         .from("app_settings")
         .select("nav_menu_order, nav_menu_hidden")
-        .eq("season_id", seasonId!)
+        .eq("season_id", seasonId)
         .maybeSingle();
+      if (error) throw error;
       const order = sanitizeNavOrder((data as any)?.nav_menu_order, DEFAULT_NAV_ORDER);
       const hidden = sanitizeNavHidden((data as any)?.nav_menu_hidden, DEFAULT_NAV_ORDER);
-      return { order, hidden };
+      const cfg = { order, hidden };
+      writeNavMenuCopy(seasonId, cfg);
+      return cfg;
     },
   });
+  const loading = !seasonId || query.isFetching || query.isPending;
+  const data = query.isError ? (seasonId ? readNavMenuCopy(seasonId) : undefined) : query.data;
+  return { ...query, data, loading, serverReady: query.isSuccess && !query.isFetching && !!query.data };
 }
 
 export function useSaveNavMenuConfig(seasonId?: string) {

@@ -1,24 +1,59 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Lock } from "lucide-react";
-import { useAuthRole, setAuthRole } from "@/lib/use-auth-role";
+import { Lock, Loader2 } from "lucide-react";
+import { useAuthRole, setAuthRole, clearAuthSession, checkStoredSession } from "@/lib/use-auth-role";
 import { verifyPassword } from "@/lib/auth-config";
-import { setSessionPassword } from "@/lib/session-password";
+import { getSessionPassword, setSessionPassword } from "@/lib/session-password";
 
 export function PasswordGate({ children }: { children: ReactNode }) {
   const role = useAuthRole();
-  const [mounted, setMounted] = useState(false);
+  const queryClient = useQueryClient();
+  const [status, setStatus] = useState<"checking" | "ready" | "locked" | "error">("checking");
+  const [retry, setRetry] = useState(0);
+  const verification = useRef<{ attempt: number; promise: ReturnType<typeof checkStoredSession> } | null>(null);
   const [pw, setPw] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    let active = true;
+    setStatus("checking");
+    if (verification.current?.attempt !== retry) {
+      verification.current = { attempt: retry, promise: checkStoredSession(getSessionPassword(), verifyPassword) };
+    }
+    verification.current.promise.then(async (result) => {
+      if (!active) return;
+      if (result.status === "locked") {
+        await clearAuthSession(queryClient);
+        if (!active) return;
+      } else if (result.status === "ready") {
+        setAuthRole(result.role);
+      }
+      setStatus(result.status);
+    });
+    return () => { active = false; };
+  }, [retry, queryClient]);
 
-  if (!mounted) return null;
-  if (role) return <>{children}</>;
+  useEffect(() => {
+    if (status === "ready" && !role) {
+      setStatus("locked");
+      void clearAuthSession(queryClient);
+    }
+  }, [role, status, queryClient]);
+
+  if (status === "checking" || status === "error") return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background px-4" role="status">
+      {status === "checking" ? <><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /><p>로그인 확인 중…</p></> : <>
+        <p className="text-muted-foreground">로그인 상태를 확인하지 못했습니다. 연결 후 다시 시도해 주세요.</p>
+        <Button onClick={() => setRetry((attempt) => attempt + 1)}>다시 시도</Button>
+      </>}
+    </div>
+  );
+  if (status === "ready" && role) return <>{children}</>;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +67,7 @@ export function PasswordGate({ children }: { children: ReactNode }) {
       }
       setSessionPassword(pw);
       setAuthRole(verified);
+      setStatus("ready");
     } catch (err: any) {
       setError(err?.message ?? "오류가 발생했습니다.");
     } finally {

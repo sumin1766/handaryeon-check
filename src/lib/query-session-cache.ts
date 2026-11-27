@@ -35,6 +35,18 @@ export function writeCachedData<T>(parts: readonly unknown[], data: T) {
   }
 }
 
+export function clearQuerySessionCache() {
+  if (typeof window === "undefined") return;
+  try {
+    for (let i = window.sessionStorage.length - 1; i >= 0; i--) {
+      const key = window.sessionStorage.key(i);
+      if (key?.startsWith(PREFIX)) window.sessionStorage.removeItem(key);
+    }
+  } catch {
+    // Storage may be blocked; the in-memory cache is cleared separately.
+  }
+}
+
 export function resilientQueryCache<T>(parts: readonly unknown[]) {
   return {
     initialData: () => readCachedData<T>(parts),

@@ -48,8 +48,10 @@ function DashboardPage() {
     queryKey: dashboardKey,
     enabled: !!season?.id,
     queryFn: async () => {
-      const { data: churches } = await sdb
-        .from("churches").select("id, name, denomination, is_checked_in, actual_count").eq("season_id", season!.id);
+      if (!season?.id) throw new Error("시즌이 없습니다");
+      const { data: churches, error } = await sdb
+        .from("churches").select("id, name, denomination, is_checked_in, actual_count").eq("season_id", season.id);
+      if (error) throw error;
       const churchIds = (churches ?? []).map((c: any) => c.id);
       if (churchIds.length === 0) {
         const emptyResult = { churches: churches ?? [], people: [] };

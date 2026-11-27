@@ -1,3 +1,9 @@
+# Session and menu loading (no publishing)
+- [x] Revalidate stored sessions before rendering private screens and clear both query caches on lock.
+- [x] Load menus with two retries, season-local fallback and server-success-only editing.
+- [x] Reject dashboard read failures before caching; 109 file-isolated tests, automatic typecheck/build and 1440/572px mock checks passed (session scenarios, fallback/save block, dashboard retry, public apply/token bypass).
+- [ ] Verify real shared-password session and persisted menu settings — blocked: no app-specific password session supplied; no publishing or operational writes permitted.
+
 # Regional church visualization
 - [x] Fix shared address fallback for merged confirmed churches and list summary wording; 34 tests and isolated PDF/XLSX/clipboard checks passed, actual source address/2 people verified read-only.
 - [x] Add list-export totals from existing row counts and Excel-friendly TSV clipboard; preserve comma-separated CSV serialization.

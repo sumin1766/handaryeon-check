@@ -20,12 +20,14 @@ import {
   QrCode,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
 import { useActiveSeason, useBackendKeepalive, type Season } from "@/lib/use-active-season";
 import { isTestSeasonName } from "@/lib/test-season";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { PasswordGate } from "@/components/password-gate";
-import { useAuthRole, setAuthRole, type AuthRole } from "@/lib/use-auth-role";
+import { useAuthRole, clearAuthSession, type AuthRole } from "@/lib/use-auth-role";
 import { useTheme } from "@/lib/use-theme";
 import { setReadOnlyMode } from "@/lib/read-only";
 import { useNavMenuConfig, applyNavConfig } from "@/lib/nav-menu-config";
@@ -111,12 +113,13 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   useGlobalRealtime();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const router = useRouter();
+  const queryClient = useQueryClient();
   const role = useAuthRole();
   const [theme, setTheme] = useTheme();
   const isAdmin = role === "admin";
-  const { data: navCfg } = useNavMenuConfig(season?.id);
+  const { data: navCfg, loading: navLoading, isError: navError } = useNavMenuConfig(season?.id);
   const roleTabs = TABS.filter((t) => role !== null && (t.roles as readonly AuthRole[]).includes(role));
-  const visibleTabs = applyNavConfig(roleTabs, navCfg);
+  const visibleTabs = navLoading ? [] : applyNavConfig(roleTabs, navCfg);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // While the full admin browses a finished season (the active one after it
   // ends, or an explicitly selected past season), keep every tab reachable but
@@ -227,17 +230,20 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
             >
               {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
             </button>
-            <button
+            <Button
               type="button"
-              onClick={() => setAuthRole(null)}
+              variant="outline"
+              onClick={() => void clearAuthSession(queryClient)}
               className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60"
               title="다시 잠금"
             >
               <Lock className="h-3 w-3" />
               잠금
-            </button>
+            </Button>
           </div>
         </div>
+        {navLoading ? <div className="mx-auto max-w-[1600px] px-6 py-4 text-sm text-muted-foreground" role="status">메뉴 불러오는 중…</div> : <>
+        {navError && !navCfg && <p className="mx-auto max-w-[1600px] px-6 py-2 text-sm text-muted-foreground" role="alert">메뉴 설정을 불러오지 못했습니다</p>}
         <div className="mx-auto hidden max-w-[1600px] px-6 lg:block">
           <SlidingTabs tabs={visibleTabs} pathname={pathname} isEnded={isEnded} />
         </div>
@@ -248,6 +254,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
           open={mobileMenuOpen}
           setOpen={setMobileMenuOpen}
         />
+        </>}
       </header>
 
       {readOnly && season && (

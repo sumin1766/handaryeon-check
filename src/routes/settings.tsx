@@ -1891,10 +1891,11 @@ const NAV_LABEL: Record<string, string> = {
 
 function NavMenuSummary() {
   const { season } = useActiveSeason();
-  const { data: cfg } = useNavMenuConfig(season?.id);
+  const { data: cfg, loading } = useNavMenuConfig(season?.id);
   const order = cfg?.order ?? DEFAULT_NAV_ORDER;
   const hidden = new Set(cfg?.hidden ?? []);
   const visible = order.filter((p) => !hidden.has(p));
+  if (loading) return <div className="text-muted-foreground">메뉴 불러오는 중…</div>;
   return (
     <div className="tabular-nums">
       <div>표시 <b className="text-foreground">{visible.length}</b> / 전체 {order.length}</div>
@@ -1909,7 +1910,7 @@ function NavMenuSummary() {
 
 function NavMenuSection() {
   const { season } = useActiveSeason();
-  const { data: saved } = useNavMenuConfig(season?.id);
+  const { data: saved, loading, serverReady, refetch } = useNavMenuConfig(season?.id);
   const save = useSaveNavMenuConfig(season?.id);
   const [cfg, setCfg] = useState<NavMenuConfig>(
     saved ?? { order: DEFAULT_NAV_ORDER, hidden: [] },
@@ -1921,6 +1922,7 @@ function NavMenuSection() {
 
   const hiddenSet = new Set(cfg.hidden);
   const move = (idx: number, dir: -1 | 1) => {
+    if (!serverReady) return;
     const j = idx + dir;
     if (j < 0 || j >= cfg.order.length) return;
     const next = [...cfg.order];
@@ -1928,6 +1930,7 @@ function NavMenuSection() {
     setCfg({ ...cfg, order: next });
   };
   const toggleHide = (path: string) => {
+    if (!serverReady) return;
     if (NAV_PROTECTED_PATHS.has(path)) return;
     const next = hiddenSet.has(path)
       ? cfg.hidden.filter((p) => p !== path)
@@ -1940,11 +1943,15 @@ function NavMenuSection() {
     }
     setCfg({ ...cfg, hidden: next });
   };
-  const reset = () => setCfg({ order: DEFAULT_NAV_ORDER, hidden: [] });
+  const reset = () => { if (serverReady) setCfg({ order: DEFAULT_NAV_ORDER, hidden: [] }); };
   const dirty = JSON.stringify(cfg) !== savedKey;
 
   return (
     <div className="space-y-4">
+      {!serverReady && <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground" role="status">
+        {loading ? "메뉴 불러오는 중…" : "메뉴 설정을 불러오지 못했습니다. 다시 불러온 뒤 편집·저장할 수 있습니다."}
+        {!loading && <Button variant="outline" onClick={() => void refetch()}>다시 시도</Button>}
+      </div>}
       <p className="text-sm text-muted-foreground">
         상단 네비게이션의 순서·표시를 변경합니다. 저장 후 새로고침·다른 기기에서도 유지됩니다.
         각 메뉴의 <b>권한</b>은 그대로 유지되며, 여기서 숨긴 메뉴는 권한이 있어도 화면에서 감춰집니다.
@@ -1953,7 +1960,7 @@ function NavMenuSection() {
           ※ <b>대시보드</b>와 <b>설정</b> 메뉴는 안전을 위해 숨길 수 없습니다.
         </span>
       </p>
-      <ul className="space-y-2">
+      {!loading && <ul className="space-y-2">
         {cfg.order.map((path, i) => {
           const isHidden = hiddenSet.has(path);
           const protectedItem = NAV_PROTECTED_PATHS.has(path);
@@ -1982,29 +1989,29 @@ function NavMenuSection() {
                 size="icon"
                 variant={isHidden ? "outline" : "secondary"}
                 onClick={() => toggleHide(path)}
-                disabled={protectedItem}
+                disabled={!serverReady || protectedItem || save.isPending}
                 title={protectedItem ? "이 메뉴는 숨길 수 없습니다" : isHidden ? "표시" : "숨김"}
                 aria-label={isHidden ? "표시" : "숨김"}
               >
                 {isHidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
-              <Button size="icon" variant="outline" onClick={() => move(i, -1)} disabled={i === 0} aria-label="위로">
+              <Button size="icon" variant="outline" onClick={() => move(i, -1)} disabled={!serverReady || save.isPending || i === 0} aria-label="위로">
                 <ChevronUp className="h-4 w-4" />
               </Button>
-              <Button size="icon" variant="outline" onClick={() => move(i, 1)} disabled={i === cfg.order.length - 1} aria-label="아래로">
+              <Button size="icon" variant="outline" onClick={() => move(i, 1)} disabled={!serverReady || save.isPending || i === cfg.order.length - 1} aria-label="아래로">
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </li>
           );
         })}
-      </ul>
+      </ul>}
       <div className="flex flex-wrap gap-2">
         <Button
-          onClick={() => save.mutate(cfg, {
+          onClick={() => { if (!serverReady) return; save.mutate(cfg, {
             onSuccess: () => { toast.success("메뉴 설정 저장됨"); },
             onError: (e: any) => toast.error(e.message ?? "저장 실패"),
-          })}
-          disabled={!dirty || save.isPending}
+          }); }}
+          disabled={!serverReady || !dirty || save.isPending}
         >
           {save.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
           저장
@@ -2012,7 +2019,7 @@ function NavMenuSection() {
         <Button
           variant="outline"
           onClick={reset}
-          disabled={JSON.stringify(cfg) === JSON.stringify({ order: DEFAULT_NAV_ORDER, hidden: [] })}
+          disabled={!serverReady || save.isPending || JSON.stringify(cfg) === JSON.stringify({ order: DEFAULT_NAV_ORDER, hidden: [] })}
         >
           기본값으로
         </Button>
