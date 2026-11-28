@@ -4,18 +4,37 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Public guide intentionally uses a neutral paper theme, independent of the private shell. */
-.guide-paper {
-  --background: #ffffff;
-  --foreground: #262626;
-  --muted: #f5f5f5;
-  --muted-foreground: #656565;
-  --border: #e5e5e5;
-  --accent: #f0f0f0;
-  --accent-foreground: #262626;
-  color: var(--foreground);
-  background: var(--background);
+/* Public guide fixed palette: dark ink and light highlighter surfaces. */
+:root {
+  --guide-gray-ink: #4b5563; --guide-gray-bg: #f1f5f9;
+  --guide-brown-ink: #713f12; --guide-brown-bg: #f5ede3;
+  --guide-orange-ink: #9a3412; --guide-orange-bg: #ffedd5;
+  --guide-yellow-ink: #854d0e; --guide-yellow-bg: #fef9c3;
+  --guide-green-ink: #166534; --guide-green-bg: #dcfce7;
+  --guide-blue-ink: #1e40af; --guide-blue-bg: #dbeafe;
+  --guide-purple-ink: #6b21a8; --guide-purple-bg: #f3e8ff;
+  --guide-pink-ink: #9d174d; --guide-pink-bg: #fce7f3;
+  --guide-red-ink: #b91c1c; --guide-red-bg: #fee2e2;
 }
+.guide-on-tint { color: #1d1b20; }
+.guide-text-gray { color: var(--guide-gray-ink); }
+.guide-text-brown { color: var(--guide-brown-ink); }
+.guide-text-orange { color: var(--guide-orange-ink); }
+.guide-text-yellow { color: var(--guide-yellow-ink); }
+.guide-text-green { color: var(--guide-green-ink); }
+.guide-text-blue { color: var(--guide-blue-ink); }
+.guide-text-purple { color: var(--guide-purple-ink); }
+.guide-text-pink { color: var(--guide-pink-ink); }
+.guide-text-red { color: var(--guide-red-ink); }
+.guide-bg-gray { background-color: var(--guide-gray-bg); }
+.guide-bg-brown { background-color: var(--guide-brown-bg); }
+.guide-bg-orange { background-color: var(--guide-orange-bg); }
+.guide-bg-yellow { background-color: var(--guide-yellow-bg); }
+.guide-bg-green { background-color: var(--guide-green-bg); }
+.guide-bg-blue { background-color: var(--guide-blue-bg); }
+.guide-bg-purple { background-color: var(--guide-purple-bg); }
+.guide-bg-pink { background-color: var(--guide-pink-bg); }
+.guide-bg-red { background-color: var(--guide-red-bg); }
 
 :root {
   --region-zero: #ffffff;

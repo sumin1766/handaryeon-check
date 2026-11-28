@@ -45,6 +45,7 @@
 - [ ] Verify real staff/admin delivery and actual Kakao/SMS receipt — blocked: live Solapi calls and publishing are explicitly prohibited; no shared-password session supplied.
 
 # Public guide (no publishing)
+- [x] Add headings/lists/divider, fixed palette and inline formatting; editor toolbar and live preview with 28 rule tests, 192 total tests and 390/1440 mock checks.
 - [x] Match guide to application theme; guide editing opens from existing settings card/dialog layout. Mock card click and 390/1440 guide checks passed; 178 tests and automatic build OK.
 - [x] Add server-only season guide table; existing data unchanged.
 - [x] Add pure safe parser, public /guide and admin-only settings editor/upload functions.
