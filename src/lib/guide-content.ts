@@ -5,7 +5,8 @@ export type GuideStyle = { color?: GuideColor; background?: GuideColor };
 export type GuideText = GuideStyle & { text: string };
 export type GuideInline = GuideStyle & { text: string; bold?: boolean; underline?: boolean };
 export type GuideBlock =
-  | ({ kind: 'heading' | 'subheading' | 'heading3' | 'paragraph' | 'quote' | 'info' } & GuideText)
+  | ({ kind: 'heading' | 'subheading' | 'heading3' | 'paragraph' | 'quote' } & GuideText)
+  | ({ kind: 'info'; blocks: GuideBlock[]; source: string } & GuideStyle)
   | ({ kind: 'image' | 'link'; url: string } & GuideStyle)
   | { kind: 'list'; ordered: boolean; items: GuideText[] }
   | { kind: 'divider' }
@@ -56,7 +57,7 @@ function sameStyle(a: GuideStyle, b: GuideStyle) {
   return a.color === b.color && a.background === b.background;
 }
 
-export function parseGuide(body: string, storageOrigin = ''): GuideBlock[] {
+export function parseGuide(body: string, storageOrigin = '', allowCallouts = true): GuideBlock[] {
   const result: GuideBlock[] = [];
   let current = result;
   for (const rawLine of body.replace(/\r\n?/g, '\n').split('\n')) {
@@ -80,7 +81,16 @@ export function parseGuide(body: string, storageOrigin = ''): GuideBlock[] {
       const last = current.at(-1);
       if (last?.kind === 'quote' && sameStyle(last, style)) last.text += '\n' + line.slice(2);
       else current.push({ kind: 'quote', text: line.slice(2), ...style });
-    } else if (line.startsWith('! ')) current.push({ kind: 'info', text: line.slice(2), ...style });
+    } else if (allowCallouts && line.startsWith('! ')) {
+      const last = current.at(-1);
+      if (last?.kind === 'info' && sameStyle(last, style)) {
+        last.source += '\n' + line.slice(2);
+        last.blocks = parseGuide(last.source, storageOrigin, false);
+      } else {
+        const source = line.slice(2);
+        current.push({ kind: 'info', source, blocks: parseGuide(source, storageOrigin, false), ...style });
+      }
+    }
     else if (line.startsWith('- ') || /^\d+\. /.test(line)) {
       const ordered = !line.startsWith('- ');
       const text = ordered ? line.replace(/^\d+\. /, '') : line.slice(2);
@@ -152,7 +162,7 @@ export function parseGuideInline(text: string, inherited: GuideStyle & { bold?: 
   return result;
 }
 
-export type GuideBlockKind = 'text' | 'heading' | 'subheading' | 'heading3' | 'quote' | 'info' | 'bullet' | 'ordered' | 'fold' | 'divider';
+export type GuideBlockKind = 'text' | 'heading' | 'subheading' | 'heading3' | 'quote' | 'bullet' | 'ordered' | 'fold' | 'divider';
 export type GuideSelection = { start: number; end: number };
 export type GuideEditResult = GuideSelection & { body: string };
 
@@ -166,7 +176,7 @@ function selectedLineRange(body: string, selection: GuideSelection) {
 }
 
 function withoutBlockPrefix(line: string) {
-  for (const prefix of ['### ', '## ', '# ', '> ', '! ', '- ']) {
+  for (const prefix of ['### ', '## ', '# ', '> ', '- ']) {
     if (line.startsWith(prefix)) return line.slice(prefix.length);
   }
   return line.replace(/^\d+\. /, '');
@@ -182,9 +192,10 @@ export function applyGuideBlock(body: string, selection: GuideSelection, kind: G
     replacement = original.split('\n').map((rawLine, index) => {
       const { rest } = takeLineStyle(rawLine);
       const lineStyle = rawLine.slice(0, rawLine.length - rest.length);
-      const text = withoutBlockPrefix(rest);
-      const prefix = kind === 'heading' ? '# ' : kind === 'subheading' ? '## ' : kind === 'heading3' ? '### ' : kind === 'quote' ? '> ' : kind === 'info' ? '! ' : kind === 'bullet' ? '- ' : kind === 'ordered' ? `${index + 1}. ` : '';
-      return lineStyle + prefix + text;
+      const callout = rest.startsWith('! ');
+      const text = withoutBlockPrefix(callout ? rest.slice(2) : rest);
+      const prefix = kind === 'heading' ? '# ' : kind === 'subheading' ? '## ' : kind === 'heading3' ? '### ' : kind === 'quote' ? '> ' : kind === 'bullet' ? '- ' : kind === 'ordered' ? `${index + 1}. ` : '';
+      return lineStyle + (callout ? '! ' : '') + prefix + text;
     }).join('\n');
   }
   return { body: body.slice(0, from) + replacement + body.slice(to), start: from, end: from + replacement.length };
@@ -223,10 +234,11 @@ function applyInlineColor(body: string, selection: GuideSelection, target: Guide
 }
 
 export function applyGuideColor(body: string, selection: GuideSelection, target: GuideColorTarget, color: GuideColor | 'default'): GuideEditResult {
-  if (selection.end > selection.start && !body.slice(selection.start, selection.end).includes('\n')) {
+  const { from, to } = selectedLineRange(body, selection);
+  const callout = takeLineStyle(body.slice(from, to).split('\n')[0] ?? '').rest.startsWith('! ');
+  if (!callout && selection.end > selection.start && !body.slice(selection.start, selection.end).includes('\n')) {
     return applyInlineColor(body, selection, target, color);
   }
-  const { from, to } = selectedLineRange(body, selection);
   const replacement = body.slice(from, to).split('\n').map((rawLine) => {
     const { style, rest } = takeLineStyle(rawLine);
     if (color === 'default') delete style[target];
@@ -234,6 +246,45 @@ export function applyGuideColor(body: string, selection: GuideSelection, target:
     return `${style.color ? `{${style.color}}` : ''}${style.background ? `{배경:${style.background}}` : ''}${rest}`;
   }).join('\n');
   return { body: body.slice(0, from) + replacement + body.slice(to), start: from, end: from + replacement.length };
+}
+
+export function toggleGuideCallout(body: string, selection: GuideSelection): GuideEditResult {
+  const { from, to } = selectedLineRange(body, selection);
+  const lines = body.slice(from, to).split('\n');
+  const remove = lines.every((line) => takeLineStyle(line).rest.startsWith('! '));
+  const replacement = lines.map((line) => {
+    const { rest } = takeLineStyle(line);
+    const prefix = line.slice(0, line.length - rest.length);
+    return prefix + (remove ? rest.slice(2) : rest.startsWith('! ') ? rest : '! ' + rest);
+  }).join('\n');
+  return { body: body.slice(0, from) + replacement + body.slice(to), start: from, end: from + replacement.length };
+}
+
+export function getGuideLineFormat(body: string, selection: GuideSelection) {
+  const { from, to } = selectedLineRange(body, selection);
+  const { style, rest } = takeLineStyle(body.slice(from, to).split('\n')[0] ?? '');
+  const callout = rest.startsWith('! ');
+  const text = callout ? rest.slice(2) : rest;
+  const kind: GuideBlockKind = text.startsWith('### ') ? 'heading3' : text.startsWith('## ') ? 'subheading' : text.startsWith('# ') ? 'heading' : text.startsWith('> ') ? 'quote' : text.startsWith('- ') ? 'bullet' : /^\d+\. /.test(text) ? 'ordered' : text === '---' ? 'divider' : /^\[\[.+\]\]$/.test(text) ? 'fold' : 'text';
+  return { ...style, callout, kind };
+}
+
+export type GuideHistory = { past: GuideEditResult[]; present: GuideEditResult; future: GuideEditResult[]; typedAt: number | null };
+export function createGuideHistory(present: GuideEditResult): GuideHistory {
+  return { past: [], present: { ...present }, future: [], typedAt: null };
+}
+export function recordGuideHistory(history: GuideHistory, before: GuideEditResult, after: GuideEditResult, typing = false, now = Date.now()): GuideHistory {
+  if (before.body === after.body) return { ...history, present: { ...after } };
+  const grouped = typing && history.typedAt !== null && now - history.typedAt <= 600 && history.future.length === 0 && before.start === history.present.start && before.end === history.present.end;
+  return { past: grouped ? history.past : [...history.past, { ...before }].slice(-100), present: { ...after }, future: [], typedAt: typing ? now : null };
+}
+export function stepGuideHistory(history: GuideHistory, direction: 'undo' | 'redo'): GuideHistory {
+  const source = direction === 'undo' ? history.past : history.future;
+  const next = source.at(-1);
+  if (!next) return history;
+  return direction === 'undo'
+    ? { past: history.past.slice(0, -1), present: next, future: [...history.future, history.present], typedAt: null }
+    : { past: [...history.past, history.present].slice(-100), present: next, future: history.future.slice(0, -1), typedAt: null };
 }
 
 export function toggleGuideInline(body: string, selection: GuideSelection, marker: '**' | '__'): GuideEditResult {

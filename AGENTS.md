@@ -34,3 +34,4 @@
 - Pre-registration confirmation runs inside a persistent server lock (claim/release_registration_operation, no auto-expiry; admins release locks older than 5 minutes); reconfirm rewrites only system note tokens via src/lib/people-note.ts so staff notes survive.
 - Additional-payment notice/badge derive from needs_review status plus the sum of unresolved pre_registration_changes.fee_delta (confirm resolves them) and unlinked (person_id null) members; display-only in src/lib/additional-payment.ts, no stored state.
 - Public guides use a server-only season table, admin-password-verified dedicated writes/uploads and a pure text parser; public object reads must not grant storage listing or client mutations.
+- Guide callouts parse their inner blocks through the shared safe parser; editor-only snapshot history stores text and selection so undo never changes persisted data.

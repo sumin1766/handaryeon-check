@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
-import { Bold, Copy, ExternalLink, ImagePlus, Save, Underline } from 'lucide-react';
+import { Bold, Copy, ExternalLink, ImagePlus, Save, Underline, MessageSquare, Undo2, Redo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,11 +9,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { getSessionPassword } from '@/lib/session-password';
 import { getAdminGuide, saveAdminGuide, uploadGuideImage } from '@/lib/guide.functions';
 import { GuideDocument } from '@/components/guide-document';
-import { applyGuideBlock, applyGuideColor, GUIDE_COLOR_CLASSES, GUIDE_COLORS, GUIDE_MAX_LENGTH, GUIDE_PUBLIC_LINK, toggleGuideInline, type GuideBlockKind, type GuideColor, type GuideColorTarget, type GuideEditResult } from '@/lib/guide-content';
+import { applyGuideBlock, applyGuideColor, createGuideHistory, getGuideLineFormat, recordGuideHistory, stepGuideHistory, toggleGuideCallout, GUIDE_COLOR_CLASSES, GUIDE_COLORS, GUIDE_MAX_LENGTH, GUIDE_PUBLIC_LINK, toggleGuideInline, type GuideBlockKind, type GuideColor, type GuideColorTarget, type GuideEditResult } from '@/lib/guide-content';
 
 const BLOCK_OPTIONS: { value: GuideBlockKind; label: string }[] = [
   { value: 'text', label: '텍스트' }, { value: 'heading', label: '제목1' }, { value: 'subheading', label: '제목2' },
-  { value: 'heading3', label: '제목3' }, { value: 'quote', label: '인용' }, { value: 'info', label: '콜아웃' },
+  { value: 'heading3', label: '제목3' }, { value: 'quote', label: '인용' },
   { value: 'bullet', label: '글머리 기호' }, { value: 'ordered', label: '번호 목록' }, { value: 'fold', label: '접이식 항목' }, { value: 'divider', label: '구분선' },
 ];
 
@@ -39,6 +39,8 @@ export function GuideSettings({ seasonId, isActive }: { seasonId: string | undef
   const [blockKind, setBlockKind] = useState<GuideBlockKind>('text');
   const [textColor, setTextColor] = useState<GuideColor | 'default'>('default');
   const [backgroundColor, setBackgroundColor] = useState<GuideColor | 'default'>('default');
+  const [callout, setCallout] = useState(false);
+  const [history, setHistory] = useState(() => createGuideHistory({ body: '', start: 0, end: 0 }));
   const [mobileView, setMobileView] = useState<'edit' | 'preview'>('edit');
   const textarea = useRef<HTMLTextAreaElement>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -50,15 +52,36 @@ export function GuideSettings({ seasonId, isActive }: { seasonId: string | undef
     setBody('');
   }, [seasonId]);
   useEffect(() => {
-    if (query.isSuccess && seasonId) { setBody(query.data.body); setLoaded(seasonId); }
+    if (query.isSuccess && seasonId) {
+      setBody(query.data.body); setLoaded(seasonId);
+      cursor.current = { start: 0, end: 0 };
+      setHistory(createGuideHistory({ body: query.data.body, start: 0, end: 0 }));
+      syncFormat(query.data.body, cursor.current);
+    }
   }, [query.data, query.isSuccess, seasonId]);
   const ready = !!seasonId && loaded === seasonId && query.isSuccess && isActive && !busy;
 
-  function applyEdit(result: GuideEditResult) {
-    if (result.body.length > GUIDE_MAX_LENGTH) { toast.error('안내문은 20,000자 이하로 입력해 주세요.'); return; }
+  function syncFormat(text: string, selection: { start: number; end: number }) {
+    const format = getGuideLineFormat(text, selection);
+    setBlockKind(format.kind); setCallout(format.callout);
+    setTextColor(format.color ?? 'default'); setBackgroundColor(format.background ?? 'default');
+  }
+  function restore(result: GuideEditResult, focus = true) {
     setBody(result.body);
     cursor.current = { start: result.start, end: result.end };
-    requestAnimationFrame(() => { textarea.current?.focus(); textarea.current?.setSelectionRange(result.start, result.end); });
+    syncFormat(result.body, result);
+    if (focus) requestAnimationFrame(() => { textarea.current?.focus(); textarea.current?.setSelectionRange(result.start, result.end); });
+  }
+  function applyEdit(result: GuideEditResult, typing = false) {
+    if (result.body.length > GUIDE_MAX_LENGTH) { toast.error('안내문은 20,000자 이하로 입력해 주세요.'); return; }
+    const before = { body, ...cursor.current };
+    setHistory((previous) => recordGuideHistory(previous, before, result, typing));
+    restore(result, !typing);
+  }
+  function navigateHistory(direction: 'undo' | 'redo') {
+    if (!ready) return;
+    const next = stepGuideHistory({ ...history, present: { body, ...cursor.current } }, direction);
+    setHistory(next); restore(next.present);
   }
   function changeBlock(kind: GuideBlockKind) {
     setBlockKind(kind);
@@ -90,18 +113,20 @@ export function GuideSettings({ seasonId, isActive }: { seasonId: string | undef
       const prefix = body.slice(0, start), suffix = body.slice(end);
       const insertion = `${prefix && !prefix.endsWith('\n') ? '\n' : ''}${url}${suffix.startsWith('\n') ? '' : '\n'}`;
       if (body.length - (end - start) + insertion.length > GUIDE_MAX_LENGTH) throw new Error('이미지 주소를 넣으면 20,000자를 초과합니다.');
-      setBody(prefix + insertion + suffix);
-      requestAnimationFrame(() => { textarea.current?.focus(); textarea.current?.setSelectionRange(start + insertion.length, start + insertion.length); });
+      applyEdit({ body: prefix + insertion + suffix, start: start + insertion.length, end: start + insertion.length });
     } catch (e) { toast.error(e instanceof Error ? e.message : '이미지 올리기 실패'); }
     finally { setBusy(false); if (input.current) input.current.value = ''; }
   }
 
   const editor = <div className="space-y-3">
-    <div className="flex flex-wrap items-center gap-2" onMouseDownCapture={() => { if (textarea.current) cursor.current = { start: textarea.current.selectionStart, end: textarea.current.selectionEnd }; }}>
+    <div className="flex flex-wrap items-center gap-2" onPointerDownCapture={() => { if (textarea.current) cursor.current = { start: textarea.current.selectionStart, end: textarea.current.selectionEnd }; }}>
+      <Button type="button" variant="outline" size="sm" aria-label="실행 취소" title="실행 취소" disabled={!ready || history.past.length === 0} onClick={() => navigateHistory('undo')}><Undo2 className="h-4 w-4" /></Button>
+      <Button type="button" variant="outline" size="sm" aria-label="다시 실행" title="다시 실행" disabled={!ready || history.future.length === 0} onClick={() => navigateHistory('redo')}><Redo2 className="h-4 w-4" /></Button>
       <Select value={blockKind} disabled={!ready} onValueChange={(value) => changeBlock(value as GuideBlockKind)}>
         <SelectTrigger aria-label="블록 종류" className="w-36"><SelectValue /></SelectTrigger>
         <SelectContent>{BLOCK_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
       </Select>
+      <Button type="button" variant={callout ? 'default' : 'outline'} size="sm" aria-label="콜아웃" title="콜아웃 켜기/끄기" aria-pressed={callout} disabled={!ready} onClick={() => applyEdit(toggleGuideCallout(body, cursor.current))}><MessageSquare className="h-4 w-4" /></Button>
       <ColorSelect target="color" value={textColor} disabled={!ready} onChange={(color) => changeColor('color', color)} />
       <ColorSelect target="background" value={backgroundColor} disabled={!ready} onChange={(color) => changeColor('background', color)} />
       <Button type="button" variant="outline" size="sm" aria-label="굵게" disabled={!ready} onClick={() => applyEdit(toggleGuideInline(body, cursor.current, '**'))}><Bold className="h-4 w-4" /></Button>
@@ -109,7 +134,20 @@ export function GuideSettings({ seasonId, isActive }: { seasonId: string | undef
       <Button type="button" variant="outline" size="sm" disabled={!ready} onClick={() => input.current?.click()}><ImagePlus className="mr-2 h-4 w-4" />이미지 올리기</Button>
       <input ref={input} type="file" className="hidden" accept="image/jpeg,image/png,image/webp" onChange={(e) => uploadFile(e.target.files?.[0])} />
     </div>
-    <Textarea ref={textarea} aria-label="안내문 본문" className="min-h-[32rem] font-mono text-sm" value={body} maxLength={GUIDE_MAX_LENGTH} disabled={!ready} onChange={(e) => { setBody(e.target.value); cursor.current = { start: e.target.selectionStart, end: e.target.selectionEnd }; }} onSelect={(e) => { if (document.activeElement === e.currentTarget) cursor.current = { start: e.currentTarget.selectionStart, end: e.currentTarget.selectionEnd }; }} />
+    <Textarea ref={textarea} aria-label="안내문 본문" className="min-h-[32rem] font-mono text-sm" value={body} maxLength={GUIDE_MAX_LENGTH} disabled={!ready}
+      onChange={(e) => applyEdit({ body: e.target.value, start: e.target.selectionStart, end: e.target.selectionEnd }, true)}
+      onKeyDown={(e) => {
+        if (e.nativeEvent.isComposing || (!e.metaKey && !e.ctrlKey) || e.altKey) return;
+        const key = e.key.toLowerCase();
+        if (key === 'z' || (e.ctrlKey && key === 'y')) { e.preventDefault(); navigateHistory(key === 'y' || e.shiftKey ? 'redo' : 'undo'); }
+      }}
+      onSelect={(e) => {
+        if (document.activeElement !== e.currentTarget) return;
+        cursor.current = { start: e.currentTarget.selectionStart, end: e.currentTarget.selectionEnd };
+        const selection = { ...cursor.current };
+        syncFormat(body, selection);
+        setHistory((previous) => ({ ...previous, present: { body, ...selection }, typedAt: previous.present.start === selection.start && previous.present.end === selection.end ? previous.typedAt : null }));
+      }} />
   </div>;
   const preview = <div className="min-h-[32rem] rounded-md border border-border bg-background p-4"><GuideDocument body={body} /></div>;
 
@@ -131,6 +169,7 @@ export function GuideSettings({ seasonId, isActive }: { seasonId: string | undef
     </div>
     <details className="text-sm text-muted-foreground"><summary className="cursor-pointer">작성 규칙</summary><div className="mt-3 space-y-1">
       <p># 제목1 / ## 제목2 / ### 제목3</p><p>&gt; 인용문 / ! 정보 상자 / --- 구분선</p><p>- 글머리 기호 / 1. 번호 목록</p><p>[[제목]] 접이식 항목 (끝낼 때 [[끝]])</p>
+      <p>! # 제목 / ! - 목록: 상자 안 글 종류. 연속된 ! 줄은 한 상자이며, 빈 줄이나 다른 줄 색이 있으면 나뉩니다.</p><p>{'{배경:노랑}! 내용'}: 상자 배경색. 콜아웃 버튼은 글 종류·색을 유지하며 켜고 끕니다.</p>
       <p>**굵게** / __밑줄__ / {'{빨강|글자색}'} / {'{배경:노랑|형광펜}'}</p><p>줄 맨 앞의 {'{빨강}'}, {'{배경:분홍}'} 은 줄 전체 색상입니다.</p><p>사용 가능한 색: 회색·갈색·주황·노랑·초록·파랑·보라·분홍·빨강</p>
       <p>https 주소는 자동 링크, 이미지 주소는 이미지로 표시됩니다.</p><p>jpg·png·webp, 5MB 이하 / 안내문 20,000자 이하</p>
     </div></details>

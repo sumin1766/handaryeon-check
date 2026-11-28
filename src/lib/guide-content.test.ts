@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { applyGuideBlock, applyGuideColor, parseGuide, parseGuideInline, safeGuideUrl, toggleGuideInline, validateGuideBody, validateGuideImage, GUIDE_MAX_IMAGE_BYTES } from './guide-content';
+import { applyGuideBlock, applyGuideColor, createGuideHistory, getGuideLineFormat, recordGuideHistory, stepGuideHistory, toggleGuideCallout, parseGuide, parseGuideInline, safeGuideUrl, toggleGuideInline, validateGuideBody, validateGuideImage, GUIDE_MAX_IMAGE_BYTES } from './guide-content';
 
 test('heading prefixes are distinct', () => assert.deepEqual(parseGuide('# A\n## B\n### C'), [{kind:'heading',text:'A'},{kind:'subheading',text:'B'},{kind:'heading3',text:'C'}]));
 test('consecutive quotes form one block', () => assert.deepEqual(parseGuide('> A\n> B'), [{kind:'quote',text:'A\nB'}]));
-test('information lines stay separate and preserve emoji', () => assert.deepEqual(parseGuide('! 📌 A\n! B'), [{kind:'info',text:'📌 A'},{kind:'info',text:'B'}]));
-test('fold closes at next fold and explicit end', () => assert.deepEqual(parseGuide('[[A]]\n# X\n[[B]]\n! Y\n[[끝]]\nZ'), [{kind:'fold',title:'A',blocks:[{kind:'heading',text:'X'}]},{kind:'fold',title:'B',blocks:[{kind:'info',text:'Y'}]},{kind:'paragraph',text:'Z'}]));
+test('information lines group and preserve emoji', () => assert.deepEqual(parseGuide('! 📌 A\n! B'), [{kind:'info',source:'📌 A\nB',blocks:[{kind:'paragraph',text:'📌 A'},{kind:'paragraph',text:'B'}]}]));
+test('fold closes at next fold and explicit end', () => assert.deepEqual(parseGuide('[[A]]\n# X\n[[B]]\n! Y\n[[끝]]\nZ'), [{kind:'fold',title:'A',blocks:[{kind:'heading',text:'X'}]},{kind:'fold',title:'B',blocks:[{kind:'info',source:'Y',blocks:[{kind:'paragraph',text:'Y'}]}]},{kind:'paragraph',text:'Z'}]));
 test('https image extensions ignore query strings and case', () => assert.deepEqual(parseGuide('https://example.org/a.JPEG?x=1'), [{kind:'image',url:'https://example.org/a.JPEG?x=1'}]));
 test('only this app guide bucket addresses are extensionless images', () => assert.deepEqual(parseGuide('https://app.example/storage/v1/object/public/guide-images/abc','https://app.example'), [{kind:'image',url:'https://app.example/storage/v1/object/public/guide-images/abc'}]));
 test('other https addresses are links', () => assert.equal(parseGuide('https://example.org')[0]?.kind, 'link'));
@@ -18,7 +18,7 @@ test('bullet and ordered lines form lists', () => assert.deepEqual(parseGuide('-
 ]));
 test('a standalone divider is parsed', () => assert.deepEqual(parseGuide('A\n---\nB'), [{kind:'paragraph',text:'A'},{kind:'divider'},{kind:'paragraph',text:'B'}]));
 test('line colors precede existing block markers', () => assert.deepEqual(parseGuide('{배경:분홍}! 날짜\n{빨강}## 1. 본당'), [
-  {kind:'info',text:'날짜',background:'분홍'},
+  {kind:'info',source:'날짜',blocks:[{kind:'paragraph',text:'날짜'}],background:'분홍'},
   {kind:'subheading',text:'1. 본당',color:'빨강'},
 ]));
 test('both line colors work in either order', () => assert.deepEqual(parseGuide('{파랑}{배경:노랑}A\n{배경:노랑}{파랑}B'), [
@@ -63,6 +63,85 @@ test('bold and underline toggle without losing selected text', () => {
   assert.deepEqual(bold,{body:'**안녕**',start:2,end:4});
   assert.equal(toggleGuideInline(bold.body,{start:bold.start,end:bold.end},'**').body,'안녕');
   assert.equal(toggleGuideInline('__안녕__',{start:0,end:7},'__').body,'안녕');
+});
+
+test('callout supports all three headings, paragraphs and both lists', () => {
+  const info = parseGuide('! # A\n! ## B\n! ### C\n! D\n! - E\n! - F\n! 1. G\n! 2. H')[0];
+  assert.equal(info?.kind, 'info');
+  if (info?.kind !== 'info') throw new Error('missing callout');
+  assert.deepEqual(info.blocks, [{kind:'heading',text:'A'},{kind:'subheading',text:'B'},{kind:'heading3',text:'C'},{kind:'paragraph',text:'D'},{kind:'list',ordered:false,items:[{text:'E'},{text:'F'}]},{kind:'list',ordered:true,items:[{text:'G'},{text:'H'}]}]);
+});
+test('blank lines split callouts', () => assert.deepEqual(parseGuide('! A\n\n! B').map((b) => b.kind), ['info','paragraph','info']));
+test('different text or background colors split callouts', () => {
+  assert.deepEqual(parseGuide('{빨강}! A\n{빨강}! B\n{파랑}! C\n{파랑}{배경:노랑}! D').map((b) => b.kind), ['info','info','info']);
+  const first = parseGuide('{빨강}! A\n{빨강}! B')[0];
+  assert.equal(first?.kind === 'info' ? first.blocks.length : 0, 2);
+});
+test('equivalent color markers in either order share a callout', () => assert.equal(parseGuide('{빨강}{배경:노랑}! A\n{배경:노랑}{빨강}! B').length, 1));
+test('toggle callout preserves block and colors and removes only callout marker', () => {
+  const body = '{빨강}{배경:노랑}## A\n- B';
+  const on = toggleGuideCallout(body,{start:0,end:body.length});
+  assert.equal(on.body, '{빨강}{배경:노랑}! ## A\n! - B');
+  assert.equal(toggleGuideCallout(on.body,on).body,body);
+});
+test('mixed callout selection turns all lines on without duplicate markers', () => assert.equal(toggleGuideCallout('! A\nB',{start:0,end:5}).body,'! A\n! B'));
+test('changing callout block kinds keeps both line colors', () => {
+  const body = '{빨강}{배경:노랑}! # A\n{빨강}{배경:노랑}! B';
+  assert.equal(applyGuideBlock(body,{start:0,end:body.length},'ordered').body,'{빨강}{배경:노랑}! 1. A\n{빨강}{배경:노랑}! 2. B');
+  assert.equal(applyGuideBlock('{파랑}! ### A',{start:0,end:0},'text').body,'{파랑}! A');
+});
+test('single callout text selection colors the box rather than its marker', () => {
+  const colored = applyGuideColor('! # A',{start:0,end:5},'background','노랑');
+  assert.equal(colored.body,'{배경:노랑}! # A');
+  assert.equal(applyGuideColor(colored.body,colored,'background','default').body,'! # A');
+});
+test('selected callout lines get matching colors and default keeps text color', () => {
+  const body = '{빨강}! # A\n{파랑}! B';
+  const colored = applyGuideColor(body,{start:0,end:body.length},'background','초록');
+  assert.equal(colored.body,'{빨강}{배경:초록}! # A\n{파랑}{배경:초록}! B');
+  assert.equal(applyGuideColor(colored.body,colored,'background','default').body,body);
+});
+test('format detection looks inside callout and color markers', () => assert.deepEqual(getGuideLineFormat('{빨강}{배경:노랑}! ### A',{start:5,end:5}),{color:'빨강',background:'노랑',callout:true,kind:'heading3'}));
+test('callout content remains safe literal text for HTML and invalid syntax', () => {
+  const info = parseGuide('! <script>evil</script>\n! {임의}**짝없음')[0];
+  if (info?.kind !== 'info') throw new Error('missing callout');
+  assert.deepEqual(info.blocks,[{kind:'paragraph',text:'<script>evil</script>'},{kind:'paragraph',text:'{임의}**짝없음'}]);
+});
+test('undo restores selection and redo restores toolbar output', () => {
+  const before = {body:'ABC',start:1,end:2};
+  const after = toggleGuideInline(before.body,before,'**');
+  const history = recordGuideHistory(createGuideHistory(before),before,after);
+  const undone = stepGuideHistory(history,'undo');
+  assert.deepEqual(undone.present,before);
+  assert.deepEqual(stepGuideHistory(undone,'redo').present,after);
+});
+test('continuous typing groups within 600ms and pauses form another step', () => {
+  const initial = {body:'',start:0,end:0};
+  const a = {body:'A',start:1,end:1}, ab = {body:'AB',start:2,end:2}, abc = {body:'ABC',start:3,end:3};
+  let h = recordGuideHistory(createGuideHistory(initial),initial,a,true,1000);
+  h = recordGuideHistory(h,a,ab,true,1600);
+  assert.equal(h.past.length,1);
+  h = recordGuideHistory(h,ab,abc,true,2201);
+  assert.equal(h.past.length,2);
+  assert.deepEqual(stepGuideHistory(h,'undo').present,ab);
+});
+test('toolbar changes are separate and new edits discard redo', () => {
+  const initial = {body:'A',start:0,end:1};
+  const first = toggleGuideInline(initial.body,initial,'**');
+  let h = recordGuideHistory(createGuideHistory(initial),initial,first);
+  h = recordGuideHistory(h,first,toggleGuideInline(first.body,first,'__'));
+  assert.equal(h.past.length,2);
+  h = stepGuideHistory(h,'undo');
+  h = recordGuideHistory(h,h.present,{body:'new',start:3,end:3});
+  assert.equal(h.future.length,0);
+});
+test('history retains at most 100 undo steps', () => {
+  let h = createGuideHistory({body:'0',start:0,end:0});
+  for (let i = 1; i <= 105; i++) h = recordGuideHistory(h,h.present,{body:String(i),start:0,end:0});
+  assert.equal(h.past.length,100);
+  for (let i = 0; i < 100; i++) h = stepGuideHistory(h,'undo');
+  assert.equal(h.present.body,'5');
+  assert.equal(stepGuideHistory(h,'undo'),h);
 });
 
 test('body accepts exactly 20000 characters', () => assert.equal(validateGuideBody('x'.repeat(20000)).length,20000));

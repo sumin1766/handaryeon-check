@@ -45,6 +45,8 @@
 - [ ] Verify real staff/admin delivery and actual Kakao/SMS receipt — blocked: live Solapi calls and publishing are explicitly prohibited; no shared-password session supplied.
 
 # Public guide (no publishing)
+- [x] Add grouped callout blocks/colors and independent callout toggle; preserve existing text syntax. 43 parser/editor rule tests passed.
+- [x] Add editor-only 100-step undo/redo with 600ms typing groups and selection restoration; 390/1440 mocked interactions passed with no browser errors, 207 main + 12 isolated tests and automatic typecheck/build OK; no operating writes or publishing.
 - [x] Add headings/lists/divider, fixed palette and inline formatting; editor toolbar and live preview with 28 rule tests, 192 total tests and 390/1440 mock checks.
 - [x] Match guide to application theme; guide editing opens from existing settings card/dialog layout. Mock card click and 390/1440 guide checks passed; 178 tests and automatic build OK.
 - [x] Add server-only season guide table; existing data unchanged.

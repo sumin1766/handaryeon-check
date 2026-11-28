@@ -42,7 +42,7 @@ function GuideBlocks({ blocks }: { blocks: GuideBlock[] }) {
       case 'subheading': return <h2 key={index} className={`pt-3 text-xl font-semibold whitespace-pre-wrap break-words ${lineClasses(block)}`}><InlineText text={block.text} /></h2>;
       case 'heading3': return <h3 key={index} className={`pt-2 text-lg font-semibold whitespace-pre-wrap break-words ${lineClasses(block)}`}><InlineText text={block.text} /></h3>;
       case 'quote': return <blockquote key={index} className={`border-l-4 border-border pl-4 whitespace-pre-wrap break-words ${lineClasses(block)}`}><InlineText text={block.text} /></blockquote>;
-      case 'info': return <aside key={index} className={`rounded-md p-4 whitespace-pre-wrap break-words ${lineClasses(block, true)}`}><InlineText text={block.text} /></aside>;
+      case 'info': return <aside key={index} className={`rounded-md p-4 space-y-3 whitespace-pre-wrap break-words ${lineClasses(block, true)}`}><GuideBlocks blocks={block.blocks} /></aside>;
       case 'list': {
         const List = block.ordered ? 'ol' : 'ul';
         return <List key={index} className={`space-y-2 pl-6 ${block.ordered ? 'list-decimal' : 'list-disc'}`}>{block.items.map((item, itemIndex) => <ListItem key={itemIndex} item={item} />)}</List>;
