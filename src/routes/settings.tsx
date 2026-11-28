@@ -69,6 +69,7 @@ import { RotateCcw, ArchiveRestore } from "lucide-react";
 import { TrashDeleteSection, TrashRestoreSection, TrashRestoreSummary } from "@/components/registration-trash-panel";
 import { SeasonImportButton } from "@/components/season-import-dialog";
 import { SeasonResetSection, SeasonResetSummary } from "@/components/season-reset-panel";
+import { GuideSettings } from "@/components/guide-settings";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [
@@ -282,6 +283,7 @@ function SettingsContent({ isAdmin }: { isAdmin: boolean }) {
             ) : null,
           )}
         </div>
+        {isAdmin && <GuideSettings seasonId={season?.id} isActive={!!season?.is_active} />}
       </div>
     </AppShell>
   );

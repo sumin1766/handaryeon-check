@@ -1,0 +1,17 @@
+import { test } from 'node:test';
+import { strict as assert } from 'node:assert';
+import { parseGuide, safeGuideUrl, validateGuideBody, validateGuideImage, GUIDE_MAX_IMAGE_BYTES } from './guide-content';
+test('heading prefixes are distinct', () => assert.deepEqual(parseGuide('# A\n## B'), [{kind:'heading',text:'A'},{kind:'subheading',text:'B'}]));
+test('consecutive quotes form one block', () => assert.deepEqual(parseGuide('> A\n> B'), [{kind:'quote',text:'A\nB'}]));
+test('information lines stay separate and preserve emoji', () => assert.deepEqual(parseGuide('! 📌 A\n! B'), [{kind:'info',text:'📌 A'},{kind:'info',text:'B'}]));
+test('fold closes at next fold and explicit end', () => assert.deepEqual(parseGuide('[[A]]\n# X\n[[B]]\n! Y\n[[끝]]\nZ'), [{kind:'fold',title:'A',blocks:[{kind:'heading',text:'X'}]},{kind:'fold',title:'B',blocks:[{kind:'info',text:'Y'}]},{kind:'paragraph',text:'Z'}]));
+test('https image extensions ignore query strings and case', () => assert.deepEqual(parseGuide('https://example.org/a.JPEG?x=1'), [{kind:'image',url:'https://example.org/a.JPEG?x=1'}]));
+test('only this app guide bucket addresses are extensionless images', () => assert.deepEqual(parseGuide('https://app.example/storage/v1/object/public/guide-images/abc','https://app.example'), [{kind:'image',url:'https://app.example/storage/v1/object/public/guide-images/abc'}]));
+test('other https addresses are links', () => assert.equal(parseGuide('https://example.org')[0]?.kind, 'link'));
+test('http javascript and credential URLs are not allowed', () => { for(const url of ['http://example.org','javascript:alert(1)','https://user:pass@example.org']) assert.equal(safeGuideUrl(url),null); });
+test('HTML and normal line breaks remain literal paragraphs', () => assert.deepEqual(parseGuide('<script>alert(1)</script>\nA\nB'), [{kind:'paragraph',text:'<script>alert(1)</script>'},{kind:'paragraph',text:'A'},{kind:'paragraph',text:'B'}]));
+test('body accepts exactly 20000 characters', () => assert.equal(validateGuideBody('x'.repeat(20000)).length,20000));
+test('body rejects more than 20000 characters', () => assert.throws(() => validateGuideBody('x'.repeat(20001))));
+test('jpg png webp signatures accepted', () => { assert.equal(validateGuideImage('image/jpeg',new Uint8Array([255,216,255])),'jpg'); assert.equal(validateGuideImage('image/png',new Uint8Array([137,80,78,71,13,10,26,10])),'png'); assert.equal(validateGuideImage('image/webp',new TextEncoder().encode('RIFFxxxxWEBP')),'webp'); });
+test('wrong mime and disguised images rejected', () => { assert.throws(() => validateGuideImage('image/gif',new Uint8Array([255,216,255]))); assert.throws(() => validateGuideImage('image/png',new TextEncoder().encode('<script>'))); });
+test('5MB is allowed but 5MB plus one byte rejected', () => { const bytes = new Uint8Array(GUIDE_MAX_IMAGE_BYTES); bytes.set([255,216,255]); assert.equal(validateGuideImage('image/jpeg',bytes),'jpg'); assert.throws(() => validateGuideImage('image/jpeg',new Uint8Array(GUIDE_MAX_IMAGE_BYTES+1))); });

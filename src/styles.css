@@ -4,6 +4,19 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Public guide intentionally uses a neutral paper theme, independent of the private shell. */
+.guide-paper {
+  --background: #ffffff;
+  --foreground: #262626;
+  --muted: #f5f5f5;
+  --muted-foreground: #656565;
+  --border: #e5e5e5;
+  --accent: #f0f0f0;
+  --accent-foreground: #262626;
+  color: var(--foreground);
+  background: var(--background);
+}
+
 :root {
   --region-zero: #ffffff;
   --region-1: #fde2eb;

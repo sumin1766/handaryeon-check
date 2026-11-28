@@ -14,6 +14,7 @@ import { Route as AgentLoginRouteImport } from './routes/agent-login'
 import { Route as ApplyRouteImport } from './routes/apply'
 import { Route as ApplyFormRouteImport } from './routes/apply-form'
 import { Route as BathCouponsRouteImport } from './routes/bath-coupons'
+import { Route as GuideRouteImport } from './routes/guide'
 import { Route as IntakeSheetRouteImport } from './routes/intake-sheet'
 import { Route as LodgingsRouteImport } from './routes/lodgings'
 import { Route as McpRouteImport } from './routes/mcp'
@@ -56,6 +57,11 @@ const ApplyFormRoute = ApplyFormRouteImport.update({
 const BathCouponsRoute = BathCouponsRouteImport.update({
   id: '/bath-coupons',
   path: '/bath-coupons',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuideRoute = GuideRouteImport.update({
+  id: '/guide',
+  path: '/guide',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IntakeSheetRoute = IntakeSheetRouteImport.update({
@@ -156,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/apply': typeof ApplyRoute
   '/apply-form': typeof ApplyFormRoute
   '/bath-coupons': typeof BathCouponsRoute
+  '/guide': typeof GuideRoute
   '/intake-sheet': typeof IntakeSheetRoute
   '/lodgings': typeof LodgingsRoute
   '/mcp': typeof McpRoute
@@ -181,6 +188,7 @@ export interface FileRoutesByTo {
   '/apply': typeof ApplyRoute
   '/apply-form': typeof ApplyFormRoute
   '/bath-coupons': typeof BathCouponsRoute
+  '/guide': typeof GuideRoute
   '/intake-sheet': typeof IntakeSheetRoute
   '/lodgings': typeof LodgingsRoute
   '/mcp': typeof McpRoute
@@ -207,6 +215,7 @@ export interface FileRoutesById {
   '/apply': typeof ApplyRoute
   '/apply-form': typeof ApplyFormRoute
   '/bath-coupons': typeof BathCouponsRoute
+  '/guide': typeof GuideRoute
   '/intake-sheet': typeof IntakeSheetRoute
   '/lodgings': typeof LodgingsRoute
   '/mcp': typeof McpRoute
@@ -234,6 +243,7 @@ export interface FileRouteTypes {
     | '/apply'
     | '/apply-form'
     | '/bath-coupons'
+    | '/guide'
     | '/intake-sheet'
     | '/lodgings'
     | '/mcp'
@@ -259,6 +269,7 @@ export interface FileRouteTypes {
     | '/apply'
     | '/apply-form'
     | '/bath-coupons'
+    | '/guide'
     | '/intake-sheet'
     | '/lodgings'
     | '/mcp'
@@ -284,6 +295,7 @@ export interface FileRouteTypes {
     | '/apply'
     | '/apply-form'
     | '/bath-coupons'
+    | '/guide'
     | '/intake-sheet'
     | '/lodgings'
     | '/mcp'
@@ -310,6 +322,7 @@ export interface RootRouteChildren {
   ApplyRoute: typeof ApplyRoute
   ApplyFormRoute: typeof ApplyFormRoute
   BathCouponsRoute: typeof BathCouponsRoute
+  GuideRoute: typeof GuideRoute
   IntakeSheetRoute: typeof IntakeSheetRoute
   LodgingsRoute: typeof LodgingsRoute
   McpRoute: typeof McpRoute
@@ -365,6 +378,13 @@ declare module '@tanstack/react-router' {
       path: '/bath-coupons'
       fullPath: '/bath-coupons'
       preLoaderRoute: typeof BathCouponsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guide': {
+      id: '/guide'
+      path: '/guide'
+      fullPath: '/guide'
+      preLoaderRoute: typeof GuideRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/intake-sheet': {
@@ -502,6 +522,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApplyRoute: ApplyRoute,
   ApplyFormRoute: ApplyFormRoute,
   BathCouponsRoute: BathCouponsRoute,
+  GuideRoute: GuideRoute,
   IntakeSheetRoute: IntakeSheetRoute,
   LodgingsRoute: LodgingsRoute,
   McpRoute: McpRoute,

@@ -43,3 +43,10 @@
 - [x] Call after individual confirmation only; show result and confirmed resend control without changing confirmation data.
 - [x] Audit current dbGateway callers read-only; notification mocks + 83 existing tests and desktop/mobile mocked flows passed; typecheck/build OK.
 - [ ] Verify real staff/admin delivery and actual Kakao/SMS receipt — blocked: live Solapi calls and publishing are explicitly prohibited; no shared-password session supplied.
+
+# Public guide (no publishing)
+- [x] Add server-only season guide table; existing data unchanged.
+- [x] Add pure safe parser, public /guide and admin-only settings editor/upload functions.
+- [x] Verify 390/1440 mocked guide/editor, authorization/limits, 178 main tests plus 12 isolated checks, automatic build OK.
+- [ ] Create public guide image bucket — blocked: public_buckets_blocked persists after reported workspace permission change and retries.
+- [ ] Verify real admin save/upload readback — blocked: no shared-password session; bucket unavailable, no operating writes allowed.

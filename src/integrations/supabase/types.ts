@@ -772,6 +772,32 @@ export type Database = {
         }
         Relationships: []
       }
+      season_guides: {
+        Row: {
+          body: string
+          season_id: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          season_id: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          season_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_guides_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: true
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seasons: {
         Row: {
           created_at: string
