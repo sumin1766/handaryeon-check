@@ -14,17 +14,23 @@ export const Route = createFileRoute('/guide')({
   ] }),
   loader: ({ context }) => context.queryClient.ensureQueryData(guideQuery),
   component: GuidePage,
-  errorComponent: () => <main className="guide-paper min-h-screen px-6 py-16 text-center">안내문을 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.</main>,
+  errorComponent: () => <main className="mx-auto min-h-screen w-full max-w-3xl px-4 py-16 text-center text-foreground">안내문을 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.</main>,
 });
 function GuidePage() {
   const { data } = useSuspenseQuery(guideQuery);
-  return <main className="guide-paper relative min-h-screen px-6 py-12 sm:px-8 sm:py-20">
-    <article className="mx-auto w-full max-w-2xl">
+  return <main className="relative mx-auto min-h-screen w-full max-w-3xl px-4 py-8 text-foreground">
+    <header className="mb-6 border-b border-border pb-5">
+      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary" aria-hidden="true">
+        <span className="text-xl font-bold">i</span>
+      </div>
+      <h1 className="text-2xl font-bold sm:text-3xl">캠프 안내</h1>
+      {data.seasonName && <p className="mt-2 text-sm text-muted-foreground">{data.seasonName}</p>}
+    </header>
+    <article className="w-full">
       {data.body.trim() ? <>
-        <header className="mb-8 text-sm text-muted-foreground">{data.seasonName}</header>
         <GuideDocument body={data.body} />
         {data.updatedAt && <footer className="mt-12 border-t border-border pt-4 text-xs text-muted-foreground">수정 {new Date(data.updatedAt).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })}</footer>}
-      </> : <p className="text-center text-muted-foreground">안내 사항을 준비 중입니다.</p>}
+      </> : <p className="py-12 text-center text-muted-foreground">안내 사항을 준비 중입니다.</p>}
     </article>
   </main>;
 }

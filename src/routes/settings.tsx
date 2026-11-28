@@ -183,6 +183,11 @@ function SettingsContent({ isAdmin }: { isAdmin: boolean }) {
     ),
     ...(isAdmin
       ? {
+          guide: (
+            <SettingsCard icon={<FileText className="h-5 w-5" />} title="안내 페이지" summary={<span>{season?.name ?? "활성 시즌"} 안내문</span>}>
+              <GuideSettings seasonId={season?.id} isActive={!!season?.is_active} />
+            </SettingsCard>
+          ),
           "data-reset": (
             <SettingsCard icon={<RotateCcw className="h-5 w-5" />} title="데이터 초기화" summary={<SeasonResetSummary />}>
               <SeasonResetSection />
@@ -283,7 +288,6 @@ function SettingsContent({ isAdmin }: { isAdmin: boolean }) {
             ) : null,
           )}
         </div>
-        {isAdmin && <GuideSettings seasonId={season?.id} isActive={!!season?.is_active} />}
       </div>
     </AppShell>
   );
